@@ -34,6 +34,35 @@ export function adminPasswordNotice(password: string): string {
 `;
 }
 
+/** True while the admin's password is a generated one, shown in a console. */
+export async function isAdminPasswordPending(orm: Orm): Promise<boolean> {
+  const [admin] = await orm
+    .select({ mustChangePassword: user.mustChangePassword })
+    .from(user)
+    .where(eq(user.email, ADMIN_EMAIL));
+  return admin?.mustChangePassword === true;
+}
+
+// Only its hash is stored, so the password can't be shown again, and logs don't outlive a container.
+const ADMIN_PASSWORD_REMINDER = `
+================================================================
+  Remidy admin account: ${ADMIN_EMAIL}
+
+  A password was generated and printed when this account was
+  created. It's still waiting to be replaced. If you no longer
+  have it, get a new one by running this on the server:
+
+  pnpm --filter @remidy/server reset-admin-password
+================================================================
+`;
+
+/** What to print when the server starts, if anything. For the console only, like the notice. */
+export async function adminStartupMessage(auth: Auth, orm: Orm): Promise<string | null> {
+  const password = await ensureAdminAccount(auth);
+  if (password) return adminPasswordNotice(password);
+  return (await isAdminPasswordPending(orm)) ? ADMIN_PASSWORD_REMINDER : null;
+}
+
 async function findAdmin(auth: Auth) {
   const context = await auth.$context;
   return context.internalAdapter.findUserByEmail(ADMIN_EMAIL, { includeAccounts: true });

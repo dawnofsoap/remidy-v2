@@ -223,6 +223,7 @@ test.describe('first sign-in', () => {
     await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: null }));
     await page.goto('/');
     await expect(page.getByText('printed in the server’s console')).toBeVisible();
+    await expect(page.getByText('reset-admin-password')).toBeVisible();
     await expectNoViolations(page);
     await saveScreenshot(page, 'first-sign-in');
   });

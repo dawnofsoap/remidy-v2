@@ -1,6 +1,6 @@
 import { createDatabase } from '@remidy/db';
 import { buildApp } from './core/app.ts';
-import { adminPasswordNotice, ensureAdminAccount } from './core/auth/admin.ts';
+import { adminStartupMessage } from './core/auth/admin.ts';
 import { createAuth, createAuthorize } from './core/auth/index.ts';
 import { signInOptionsFeature } from './core/auth/sign-in-options.ts';
 import { ConfigError, loadConfig, type Config } from './core/config.ts';
@@ -60,8 +60,8 @@ process.once('SIGINT', () => void shutdown());
 
 try {
   await database.migrate();
-  const adminPassword = await ensureAdminAccount(auth);
-  if (adminPassword) process.stdout.write(adminPasswordNotice(adminPassword));
+  const adminMessage = await adminStartupMessage(auth, database.orm);
+  if (adminMessage) process.stdout.write(adminMessage);
   if (!mailer) app.log.warn('SMTP_URL isn’t set, so password reset is unavailable');
   await app.listen({ host: '0.0.0.0', port: config.PORT });
 } catch (error) {

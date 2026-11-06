@@ -2,7 +2,12 @@ import { ADMIN_EMAIL, apiErrorResponse, unmetPasswordRequirements } from '@remid
 import { loginThrottle, user } from '@remidy/db';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
-import { ensureAdminAccount, generatePassword, resetAdminPassword } from './admin.ts';
+import {
+  adminStartupMessage,
+  ensureAdminAccount,
+  generatePassword,
+  resetAdminPassword,
+} from './admin.ts';
 import { cookieFrom, PERSON, useAuthHarness } from './testing.ts';
 import { MAX_FAILED_SIGN_INS } from './throttle.ts';
 
@@ -100,6 +105,42 @@ describe('the admin account', () => {
     const password = String(await ensureAdminAccount(h.auth));
     expect((await signIn('admin', password)).statusCode).not.toBe(200);
     expect(await h.test.database.orm.select().from(loginThrottle)).toHaveLength(0);
+  });
+
+  describe('what each server start prints', () => {
+    const start = () => adminStartupMessage(h.auth, h.test.database.orm);
+    const printedPassword = (message: string | null) =>
+      /Password: (\S+)/.exec(String(message))?.[1] ?? '';
+
+    it('shows the password when the account is created', async () => {
+      const message = await start();
+      expect(message).toContain(ADMIN_EMAIL);
+      expect((await signIn(ADMIN_EMAIL, printedPassword(message))).statusCode).toBe(200);
+    });
+
+    it('says how to get a new one on later starts, since the old logs may be gone', async () => {
+      await start();
+      const message = await start();
+      expect(message).toContain('reset-admin-password');
+      expect(message).toContain(ADMIN_EMAIL);
+      expect(printedPassword(message)).toBe('');
+    });
+
+    it('does the same after the password was replaced from the server', async () => {
+      await resetAdminPassword(h.auth, h.test.database.orm);
+      expect(await start()).toContain('reset-admin-password');
+    });
+
+    it('prints nothing once the admin has chosen a password', async () => {
+      const first = printedPassword(await start());
+      await choosePassword(await asAdmin(first), first);
+      expect(await start()).toBeNull();
+    });
+
+    it('never prints the password twice', async () => {
+      const first = printedPassword(await start());
+      expect(await start()).not.toContain(first);
+    });
   });
 
   describe('when the password is lost', () => {
