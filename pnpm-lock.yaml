@@ -230,6 +230,9 @@ importers:
       '@remidy/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@remidy/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@tanstack/react-query':
         specifier: 5.106.0
         version: 5.106.0(@types/react@19.3.0)(react@19.3.1)

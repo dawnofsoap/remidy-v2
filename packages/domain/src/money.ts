@@ -22,17 +22,20 @@ export function toCents(value: number): Cents {
 }
 
 // Optional $, then digits with correctly placed commas or none, then up to two decimals.
-const MONEY_PATTERN = /^\$?(?<whole>\d{1,3}(?:,\d{3})+|\d+)?(?:\.(?<fraction>\d{1,2}))?$/;
+const MONEY_PATTERN = /^\$?\s*(?<whole>\d{1,3}(?:,\d{3})+|\d+)?(?:\.(?<fraction>\d{0,2}))?$/;
 
 /**
- * Reads an amount a person typed. Returns null if it isn't one, or is negative or too large.
- * Accepts `1234.5`, `$1,234.50` and `.50`. Rejects `1,23`, `1.234` and `-5`.
+ * Reads an amount a person typed, in dollars, filling in what's obvious: `5` and `5.` are $5.00,
+ * `5.5` is $5.50 and `.5` is $0.50. Returns null if it isn't an amount, is negative or too large.
+ *
+ * It refuses to guess when a wrong guess would save a wrong amount, as with `1,23` (is that $1.23
+ * or a mistyped $123?) and `1.234` (it won't round), so the person is asked instead.
  */
 export function parseMoney(text: string): Cents | null {
   const match = MONEY_PATTERN.exec(text.trim());
   const whole = match?.groups?.whole;
   const fraction = match?.groups?.fraction;
-  if (whole === undefined && fraction === undefined) return null;
+  if (whole === undefined && !fraction) return null;
 
   const dollars = Number((whole ?? '0').replaceAll(',', ''));
   const cents = Number((fraction ?? '').padEnd(2, '0'));

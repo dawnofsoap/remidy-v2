@@ -1,14 +1,14 @@
 import { useId, type ComponentProps, type ReactNode } from 'react';
 import { cn, focusRing } from './cn.ts';
 
-const controlStyles = cn(
+export const controlStyles = cn(
   'min-h-11 w-full rounded-xl border border-field bg-surface px-3 text-ink',
   'disabled:cursor-not-allowed disabled:opacity-55',
   'aria-invalid:border-danger',
   focusRing,
 );
 
-interface FieldProps {
+export interface FieldProps {
   label: string;
   /** Extra guidance shown under the control. */
   hint?: string;
@@ -22,7 +22,7 @@ interface ControlIds {
   'aria-invalid'?: true;
 }
 
-function FieldShell({
+export function FieldShell({
   label,
   hint,
   error,
