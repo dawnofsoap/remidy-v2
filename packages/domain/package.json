@@ -8,5 +8,11 @@
   },
   "scripts": {
     "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "temporal-polyfill": "1.0.8"
+  },
+  "devDependencies": {
+    "fast-check": "4.10.2"
   }
 }

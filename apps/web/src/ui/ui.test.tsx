@@ -4,6 +4,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { toCents, type Cents } from '@remidy/domain';
 import { cn } from './cn.ts';
 import {
   Button,
@@ -13,6 +14,7 @@ import {
   ListRow,
   LoadingState,
   Modal,
+  MoneyField,
   NewPasswordField,
   SelectField,
   TextField,
@@ -264,5 +266,90 @@ describe('NewPasswordField', () => {
     );
     expect(field()).toBeInvalid();
     expect(field()).toHaveAccessibleDescription(/Choose a different one/);
+  });
+});
+
+describe('MoneyField', () => {
+  function Amount({ start = null }: { start?: Cents | null }) {
+    const [cents, setCents] = useState<Cents | null>(start);
+    return (
+      <>
+        <MoneyField label="Amount" cents={cents} onCentsChange={setCents} />
+        <output>{String(cents)}</output>
+        <button
+          onClick={() => {
+            setCents(null);
+          }}
+        >
+          Reset
+        </button>
+      </>
+    );
+  }
+  const field = () => screen.getByRole('textbox', { name: 'Amount' });
+  const stored = () => screen.getByRole('status');
+
+  it.each([
+    ['5', '5.00', '500'],
+    ['5.', '5.00', '500'],
+    ['5.5', '5.50', '550'],
+    ['.5', '0.50', '50'],
+    ['$1,000', '1000.00', '100000'],
+  ])('reads %s as dollars and tidies it to %s on leaving', async (typed, tidied, cents) => {
+    render(<Amount />);
+    await userEvent.type(field(), typed);
+    expect(stored()).toHaveTextContent(cents);
+    expect(field()).toHaveValue(typed);
+
+    await userEvent.tab();
+    expect(field()).toHaveValue(tidied);
+    expect(stored()).toHaveTextContent(cents);
+    expect(field()).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('shows what it holds', () => {
+    render(<Amount start={toCents(123456)} />);
+    expect(field()).toHaveValue('1234.56');
+  });
+
+  it.each(['abc', '1,23', '1.234', '-5'])('asks again for %s, keeping the text', async (typed) => {
+    render(<Amount />);
+    await userEvent.type(field(), typed);
+    expect(stored()).toHaveTextContent('null');
+
+    await userEvent.tab();
+    expect(field()).toHaveValue(typed);
+    expect(field()).toBeInvalid();
+    expect(field()).toHaveAccessibleDescription(/such as 42\.50/);
+  });
+
+  it('clears the error as soon as the amount is fixed', async () => {
+    render(<Amount />);
+    await userEvent.type(field(), 'abc');
+    await userEvent.tab();
+    await userEvent.clear(field());
+    await userEvent.type(field(), '7');
+    expect(field()).not.toHaveAttribute('aria-invalid');
+    expect(stored()).toHaveTextContent('700');
+  });
+
+  it('accepts being left empty', async () => {
+    render(<Amount />);
+    await userEvent.click(field());
+    await userEvent.tab();
+    expect(field()).toHaveValue('');
+    expect(field()).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('follows the value when the form resets it', async () => {
+    render(<Amount start={toCents(500)} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Reset' }));
+    expect(field()).toHaveValue('');
+  });
+
+  it('shows an error from the form', () => {
+    render(<MoneyField label="Amount" cents={null} onCentsChange={vi.fn()} error="Too large." />);
+    expect(field()).toBeInvalid();
+    expect(screen.getByText('Too large.')).toBeVisible();
   });
 });
