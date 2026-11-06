@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [alpha, main]
+    branches: [alpha, main, 'wip/**']
 
 permissions:
   contents: read
@@ -41,17 +41,17 @@ jobs:
         if: failure()
         run: docker compose logs --no-color
 
-  pull-request-title:
-    if: github.event_name == 'pull_request'
+  commit-title:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - name: Require a Conventional Commit title
         env:
-          TITLE: ${{ github.event.pull_request.title }}
+          TITLE: ${{ github.event.pull_request.title || github.event.head_commit.message }}
         run: |
-          pattern='^(feat|fix|docs|chore|refactor|test|ci|build|perf|style|revert)(\([a-z0-9-]+\))?!?: .+'
-          if ! printf '%s' "$TITLE" | grep -Eq "$pattern"; then
+          pattern='^(feat|fix|docs|chore|refactor|test|ci|build|perf|style|revert)(([a-z0-9-]+))?!?: .+'
+          if ! printf '%s
+' "$TITLE" | head -n 1 | grep -Eq "$pattern"; then
             echo "::error::Title must follow Conventional Commits, for example: fix(payments): reject negative amounts"
             exit 1
           fi
