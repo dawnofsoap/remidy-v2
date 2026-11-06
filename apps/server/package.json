@@ -1,0 +1,18 @@
+{
+  "name": "@remidy/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@remidy/contracts": "workspace:*",
+    "@remidy/db": "workspace:*",
+    "fastify": "5.12.8"
+  },
+  "devDependencies": {
+    "nodemon": "3.1.14"
+  }
+}

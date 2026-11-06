@@ -26,6 +26,21 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
 
+  dev-environment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Start the app the way a new contributor would
+        run: docker compose up --detach --build --wait --wait-timeout 300
+      - name: Web app loads
+        run: curl --fail --silent --show-error http://localhost:5173/ | grep -q 'id="root"'
+      - name: Web reaches the server and database
+        run: curl --fail --silent --show-error http://localhost:5173/api/health | grep -q '"status":"ok"'
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
   pull-request-title:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
