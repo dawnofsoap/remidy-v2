@@ -16,6 +16,7 @@ function appWith(routes: ReturnType<typeof defineRoute>[], authorize?: Authorize
 }
 
 const ok = z.object({ ok: z.boolean() });
+const principal = { userId: 'u1', email: 'a@example.com', name: 'A', isInstanceAdmin: false };
 
 describe('adding a route', () => {
   it('refuses to start with a route added any other way', () => {
@@ -62,7 +63,7 @@ describe('access', () => {
   });
 
   it('runs the handler when access is granted', async () => {
-    const authorize = vi.fn<Authorize>(() => Promise.resolve());
+    const authorize = vi.fn<Authorize>(() => Promise.resolve(principal));
     const response = await appWith([secret()], authorize).inject({
       method: 'POST',
       url: '/api/secret',
@@ -84,7 +85,7 @@ describe('access', () => {
   });
 
   it('never asks about public routes', async () => {
-    const authorize = vi.fn<Authorize>(() => Promise.resolve());
+    const authorize = vi.fn<Authorize>(() => Promise.resolve(principal));
     await appWith([], authorize).inject({ url: '/api/health' });
     expect(authorize).not.toHaveBeenCalled();
   });
@@ -185,6 +186,50 @@ describe('responses', () => {
     const response = await app.inject({ method: 'DELETE', url: '/api/made' });
     expect(response.statusCode).toBe(204);
     expect(response.body).toBe('');
+  });
+});
+
+describe('client addresses', () => {
+  const ipRoute = defineRoute({
+    method: 'GET',
+    url: '/api/ip',
+    access: 'public',
+    response: z.object({ ip: z.string() }),
+    handler: ({ request }) => ({ ip: request.ip }),
+  });
+  const ipFrom = async (trustProxy: string, remoteAddress: string) => {
+    const app = buildApp({
+      database,
+      trustProxy,
+      features: [defineFeature({ name: 'test', routes: () => [ipRoute] })],
+    });
+    const response = await app.inject({
+      url: '/api/ip',
+      remoteAddress,
+      headers: { 'x-forwarded-for': '203.0.113.7, 198.51.100.9' },
+    });
+    return response.json<{ ip: string }>().ip;
+  };
+
+  it('ignores forwarding headers by default, since anyone can send them', async () => {
+    expect(await ipFrom('', '10.0.0.1')).toBe('10.0.0.1');
+  });
+
+  it('reads the client from a trusted proxy', async () => {
+    expect(await ipFrom('10.0.0.1', '10.0.0.1')).toBe('198.51.100.9');
+    expect(await ipFrom('10.0.0.0/8', '10.0.0.1')).toBe('198.51.100.9');
+  });
+
+  it('does not believe the entry a client added before reaching the proxy', async () => {
+    expect(await ipFrom('10.0.0.1', '10.0.0.1')).not.toBe('203.0.113.7');
+  });
+
+  it('ignores forwarding headers from anyone who is not the proxy', async () => {
+    expect(await ipFrom('10.0.0.1', '10.9.9.9')).toBe('10.9.9.9');
+  });
+
+  it('refuses to start with a setting it cannot read', () => {
+    expect(() => buildApp({ database, trustProxy: 'not-an-address' })).toThrow();
   });
 });
 

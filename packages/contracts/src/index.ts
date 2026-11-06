@@ -7,6 +7,29 @@ export const healthResponse = z.object({
 
 export type HealthResponse = z.infer<typeof healthResponse>;
 
+export const setupStatusResponse = z.object({
+  /** True until the first account has been created. */
+  needed: z.boolean(),
+});
+
+export function createSetupRequest(minPassword: number, maxPassword: number) {
+  return z.object({
+    name: z.string().trim().min(1, 'Enter your name.').max(100, 'Use 100 characters or fewer.'),
+    email: z.email('Enter a valid email address.').max(254, 'Use 254 characters or fewer.'),
+    password: z
+      .string()
+      .min(minPassword, `Use at least ${String(minPassword)} characters.`)
+      .max(maxPassword, `Use ${String(maxPassword)} characters or fewer.`),
+  });
+}
+
+/** The signed-in person, or null when nobody is. */
+export const sessionResponse = z
+  .object({
+    user: z.object({ id: z.string(), name: z.string(), email: z.string() }),
+  })
+  .nullable();
+
 export const enabledFeaturesResponse = z.object({
   /** Flagged features that are switched on. */
   enabled: z.array(z.string()),

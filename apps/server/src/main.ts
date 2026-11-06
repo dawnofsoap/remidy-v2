@@ -1,5 +1,7 @@
 import { createDatabase } from '@remidy/db';
 import { buildApp } from './core/app.ts';
+import { createAuth, createAuthorize } from './core/auth/index.ts';
+import { setupFeature } from './core/auth/setup.ts';
 import { ConfigError, loadConfig, type Config } from './core/config.ts';
 import { loggerOptions } from './core/logging.ts';
 import { features } from './features/index.ts';
@@ -18,11 +20,20 @@ function readConfig(): Config {
 
 const config = readConfig();
 const database = createDatabase(config.DATABASE_URL);
+const auth = createAuth({
+  orm: database.orm,
+  secret: config.AUTH_SECRET,
+  publicUrl: config.PUBLIC_URL,
+});
 const app = buildApp({
   database,
   logger: loggerOptions(config.LOG_LEVEL),
-  features,
+  features: [setupFeature({ auth, orm: database.orm }), ...features],
   enabledFeatures: config.ENABLED_FEATURES,
+  authorize: createAuthorize(auth),
+  auth: { auth, orm: database.orm },
+  publicUrl: config.PUBLIC_URL,
+  trustProxy: config.TRUST_PROXY,
 });
 
 async function shutdown(): Promise<void> {

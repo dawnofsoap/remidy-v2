@@ -13,6 +13,8 @@ export default defineConfig({
     },
     {
       name: 'phone',
+      // These share one real database, so they run only once.
+      testIgnore: /.stack.spec.ts$/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 390, height: 844 },
@@ -23,6 +25,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm exec vite',
     url: 'http://localhost:5173/gallery.html',
-    reuseExistingServer: !process.env.CI,
+    // CI starts the full stack first, so the real server is there for auth.stack.spec.ts.
+    reuseExistingServer: true,
   },
 });

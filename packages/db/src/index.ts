@@ -4,6 +4,9 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import * as schema from './schema.ts';
 
+export { schema };
+export * from './schema.ts';
+
 const MIGRATIONS_FOLDER = fileURLToPath(new URL('../migrations', import.meta.url));
 
 // An arbitrary number, shared by every copy of the app, that identifies "running migrations".

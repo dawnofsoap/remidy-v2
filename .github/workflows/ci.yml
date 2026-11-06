@@ -46,7 +46,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @remidy/web exec playwright install --with-deps chromium
+      - name: Start the full stack
+        run: docker compose up --detach --build --wait --wait-timeout 300
       - run: pnpm e2e
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --no-color
 
   dev-environment:
     runs-on: ubuntu-latest

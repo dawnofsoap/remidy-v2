@@ -4,7 +4,8 @@ import Fastify, {
   type FastifyServerOptions,
   type RouteOptions,
 } from 'fastify';
-import { registerErrorHandling } from './errors.ts';
+import { registerAuthRoutes, type Auth } from './auth/index.ts';
+import { AppError, registerErrorHandling } from './errors.ts';
 import {
   defineFeature,
   defineRoute,
@@ -15,9 +16,11 @@ import {
   type Route,
 } from './feature.ts';
 import { requestId } from './logging.ts';
+import type { Orm } from '@remidy/db';
 
 const REQUEST_ID_HEADER = 'x-request-id';
 const MAX_BODY_BYTES = 256 * 1024;
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 declare module 'fastify' {
   interface FastifyContextConfig {
@@ -37,6 +40,12 @@ interface AppOptions {
   features?: Feature[];
   enabledFeatures?: string[];
   authorize?: Authorize;
+  /** Sign-in, once a real database is available. */
+  auth?: { auth: Auth; orm: Orm };
+  /** Where the app is served from. Requests from any other site are refused. */
+  publicUrl?: string;
+  /** Addresses of reverse proxies in front of the app, separated by commas. */
+  trustProxy?: string;
 }
 
 function coreFeature(database: AppOptions['database'], enabledFeatures: string[]): Feature {
@@ -73,10 +82,14 @@ export function buildApp({
   features = [],
   enabledFeatures = [],
   authorize = denyAll,
+  auth,
+  publicUrl = 'http://localhost:5173',
+  trustProxy = '',
 }: AppOptions): FastifyInstance {
   const app = Fastify({
     logger,
     bodyLimit: MAX_BODY_BYTES,
+    ...(trustProxy ? { trustProxy } : {}),
     genReqId: (request) => requestId(request.headers[REQUEST_ID_HEADER]),
   });
 
@@ -96,7 +109,20 @@ export function buildApp({
     done();
   });
 
+  // Browsers send Origin on requests that change things, so another site can't act as you.
+  const expectedOrigin = new URL(publicUrl).origin;
+  app.addHook('onRequest', (request, _reply, done) => {
+    const { origin, cookie } = request.headers;
+    const isForeign = origin ? origin !== expectedOrigin : Boolean(cookie);
+    if (!SAFE_METHODS.has(request.method) && isForeign) {
+      done(new AppError(403, 'bad_origin', 'That request came from another site.'));
+      return;
+    }
+    done();
+  });
+
   registerErrorHandling(app);
+  if (auth) registerAuthRoutes(app, { ...auth, publicUrl });
 
   const all = [coreFeature(database, enabledFeatures), ...features];
   const names = all.map((feature) => feature.name);

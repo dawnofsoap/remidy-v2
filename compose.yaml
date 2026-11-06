@@ -46,6 +46,8 @@ services:
     environment:
       <<: *app-env
       NODE_ENV: development
+      PUBLIC_URL: http://localhost:5173
+      AUTH_SECRET: remidy_dev_only_secret_not_for_production
       DATABASE_URL: postgresql://remidy:remidy_dev_only@db:5432/remidy
     depends_on:
       db:

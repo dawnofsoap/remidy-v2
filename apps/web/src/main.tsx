@@ -3,6 +3,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { FeaturesProvider } from './core/AppLayout.tsx';
+import { AuthGate } from './core/AuthGate.tsx';
 import { ErrorBoundary } from './core/ErrorBoundary.tsx';
 import { createAppRouter } from './core/router.tsx';
 import { applyTheme, readThemePreference } from './core/theme.ts';
@@ -23,9 +24,11 @@ createRoot(container).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <FeaturesProvider value={features}>
-          <RouterProvider router={router} />
-        </FeaturesProvider>
+        <AuthGate>
+          <FeaturesProvider value={features}>
+            <RouterProvider router={router} />
+          </FeaturesProvider>
+        </AuthGate>
       </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>,
