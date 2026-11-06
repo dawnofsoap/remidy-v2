@@ -17,10 +17,10 @@ const PASSWORD = 'a perfectly long test password';
 
 // A new public route fails this test until it's added here, so it's always a deliberate choice.
 const PUBLIC_ROUTES = [
-  'GET /api/features',
   'GET /api/health',
-  'GET /api/sign-in-options',
-  'POST /api/auth/*',
+  'GET /api/v1/features',
+  'GET /api/v1/sign-in-options',
+  'POST /api/v1/auth/*',
 ];
 
 let test: TestDatabase;
@@ -52,7 +52,7 @@ async function createPerson(name: string): Promise<Person> {
   });
   const response = await app.inject({
     method: 'POST',
-    url: '/api/auth/sign-in/email',
+    url: '/api/v1/auth/sign-in/email',
     remoteAddress: `10.1.0.${String((nextAddress += 1))}`,
     headers: { origin: PUBLIC_URL },
     payload: { email, password: PASSWORD },
@@ -141,9 +141,35 @@ const errorCode = (response: { json: () => unknown }) =>
 
 // These walk the real app, so every route added by any feature is covered automatically.
 describe('every route in the app', () => {
+  it('is under the API version, apart from the health check', () => {
+    const unversioned = routes()
+      .filter((route) => !route.url.startsWith('/api/v1/'))
+      .map(key);
+    expect(unversioned).toEqual(['GET /api/health']);
+  });
+
+  it.each([
+    ['GET', '/api/spaces'],
+    ['GET', '/api/features'],
+    ['GET', '/api/sign-in-options'],
+    ['GET', '/api/admin/jobs'],
+    ['GET', '/api/auth/get-session'],
+    ['POST', '/api/auth/sign-in/email'],
+    ['GET', '/api/v1/health'],
+    ['GET', '/api/v2/spaces'],
+  ] as const)('has nothing at %s %s', async (method, url) => {
+    const response = await app.inject({
+      method,
+      url,
+      headers: { origin: PUBLIC_URL },
+      ...(method === 'POST' ? { payload: {} } : {}),
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
   it('lets only instance admins reach instance-admin routes', async () => {
     const adminRoutes = routes().filter((route) => route.access === 'instance-admin');
-    expect(adminRoutes.map(key)).toContain('GET /api/admin/jobs');
+    expect(adminRoutes.map(key)).toContain('GET /api/v1/admin/jobs');
     for (const route of adminRoutes) {
       const url = urlFor(route, people.owner.personalSpaceId);
       expect((await call(route, url)).statusCode, key(route)).toBe(401);
@@ -254,7 +280,7 @@ describe('roles', () => {
   it('cannot be claimed by the client', async () => {
     await app.inject({
       method: 'PATCH',
-      url: `/api/spaces/${sharedSpaceId}`,
+      url: `/api/v1/spaces/${sharedSpaceId}`,
       headers: { origin: PUBLIC_URL, cookie: people.manager.cookie },
       payload: { role: 'owner', kind: 'personal', name: 'Household' },
     });
@@ -277,7 +303,7 @@ describe('personal spaces', () => {
 
   it('list only the caller’s own spaces', async () => {
     const response = await app.inject({
-      url: '/api/spaces',
+      url: '/api/v1/spaces',
       headers: { cookie: people.stranger.cookie },
     });
     expect(response.json<{ id: string }[]>().map((item) => item.id)).toEqual([
@@ -287,7 +313,7 @@ describe('personal spaces', () => {
 
   it('show each person only the members of their own space', async () => {
     const response = await app.inject({
-      url: `/api/spaces/${people.stranger.personalSpaceId}/members`,
+      url: `/api/v1/spaces/${people.stranger.personalSpaceId}/members`,
       headers: { cookie: people.stranger.cookie },
     });
     expect(response.json<{ userId: string }[]>().map((item) => item.userId)).toEqual([
@@ -300,7 +326,7 @@ describe('updating a space', () => {
   const patch = (cookie: string, payload: object) =>
     app.inject({
       method: 'PATCH',
-      url: `/api/spaces/${people.owner.personalSpaceId}`,
+      url: `/api/v1/spaces/${people.owner.personalSpaceId}`,
       headers: { origin: PUBLIC_URL, cookie },
       payload,
     });

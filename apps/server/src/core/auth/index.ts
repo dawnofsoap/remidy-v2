@@ -62,7 +62,7 @@ export function createAuth({ orm, secret, publicUrl, mailer, onMailFailure }: Au
   return betterAuth({
     appName: 'Remidy',
     baseURL: publicUrl,
-    basePath: '/api/auth',
+    basePath: '/api/v1/auth',
     secret,
     trustedOrigins: [publicUrl],
     telemetry: { enabled: false },
@@ -249,14 +249,14 @@ export function registerAuthRoutes(
 ): void {
   const route: Route = {
     method: 'POST',
-    url: '/api/auth/*',
+    url: '/api/v1/auth/*',
     access: 'public',
     run: () => Promise.reject(new Error('Handled directly')),
   };
   app.declaredRoutes.push(route);
 
   const handler = async (request: FastifyRequest, reply: FastifyReply) => {
-    const path = request.url.split('?', 1)[0]?.replace('/api/auth', '') ?? '';
+    const path = request.url.split('?', 1)[0]?.replace('/api/v1/auth', '') ?? '';
     const endpoints = passwordReset
       ? { ...ALWAYS_ALLOWED_ENDPOINTS, ...RESET_ENDPOINTS }
       : ALWAYS_ALLOWED_ENDPOINTS;
@@ -303,8 +303,8 @@ export function registerAuthRoutes(
   // Sign-in has its own limit, tighter than the general one and counted separately, so that
   // busy use of the rest of the app can't crowd it out. It's checked before the database is used.
   const rateLimit = { max: requestsPerMinute, timeWindow: '1 minute' };
-  app.get('/api/auth/*', { config: { declaredRoute: true, rateLimit } }, handler);
-  app.post('/api/auth/*', { config: { declaredRoute: true, rateLimit } }, handler);
+  app.get('/api/v1/auth/*', { config: { declaredRoute: true, rateLimit } }, handler);
+  app.post('/api/v1/auth/*', { config: { declaredRoute: true, rateLimit } }, handler);
 }
 
 /** Decides who may call a route, using the session cookie and the caller's memberships. */

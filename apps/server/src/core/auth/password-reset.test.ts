@@ -12,9 +12,9 @@ const h = useAuthHarness();
 const { post, signIn, whoami, signedInCookie, createAccount } = h;
 const NEW = 'a passphrase of my own';
 
-const requestReset = (email: string) => post('/api/auth/request-password-reset', { email });
+const requestReset = (email: string) => post('/api/v1/auth/request-password-reset', { email });
 const reset = (token: string, newPassword = NEW) =>
-  post('/api/auth/reset-password', { token, newPassword });
+  post('/api/v1/auth/reset-password', { token, newPassword });
 
 /** Mail is sent in the background, so wait for it to arrive. */
 async function nextMail() {
@@ -212,7 +212,7 @@ describe('without a way to send mail', () => {
 
   it('has no reset routes, and tells the sign-in page', async () => {
     const app = noMail();
-    for (const url of ['/api/auth/request-password-reset', '/api/auth/reset-password']) {
+    for (const url of ['/api/v1/auth/request-password-reset', '/api/v1/auth/reset-password']) {
       const response = await app.inject({
         method: 'POST',
         url,
@@ -221,13 +221,13 @@ describe('without a way to send mail', () => {
       });
       expect(response.statusCode).toBe(404);
     }
-    const options = await app.inject({ url: '/api/sign-in-options' });
+    const options = await app.inject({ url: '/api/v1/sign-in-options' });
     expect(options.json()).toMatchObject({ passwordReset: false });
     await app.close();
   });
 
   it('is offered when mail can be sent', async () => {
-    const options = await h.app.inject({ url: '/api/sign-in-options' });
+    const options = await h.app.inject({ url: '/api/v1/sign-in-options' });
     expect(options.json()).toMatchObject({ passwordReset: true });
   });
 });

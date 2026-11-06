@@ -27,7 +27,7 @@ const signedInRoute = defineFeature({
   routes: () => [
     defineRoute({
       method: 'GET',
-      url: '/api/whoami',
+      url: '/api/v1/whoami',
       access: 'signed-in',
       response: z.object({
         userId: z.string(),
@@ -39,7 +39,7 @@ const signedInRoute = defineFeature({
     }),
     defineRoute({
       method: 'POST',
-      url: '/api/change-something',
+      url: '/api/v1/change-something',
       access: 'signed-in',
       response: z.object({ ok: z.boolean() }),
       handler: () => ({ ok: true }),
@@ -78,7 +78,7 @@ export function useAuthHarness() {
     });
 
   const signIn = (email: string, password: string) =>
-    post('/api/auth/sign-in/email', { email, password });
+    post('/api/v1/auth/sign-in/email', { email, password });
 
   const signedInCookie = async (password = PERSON.password): Promise<string> => {
     const response = await signIn(PERSON.email, password);
@@ -87,7 +87,7 @@ export function useAuthHarness() {
   };
 
   const whoami = (cookie?: string) =>
-    state.app.inject({ url: '/api/whoami', headers: cookie ? { cookie } : {} });
+    state.app.inject({ url: '/api/v1/whoami', headers: cookie ? { cookie } : {} });
 
   /** An ordinary account, added directly, because invitations don't exist yet. */
   const createAccount = async () => {

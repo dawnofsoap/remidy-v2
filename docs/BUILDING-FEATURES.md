@@ -75,7 +75,7 @@ export const payments = defineFeature({
   routes: ({ database }) => [
     defineRoute({
       method: 'POST',
-      url: '/api/payments',
+      url: '/api/v1/payments',
       access: 'signed-in',
       body: createPaymentRequest, // Zod schemas from @remidy/contracts
       response: paymentResponse,
@@ -134,6 +134,12 @@ features -> core -> packages (domain, contracts, db)
 | Versions and changelog | Generated from tags and commit messages; no version commits |
 | Dependencies stay consistent | Frozen lockfile in CI |
 | No secrets or real data committed | GitHub secret scanning and push protection; seed data is fictional |
+
+## API versions
+
+Every route is under `/api/v1/`, including sign-in at `/api/v1/auth/`. `defineRoute` won't accept anything else, and the permission test checks the whole app. The one exception is `/api/health`, which describes the server rather than the API, so Docker and proxies don't depend on the version.
+
+Adding to `v1`, such as a new route or an optional field, needs no new version. A change that would break a copy of the app already running on someone's device, such as removing a field, needs a new one.
 
 ## Review of risky changes
 

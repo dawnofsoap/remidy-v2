@@ -11,14 +11,14 @@ export const spaces = defineFeature({
   routes: ({ database }) => [
     defineRoute({
       method: 'GET',
-      url: '/api/spaces',
+      url: '/api/v1/spaces',
       access: 'signed-in',
       response: z.array(spaceResponse),
       handler: ({ user }) => listSpacesFor(database.orm, user.userId),
     }),
     defineRoute({
       method: 'GET',
-      url: '/api/spaces/:spaceId',
+      url: '/api/v1/spaces/:spaceId',
       access: { space: 'member' },
       response: spaceResponse,
       handler: async ({ space }) => {
@@ -29,7 +29,7 @@ export const spaces = defineFeature({
     }),
     defineRoute({
       method: 'PATCH',
-      url: '/api/spaces/:spaceId',
+      url: '/api/v1/spaces/:spaceId',
       access: { space: 'manager' },
       body: updateSpaceRequest,
       response: spaceResponse,
@@ -41,7 +41,7 @@ export const spaces = defineFeature({
     }),
     defineRoute({
       method: 'GET',
-      url: '/api/spaces/:spaceId/members',
+      url: '/api/v1/spaces/:spaceId/members',
       access: { space: 'member' },
       response: z.array(spaceMemberResponse),
       handler: ({ space }) => listMembers(database.orm, space.id),
