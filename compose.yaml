@@ -1,0 +1,97 @@
+# Development environment: docker compose up
+# Credentials here are for local development only and are never used in production.
+name: remidy-dev
+
+x-app: &app
+  build: deploy/dev
+  init: true
+  working_dir: /app
+  environment: &app-env
+    CI: 'true'
+    npm_config_store_dir: /pnpm-store
+  # Named volumes keep Linux dependencies separate from any installed on the host.
+  volumes:
+    - .:/app
+    - pnpm-store:/pnpm-store
+    - nm-root:/app/node_modules
+    - nm-server:/app/apps/server/node_modules
+    - nm-web:/app/apps/web/node_modules
+    - nm-contracts:/app/packages/contracts/node_modules
+    - nm-db:/app/packages/db/node_modules
+    - nm-domain:/app/packages/domain/node_modules
+    - nm-tooling:/app/tooling/node_modules
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: remidy
+      POSTGRES_PASSWORD: remidy_dev_only
+      POSTGRES_DB: remidy
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U remidy -d remidy']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  install:
+    <<: *app
+    command: pnpm install --frozen-lockfile
+
+  server:
+    <<: *app
+    command: pnpm --filter @remidy/server dev
+    environment:
+      <<: *app-env
+      DATABASE_URL: postgresql://remidy:remidy_dev_only@db:5432/remidy
+    depends_on:
+      db:
+        condition: service_healthy
+      install:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  web:
+    <<: *app
+    command: pnpm --filter @remidy/web dev
+    environment:
+      <<: *app-env
+      API_PROXY_TARGET: http://server:3000
+      VITE_USE_POLLING: 'true'
+    ports:
+      - 127.0.0.1:5173:5173
+    depends_on:
+      install:
+        condition: service_completed_successfully
+      server:
+        condition: service_started
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:5173/').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+volumes:
+  db-data:
+  pnpm-store:
+  nm-root:
+  nm-server:
+  nm-web:
+  nm-contracts:
+  nm-db:
+  nm-domain:
+  nm-tooling:

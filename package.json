@@ -8,8 +8,9 @@
     "node": ">=26"
   },
   "scripts": {
-    "boundaries": "depcruise packages --config .dependency-cruiser.mjs",
-    "check": "pnpm format:check && pnpm lint && pnpm boundaries && pnpm typecheck && pnpm test",
+    "boundaries": "depcruise apps packages --config .dependency-cruiser.mjs",
+    "build": "pnpm -r build",
+    "check": "pnpm format:check && pnpm lint && pnpm boundaries && pnpm typecheck && pnpm test && pnpm build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings 0",

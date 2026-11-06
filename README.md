@@ -2,11 +2,32 @@
 
 Self-hosted bill tracking for individuals and households.
 
-> **Status: planning.** There's no working app here yet. This repository holds the design for a rebuild
-> focused on stability, and code will arrive milestone by milestone.
+> **Status: early development.** There's no usable app yet, only the project skeleton. Features arrive
+> milestone by milestone, following the [roadmap](docs/ROADMAP.md).
 
 Remidy shows what's due, what's overdue and what's been paid, with a history you can trust. It records
 payments and doesn't move money.
+
+## Run it locally
+
+You only need [Docker](https://www.docker.com/products/docker-desktop/):
+
+```
+docker compose up
+```
+
+Then open http://localhost:5173. The page should say the server and database are running. Code changes
+reload automatically. To stop, press Ctrl+C. To also delete the development database and installed
+packages, run `docker compose down -v`.
+
+## Contributing checks
+
+To run the checks on your own machine, install Node 26 and pnpm, then:
+
+```
+pnpm install
+pnpm check
+```
 
 ## Project documents
 
