@@ -189,6 +189,64 @@ describe('responses', () => {
   });
 });
 
+describe('the general rate limit', () => {
+  const limited = (requestsPerMinute: number) =>
+    buildApp({
+      database,
+      requestsPerMinute,
+      features: [
+        defineFeature({
+          name: 'test',
+          routes: () => [
+            defineRoute({
+              method: 'GET',
+              url: '/api/thing',
+              access: 'public',
+              response: ok,
+              handler: () => ({ ok: true }),
+            }),
+          ],
+        }),
+      ],
+    });
+  const hit = (
+    app: ReturnType<typeof limited>,
+    headers: Record<string, string> = {},
+    ip = '10.0.0.5',
+  ) => app.inject({ url: '/api/thing', remoteAddress: ip, headers });
+
+  it('refuses requests over the limit, in the standard error format', async () => {
+    const app = limited(2);
+    expect((await hit(app)).statusCode).toBe(200);
+    expect((await hit(app)).statusCode).toBe(200);
+    const refused = await hit(app);
+    expect(refused.statusCode).toBe(429);
+    expect(apiErrorResponse.parse(refused.json()).error.code).toBe('too_many_requests');
+    expect(refused.headers['retry-after']).toBeDefined();
+  });
+
+  it('counts each address separately', async () => {
+    const app = limited(1);
+    await hit(app);
+    expect((await hit(app)).statusCode).toBe(429);
+    expect((await hit(app, {}, '10.0.0.6')).statusCode).toBe(200);
+  });
+
+  it('cannot be dodged by forging a forwarding header', async () => {
+    const app = limited(1);
+    await hit(app, { 'x-forwarded-for': '203.0.113.1' });
+    expect((await hit(app, { 'x-forwarded-for': '203.0.113.2' })).statusCode).toBe(429);
+  });
+
+  it('never limits the health check', async () => {
+    const app = limited(1);
+    for (let i = 0; i < 3; i += 1) {
+      const response = await app.inject({ url: '/api/health', remoteAddress: '10.0.0.5' });
+      expect(response.statusCode).toBe(200);
+    }
+  });
+});
+
 describe('client addresses', () => {
   const ipRoute = defineRoute({
     method: 'GET',

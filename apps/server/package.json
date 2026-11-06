@@ -8,6 +8,7 @@
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@fastify/rate-limit": "11.2.2",
     "@remidy/contracts": "workspace:*",
     "@remidy/db": "workspace:*",
     "better-auth": "1.7.17",

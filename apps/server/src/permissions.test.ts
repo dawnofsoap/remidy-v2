@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from './core/app.ts';
 import type { Auth } from './core/auth/index.ts';
 import { setupFeature } from './core/auth/setup.ts';
@@ -24,6 +24,10 @@ describe('every route in the app', () => {
     features: [setupFeature({ auth, orm }), ...features],
     auth: { auth, orm },
   });
+  beforeAll(async () => {
+    await app.ready();
+  });
+
   const key = (route: { method: string; url: string }) => `${route.method} ${route.url}`;
 
   it('has only the known public routes', () => {

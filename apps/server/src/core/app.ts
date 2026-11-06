@@ -1,4 +1,5 @@
 import { enabledFeaturesResponse, healthResponse, type HealthResponse } from '@remidy/contracts';
+import rateLimit from '@fastify/rate-limit';
 import Fastify, {
   type FastifyInstance,
   type FastifyServerOptions,
@@ -21,6 +22,7 @@ import type { Orm } from '@remidy/db';
 const REQUEST_ID_HEADER = 'x-request-id';
 const MAX_BODY_BYTES = 256 * 1024;
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const HEALTH_URL = '/api/health';
 
 declare module 'fastify' {
   interface FastifyContextConfig {
@@ -44,6 +46,8 @@ interface AppOptions {
   auth?: { auth: Auth; orm: Orm };
   /** Where the app is served from. Requests from any other site are refused. */
   publicUrl?: string;
+  /** Requests allowed per minute from one address, across all routes. */
+  requestsPerMinute?: number;
   /** Addresses of reverse proxies in front of the app, separated by commas. */
   trustProxy?: string;
 }
@@ -54,7 +58,7 @@ function coreFeature(database: AppOptions['database'], enabledFeatures: string[]
     routes: () => [
       defineRoute({
         method: 'GET',
-        url: '/api/health',
+        url: HEALTH_URL,
         access: 'public',
         response: healthResponse,
         // Checked every few seconds by Docker, so only problems are worth logging.
@@ -84,6 +88,7 @@ export function buildApp({
   authorize = denyAll,
   auth,
   publicUrl = 'http://localhost:5173',
+  requestsPerMinute = 600,
   trustProxy = '',
 }: AppOptions): FastifyInstance {
   const app = Fastify({
@@ -122,7 +127,16 @@ export function buildApp({
   });
 
   registerErrorHandling(app);
-  if (auth) registerAuthRoutes(app, { ...auth, publicUrl });
+
+  // A general limit for every route, stricter ones for sign-in are in core/auth. This counts by
+  // the client address Fastify works out, so forged forwarding headers can't get around it.
+  void app.register(rateLimit, {
+    global: true,
+    max: requestsPerMinute,
+    timeWindow: '1 minute',
+    // Docker's health check calls this every few seconds.
+    allowList: (request) => request.url === HEALTH_URL,
+  });
 
   const all = [coreFeature(database, enabledFeatures), ...features];
   const names = all.map((feature) => feature.name);
@@ -132,19 +146,24 @@ export function buildApp({
   const unknown = enabledFeatures.find((name) => !names.includes(name));
   if (unknown) throw new Error(`ENABLED_FEATURES names "${unknown}", which doesn't exist.`);
 
-  for (const feature of all) {
-    if (feature.flagged && !enabledFeatures.includes(feature.name)) continue;
-    for (const route of feature.routes({ database } as FeatureDependencies)) {
-      app.declaredRoutes.push(route);
-      app.route({
-        method: route.method,
-        url: route.url,
-        config: { declaredRoute: true },
-        ...(route.logLevel ? { logLevel: route.logLevel } : {}),
-        handler: (request, reply) => route.run(request, reply, authorize),
-      });
+  // Routes are added once the rate limit plugin has loaded, so that every one of them gets it.
+  app.after(() => {
+    if (auth) registerAuthRoutes(app, { ...auth, publicUrl });
+
+    for (const feature of all) {
+      if (feature.flagged && !enabledFeatures.includes(feature.name)) continue;
+      for (const route of feature.routes({ database } as FeatureDependencies)) {
+        app.declaredRoutes.push(route);
+        app.route({
+          method: route.method,
+          url: route.url,
+          config: { declaredRoute: true },
+          ...(route.logLevel ? { logLevel: route.logLevel } : {}),
+          handler: (request, reply) => route.run(request, reply, authorize),
+        });
+      }
     }
-  }
+  });
 
   return app;
 }
