@@ -40,6 +40,7 @@ describe('boundary rules', () => {
     ['core-not-to-features', 'apps/server/src/core/bad-core.ts'],
     ['ui-not-to-features', 'apps/web/src/ui/BadUi.ts'],
     ['feature-public-interface', 'apps/server/src/features/billing/reaches-into-other.ts'],
+    ['features-not-to-fastify', 'apps/server/src/features/billing/bad-framework.ts'],
     ['packages-not-to-apps', 'packages/contracts/src/bad-app-import.ts'],
     ['domain-is-pure', 'packages/domain/src/bad-io.ts'],
     ['contracts-stay-shared', 'packages/contracts/src/bad-db-import.ts'],

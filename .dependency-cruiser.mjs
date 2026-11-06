@@ -38,6 +38,14 @@ export default {
       },
     },
     {
+      name: 'features-not-to-fastify',
+      comment:
+        'Server features add routes with defineRoute, so every route has schemas and access.',
+      severity: 'error',
+      from: { path: '(^|/)apps/server/src/features/', pathNot: notATest },
+      to: { path: '(^|/)node_modules/(fastify/|.*/fastify/)' },
+    },
+    {
       name: 'packages-not-to-apps',
       comment: 'Shared packages must not depend on apps.',
       severity: 'error',

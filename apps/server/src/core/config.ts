@@ -33,6 +33,16 @@ const schema = z
         error: 'must be one of fatal, error, warn, info, debug, trace or silent',
       })
       .default('info'),
+    /** Flagged features to switch on, separated by commas. */
+    ENABLED_FEATURES: z
+      .string()
+      .default('')
+      .transform((value) =>
+        value
+          .split(',')
+          .map((name) => name.trim())
+          .filter(Boolean),
+      ),
     DATABASE_URL: z
       .string({ error: 'is required' })
       .regex(/^postgres(ql)?:\/\//, 'must be a postgres:// or postgresql:// connection string'),

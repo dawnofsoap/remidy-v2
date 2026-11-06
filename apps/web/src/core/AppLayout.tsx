@@ -1,19 +1,35 @@
+import { enabledFeaturesResponse } from '@remidy/contracts';
+import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
-import { Home, Settings, type LucideIcon } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { createContext, useContext, useEffect, useRef } from 'react';
 import { cn, focusRing, Toaster } from '../ui/index.ts';
+import { visibleNav, type NavItem, type WebFeature } from './feature.ts';
 import { ServerStatus } from './ServerStatus.tsx';
 
 // The router marks the current page's link with data-status="active".
 const activeLink =
   'data-[status=active]:bg-accent-soft data-[status=active]:font-semibold data-[status=active]:text-accent-text';
 
-const navItems: { to: '/' | '/settings'; label: string; icon: LucideIcon }[] = [
-  { to: '/', label: 'Home', icon: Home },
-  { to: '/settings', label: 'Settings', icon: Settings },
-];
+const FeaturesContext = createContext<WebFeature[]>([]);
+export const FeaturesProvider = FeaturesContext.Provider;
 
-function Sidebar() {
+async function fetchEnabledFeatures({ signal }: { signal: AbortSignal }): Promise<string[]> {
+  const response = await fetch('/api/features', { signal });
+  return enabledFeaturesResponse.parse(await response.json()).enabled;
+}
+
+function useNavItems(): NavItem[] {
+  const features = useContext(FeaturesContext);
+  // Flagged features stay hidden until the server confirms they're on.
+  const { data: enabled = [] } = useQuery({
+    queryKey: ['enabled-features'],
+    queryFn: fetchEnabledFeatures,
+    retry: false,
+  });
+  return visibleNav(features, enabled);
+}
+
+function Sidebar({ items }: { items: NavItem[] }) {
   return (
     <nav
       aria-label="Main"
@@ -21,7 +37,7 @@ function Sidebar() {
     >
       <p className="px-2 text-xl font-bold tracking-tight">Remidy</p>
       <ul className="flex flex-col gap-1">
-        {navItems.map(({ to, label, icon: Icon }) => (
+        {items.map(({ to, label, icon: Icon }) => (
           <li key={to}>
             <Link
               to={to}
@@ -41,14 +57,14 @@ function Sidebar() {
   );
 }
 
-function BottomNav() {
+function BottomNav({ items }: { items: NavItem[] }) {
   return (
     <nav
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 border-t border-line bg-surface p-2 md:hidden"
     >
       <ul className="grid auto-cols-fr grid-flow-col gap-1">
-        {navItems.map(({ to, label, icon: Icon }) => (
+        {items.map(({ to, label, icon: Icon }) => (
           <li key={to}>
             <Link
               to={to}
@@ -69,6 +85,7 @@ function BottomNav() {
 }
 
 export function AppLayout() {
+  const items = useNavItems();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const mainRef = useRef<HTMLElement>(null);
   const previousPathname = useRef(pathname);
@@ -92,7 +109,7 @@ export function AppLayout() {
       >
         Skip to content
       </a>
-      <Sidebar />
+      <Sidebar items={items} />
       <main
         id="main"
         ref={mainRef}
@@ -104,7 +121,7 @@ export function AppLayout() {
           <Outlet />
         </div>
       </main>
-      <BottomNav />
+      <BottomNav items={items} />
       <Toaster />
     </div>
   );
