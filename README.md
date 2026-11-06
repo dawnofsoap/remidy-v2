@@ -20,7 +20,7 @@ Then open http://localhost:5173. The page should say the server and database are
 reload automatically. To stop, press Ctrl+C. To also delete the development database and installed
 packages, run `docker compose down -v`.
 
-The first start creates the `admin` account and prints its password. Find it with
+The first start creates the admin account, `admin@remidy.local`, and prints its password. Find it with
 `docker compose logs server`, sign in at http://localhost:5173, and choose your own password.
 
 If the admin password is ever lost, this prints a new one and signs the admin out everywhere:

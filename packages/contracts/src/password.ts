@@ -1,7 +1,8 @@
-/** The account every Remidy has from its first start. People sign in with the username. */
-export const ADMIN_USERNAME = 'admin';
-/** `.invalid` is reserved and can never receive mail, so nothing is ever sent to this account. */
-export const ADMIN_EMAIL = 'admin@remidy.invalid';
+/**
+ * The account every Remidy has from its first start. It's only a sign-in name: `.local` addresses
+ * can't receive mail from the internet, so nothing is ever sent to it.
+ */
+export const ADMIN_EMAIL = 'admin@remidy.local';
 
 export const MIN_PASSWORD_LENGTH = 12;
 export const MAX_PASSWORD_LENGTH = 128;

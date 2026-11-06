@@ -83,7 +83,7 @@ export const rateLimit = pgTable('rate_limit', {
 /**
  * Failed sign-ins by email and client address, including emails with no account, so results don't
  * reveal which exist. Counting per address means a stranger can't lock the real person out, which
- * matters because the admin's username is public knowledge.
+ * matters because the admin's address is public knowledge.
  */
 export const loginThrottle = pgTable(
   'login_throttle',
