@@ -91,7 +91,7 @@ features -> core -> packages (domain, contracts, db)
 | Rule | Enforced by |
 |---|---|
 | Types, lint, tests and production build pass before merging | Required CI checks, branch protection |
-| Nothing is pushed directly to `alpha` or `main` | GitHub branch ruleset |
+| Changes reach `alpha` and `main` through pull requests, and history is never rewritten | GitHub rulesets: pull requests and checks are required (the repo admin can bypass); force-pushes and branch deletion are blocked for everyone |
 | Dependency directions above | dependency-cruiser, failing CI |
 | SQL only in `repo.ts` and `packages/db` | Lint rule |
 | Request and response shapes validated | Routes must declare a contract schema; `defineRoute` won't accept one without |
@@ -107,6 +107,22 @@ features -> core -> packages (domain, contracts, db)
 | Versions and changelog | Generated from tags and commit messages; no version commits |
 | Dependencies stay consistent | Frozen lockfile in CI |
 | No secrets or real data committed | GitHub secret scanning and push protection; seed data is fictional |
+
+## Review of risky changes
+
+Most pull requests merge once CI passes. These stay open until the owner has reviewed them:
+
+- Sign-in, sessions, permissions or anything else security-related
+- Database migrations that change or remove existing data
+- The history rules, or how money and status are calculated
+- Anything that could expose private data, including logs and exports
+- Repository settings, rulesets, CI permissions and release publishing
+- A new dependency with broad access, or a major version upgrade of a core one
+- Anything else that surprised the author or was hard to test
+
+The pull request says why it was flagged and what to look at.
+
+The owner can push directly to `alpha`. CI still runs on that push, so a failure shows up afterward. It needs fixing first, because nothing blocks the next change on top of it.
 
 ## Pull request rules
 
