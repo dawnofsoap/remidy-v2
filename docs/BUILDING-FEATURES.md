@@ -126,3 +126,11 @@ features -> core -> packages (domain, contracts, db)
 Read v1 to learn what a feature should do. Don't copy its code or styles across. Record useful behavior
 and known bugs under "Lessons from v1" in the spec, so each bug becomes a test. Check the license of any
 asset before bringing it over, because this repo is public; bank and card artwork needs particular care.
+
+## What is enforced today
+
+The table above is the target. Some rules need code that doesn't exist yet.
+
+- **Active since milestone 0:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning.
+- **Arrive in milestone 1:** contract schemas on routes, the permission test across all routes, design token lint, axe checks, domain coverage threshold, migration checks, generated versions and changelog.
+- **Arrive in milestone 4:** the history invariance test.
