@@ -195,7 +195,7 @@ function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
         {back}
       </form>
       <p className="text-sm text-ink-2">
-        The admin account has no email address. To replace its password, run the{' '}
+        {ADMIN_EMAIL} can’t receive email. To replace its password, run the{' '}
         <code>reset-admin-password</code> command on the server.
       </p>
     </AuthShell>

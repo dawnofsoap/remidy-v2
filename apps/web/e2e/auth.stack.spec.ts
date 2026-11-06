@@ -232,7 +232,7 @@ test('someone with an email address can reset a forgotten password', async ({ pa
   await page.getByRole('button', { name: 'Save password' }).click();
   await expect(appHeading(page, 'Sign in')).toBeVisible();
 
-  await page.getByLabel('Email or username').fill(email);
+  await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(SECOND_PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(appHeading(page, 'Home')).toBeVisible();

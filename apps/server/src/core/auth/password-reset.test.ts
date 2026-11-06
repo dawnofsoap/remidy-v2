@@ -1,4 +1,4 @@
-import { apiErrorResponse } from '@remidy/contracts';
+import { ADMIN_EMAIL, apiErrorResponse } from '@remidy/contracts';
 import { user, verification } from '@remidy/db';
 import { describe, expect, it } from 'vitest';
 import { buildApp } from '../app.ts';
@@ -76,10 +76,7 @@ describe('asking for a password reset', () => {
 
   it('never mails the admin account, whose address can’t receive mail', async () => {
     await ensureAdminAccount(h.auth);
-    const byName = await requestReset('admin');
-    const byAddress = await requestReset('admin@remidy.invalid');
-    expect(byName.statusCode).toBe(200);
-    expect(byAddress.statusCode).toBe(200);
+    expect((await requestReset(ADMIN_EMAIL)).statusCode).toBe(200);
     await settle();
     expect(h.mail).toHaveLength(0);
   });

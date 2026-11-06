@@ -1,4 +1,5 @@
 import {
+  ADMIN_EMAIL,
   MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
   unmetPasswordRequirements,
@@ -279,7 +280,7 @@ export function registerAuthRoutes(
     if (path === '/request-password-reset') {
       const body = { ...(request.body as object) };
       const typed = stringField(body, 'email');
-      if (typed !== null) Object.assign(body, { email: normalizeEmail(emailForSignIn(typed)) });
+      if (typed !== null) Object.assign(body, { email: normalizeEmail(typed) });
       return sendResponse(await callBetterAuth(auth, publicUrl, request, body), reply);
     }
 
