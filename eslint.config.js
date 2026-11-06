@@ -62,6 +62,8 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/coverage/**',
+      '**/test-results/**',
+      '**/playwright-report/**',
       'tooling/rule-tests/fixtures/**',
     ],
   },

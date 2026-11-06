@@ -23,3 +23,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.log
+
+# Browser test output
+test-results/
+playwright-report/
