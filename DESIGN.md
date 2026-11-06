@@ -118,7 +118,7 @@ isn't on this list, it's a feature and waits its turn.
 | **Foundations** | Validated config that refuses to start on missing secrets, structured logs, health checks, encryption helper for stored secrets, activity log |
 | **Jobs** | Job runner with retries and a visible status, running a heartbeat job |
 | **Dates and money** | `domain` types for calendar dates, time zones and integer cents |
-| **Design system** | Visual direction from section 8, tokens, light and dark themes |
+| **Design system** | Neutral tokens, light and dark themes, contrast checks in CI |
 | **Web shell** | Navigation, routing, auth handling, responsive layout, error boundary |
 | **UI kit** | Button, inputs, select, date picker, money input, modal, list, toast, and loading, empty and error states |
 | **Feature system** | `defineFeature`, feature flags, the registration list |
@@ -237,17 +237,14 @@ The repo is public, so assume anyone can read this code. These are part of the b
 
 ## 8. Visual design
 
-v2 gets a new look rather than a port of v1's styles.
+The layout is settled: a sidebar on desktop, bottom navigation on phones, and an agenda that leads with what's left to pay this month. **The final colors and style are still open.** The app uses neutral grays with color only for status until that's decided, because all colors live in `apps/web/src/ui/tokens.css` and changing them later is a small edit.
 
-- **Direction:** clean and calm, with plenty of space, clear type, restrained color, and color reserved for meaning such as overdue or paid.
+- **Direction:** clean and calm, with plenty of space, clear type, and color reserved for meaning such as overdue or paid.
 - **Mobile first:** bottom navigation and large touch targets on phones, and a sidebar on desktop.
 - **Themes:** light and dark from the first screen, built on semantic tokens such as `surface` and `danger`.
-- **Accessibility:** WCAG 2.2 AA, full keyboard use, and respect for reduced-motion settings.
+- **Accessibility:** WCAG 2.2 AA, full keyboard use, and respect for reduced-motion settings. CI checks every token pair for contrast, so a color that fails can't merge. Status is never shown by color alone.
 - **Every state is designed:** loading, empty and error, not only the populated screen.
 - **Motion and detail:** subtle, and only where it explains a change.
-
-Milestone 1 begins with a short design pass: tokens, typography, and mockups of the three screens that set
-the tone (the agenda, a bill's detail page, and marking a bill paid). These get reviewed before the UI kit is built.
 
 ## 9. Moving from v1
 

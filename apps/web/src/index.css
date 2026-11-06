@@ -1,0 +1,36 @@
+@import 'tailwindcss';
+@import './ui/tokens.css';
+
+/* Remove Tailwind's default palette, so only the design tokens are available. */
+@theme inline {
+  --color-*: initial;
+  --font-*: initial;
+
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-line: var(--line);
+  --color-field: var(--field);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-paid: var(--paid);
+  --color-upcoming: var(--upcoming);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-scrim: var(--scrim);
+  --font-sans: var(--font-body);
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+  }
+}

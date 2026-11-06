@@ -35,6 +35,27 @@ const bannedElements = ['button', 'input', 'select', 'textarea', 'dialog'].map((
   message: `Use the component from apps/web/src/ui instead of a raw <${element}>.`,
 }));
 
+// Colors come from apps/web/src/ui/tokens.css, and styles don't fight each other with !important.
+const hexColor = '/#[0-9a-fA-F]{3,8}$/';
+const arbitraryColor = '/-\\[(#|rgb|hsl|oklch|color)/';
+const importantModifier = '/(^|\\s)![a-z]|[a-z0-9]!(\\s|$)/';
+const bannedStyles = [
+  {
+    selector: `Literal[value=${hexColor}]`,
+    message: 'Use a design token from apps/web/src/ui/tokens.css, not a hex color.',
+  },
+  ...['Literal[value=', 'TemplateElement[value.raw='].flatMap((node) => [
+    {
+      selector: `JSXAttribute[name.name='className'] ${node}${arbitraryColor}]`,
+      message: 'Use a design token class, not an arbitrary color value.',
+    },
+    {
+      selector: `JSXAttribute[name.name='className'] ${node}${importantModifier}]`,
+      message: 'Do not use the !important modifier.',
+    },
+  ]),
+];
+
 export default tseslint.config(
   {
     ignores: [
@@ -70,6 +91,7 @@ export default tseslint.config(
       ...jsxA11y.flatConfigs.recommended.rules,
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
+      'no-restricted-syntax': ['error', ...bannedStyles],
     },
   },
   {
@@ -78,7 +100,9 @@ export default tseslint.config(
   },
   {
     files: ['apps/web/src/features/**/*.{ts,tsx}'],
-    rules: { 'no-restricted-syntax': ['error', ...bannedInFeatures, ...bannedElements] },
+    rules: {
+      'no-restricted-syntax': ['error', ...bannedStyles, ...bannedInFeatures, ...bannedElements],
+    },
   },
   {
     files: ['**/*.test.{ts,tsx}', 'tooling/**/*.ts'],

@@ -99,7 +99,7 @@ features -> core -> packages (domain, contracts, db)
 | Dates and money go through `domain` | Lint bans `new Date()` and `parseFloat` in feature code, with named exceptions |
 | Modals, forms and buttons come from `ui/` | Lint bans the raw patterns outside `ui/` |
 | Files stay small | Lint `max-lines`: fail above 500 lines |
-| Colors and spacing come from design tokens | Tailwind theme limited to tokens; lint bans arbitrary values such as `bg-[#fff]` and `!important` |
+| Colors come from design tokens and meet WCAG contrast | Tailwind theme limited to tokens; lint bans hex colors, arbitrary color classes and `!important`; a test checks every token pair |
 | Accessibility basics hold | jsx-a11y lint rules and axe checks in Playwright |
 | Domain logic is well tested | CI coverage threshold on `packages/domain` |
 | History stays fixed | History invariance test in CI; database refuses to delete anything with history |
@@ -145,6 +145,6 @@ asset before bringing it over, because this repo is public; bank and card artwor
 
 The table above is the target. Some rules need code that doesn't exist yet.
 
-- **Active since milestone 0:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning.
-- **Arrive in milestone 1:** contract schemas on routes, the permission test across all routes, design token lint, axe checks, domain coverage threshold, migration checks, generated versions and changelog.
+- **Active:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning, design token lint and contrast checks.
+- **Arrive in milestone 1:** contract schemas on routes, the permission test across all routes, axe checks, domain coverage threshold, migration checks, generated versions and changelog.
 - **Arrive in milestone 4:** the history invariance test.

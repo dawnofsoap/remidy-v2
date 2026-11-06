@@ -50,6 +50,34 @@ describe('raw controls in web features', () => {
   });
 });
 
+describe('colors in the web app', () => {
+  const uiFile = 'apps/web/src/ui/Example.tsx';
+
+  it.each([
+    ['a hex color in a style', "export const a = <p style={{ color: '#ff0000' }}>x</p>;"],
+    ['an arbitrary hex class', 'export const a = <p className="bg-[#ffffff]">x</p>;'],
+    ['an arbitrary rgb class', 'export const a = <p className="text-[rgb(1,2,3)]">x</p>;'],
+    ['an arbitrary color in a template', 'export const a = <p className={`p-2 bg-[#fff]`}>x</p>;'],
+    ['a leading !important', 'export const a = <p className="!p-2">x</p>;'],
+    ['a trailing !important', 'export const a = <p className="p-2 text-ink!">x</p>;'],
+  ])('rejects %s', async (_name, code) => {
+    expect(await rulesFiredFor(uiFile, code)).toContain('no-restricted-syntax');
+  });
+
+  it('rejects them in features too', async () => {
+    const code = 'export const a = <p className="bg-[#ffffff]">x</p>;';
+    expect(await rulesFiredFor(webFeature, code)).toContain('no-restricted-syntax');
+  });
+
+  it.each([
+    ['token classes', 'export const a = <p className="bg-surface text-ink-2 p-2">x</p>;'],
+    ['arbitrary non-color values', 'export const a = <p className="w-[13px]">x</p>;'],
+    ['state variants', 'export const a = <p className="data-[state=open]:bg-surface">x</p>;'],
+  ])('allows %s', async (_name, code) => {
+    expect(await rulesFiredFor(uiFile, code)).toEqual([]);
+  });
+});
+
 describe('general rules', () => {
   it('rejects files over the size limit', async () => {
     const code = Array.from({ length: 501 }, (_, i) => `export const a${String(i)} = 1;`).join(
