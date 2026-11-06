@@ -126,7 +126,12 @@ function emailFrom(body: unknown): string | null {
 /** Makes the allowed sign-in endpoints reachable, with account lockout around sign-in. */
 export function registerAuthRoutes(
   app: FastifyInstance,
-  { auth, orm, publicUrl }: { auth: Auth; orm: Orm; publicUrl: string },
+  {
+    auth,
+    orm,
+    publicUrl,
+    requestsPerMinute,
+  }: { auth: Auth; orm: Orm; publicUrl: string; requestsPerMinute: number },
 ): void {
   const route: Route = {
     method: 'POST',
@@ -136,29 +141,29 @@ export function registerAuthRoutes(
   };
   app.declaredRoutes.push(route);
 
-  app.route({
-    method: ['GET', 'POST'],
-    url: '/api/auth/*',
-    config: { declaredRoute: true },
-    handler: async (request, reply) => {
-      const path = request.url.split('?', 1)[0]?.replace('/api/auth', '') ?? '';
-      const allowed = Object.hasOwn(ALLOWED_ENDPOINTS, path) ? ALLOWED_ENDPOINTS[path] : undefined;
-      if (!allowed?.includes(request.method as 'GET' | 'POST')) {
-        throw new AppError(404, 'not_found', 'That wasn’t found.');
-      }
+  const handler = async (request: FastifyRequest, reply: FastifyReply) => {
+    const path = request.url.split('?', 1)[0]?.replace('/api/auth', '') ?? '';
+    const allowed = Object.hasOwn(ALLOWED_ENDPOINTS, path) ? ALLOWED_ENDPOINTS[path] : undefined;
+    if (!allowed?.includes(request.method as 'GET' | 'POST')) {
+      throw new AppError(404, 'not_found', 'That wasn’t found.');
+    }
 
-      const email = path === '/sign-in/email' ? emailFrom(request.body) : null;
-      if (email === null)
-        return sendResponse(await callBetterAuth(auth, publicUrl, request), reply);
+    const email = path === '/sign-in/email' ? emailFrom(request.body) : null;
+    if (email === null) return sendResponse(await callBetterAuth(auth, publicUrl, request), reply);
 
-      if (await isLockedOut(orm, email)) throw LOCKED_OUT;
-      const response = await callBetterAuth(auth, publicUrl, request);
-      // Count the attempt before answering, so the next attempt always sees it.
-      if (response.status === 200) await clearFailedSignIns(orm, email);
-      else if (response.status === 401) await recordFailedSignIn(orm, email);
-      return sendResponse(response, reply);
-    },
-  });
+    if (await isLockedOut(orm, email)) throw LOCKED_OUT;
+    const response = await callBetterAuth(auth, publicUrl, request);
+    // Count the attempt before answering, so the next attempt always sees it.
+    if (response.status === 200) await clearFailedSignIns(orm, email);
+    else if (response.status === 401) await recordFailedSignIn(orm, email);
+    return sendResponse(response, reply);
+  };
+
+  // Sign-in has its own limit, tighter than the general one and counted separately, so that
+  // busy use of the rest of the app can't crowd it out. It's checked before the database is used.
+  const rateLimit = { max: requestsPerMinute, timeWindow: '1 minute' };
+  app.get('/api/auth/*', { config: { declaredRoute: true, rateLimit } }, handler);
+  app.post('/api/auth/*', { config: { declaredRoute: true, rateLimit } }, handler);
 }
 
 /** Decides who may call a route, using the session cookie. */

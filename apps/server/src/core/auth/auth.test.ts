@@ -406,14 +406,14 @@ describe('rate limiting', () => {
   });
 });
 
-describe('the general rate limit', () => {
-  it('covers the sign-in routes, before they reach the database', async () => {
+describe('the sign-in routes’ own rate limit', () => {
+  it('refuses attempts over the limit, before they reach the database', async () => {
     const orm = test.database.orm;
     const limited = buildApp({
       database: test.database,
       auth: { auth, orm },
       publicUrl: PUBLIC_URL,
-      requestsPerMinute: 2,
+      authRequestsPerMinute: 2,
     });
     const hit = () =>
       limited.inject({
@@ -433,6 +433,26 @@ describe('the general rate limit', () => {
     // The refused attempt never reached the lockout count.
     const rows = await orm.select().from(loginThrottle);
     expect(rows[0]?.failedCount).toBe(2);
+    await limited.close();
+  });
+
+  it('is counted apart from the general limit', async () => {
+    const limited = buildApp({
+      database: test.database,
+      auth: { auth, orm: test.database.orm },
+      publicUrl: PUBLIC_URL,
+      requestsPerMinute: 1,
+      authRequestsPerMinute: 2,
+    });
+    const from = { remoteAddress: '10.2.0.2' };
+    const session = () => limited.inject({ url: '/api/auth/get-session', ...from });
+
+    expect((await limited.inject({ url: '/api/features', ...from })).statusCode).toBe(200);
+    expect((await limited.inject({ url: '/api/features', ...from })).statusCode).toBe(429);
+
+    expect((await session()).statusCode).toBe(200);
+    expect((await session()).statusCode).toBe(200);
+    expect((await session()).statusCode).toBe(429);
     await limited.close();
   });
 });
