@@ -8,7 +8,7 @@ stability decides when a milestone is finished.
 | # | Milestone | Contains | Exit test | Stabilize |
 |---|---|---|---|---|
 | **0** | Repo and tooling | Workspace, CI, branch rules, lint and boundary rules, Docker dev setup | A fresh clone runs with one command; a rule-breaking pull request is blocked | None |
-| **1** | The base | Starts with the design pass in [DESIGN.md section 8](../DESIGN.md#8-visual-design), then everything in [section 5](../DESIGN.md#5-the-base), no bill features | Mockups approved; meets the base exit test | 1 week |
+| **1** | The base | Starts with the design pass in [DESIGN.md section 8](../DESIGN.md#8-visual-design), then everything in [section 5](../DESIGN.md#5-the-base), no bill features | Layout approved; meets the base exit test. The final color and style can change later through the design tokens | 1 week |
 | **2** | Reference feature: Categories | Create, edit, delete, list | Built entirely by following `BUILDING-FEATURES.md`; the guide and base are corrected wherever it was awkward | A few days |
 | **3** | Bills and occurrences | Recurrence rules, bills, agenda view | Property tests pass; your real bills show correct due dates | 1 week |
 | **4** | Payments: **Alpha 1** | Mark paid, voiding, history, partial payments, auto-pay recording, calendar view | History invariance test passes; **you run your real bills on it for a full billing month** with no status errors | 1 month |

@@ -22,9 +22,9 @@ export function App() {
   }, []);
 
   return (
-    <main>
-      <h1>Remidy</h1>
-      <p>{describe(health)}</p>
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-2 p-6">
+      <h1 className="text-3xl font-bold tracking-tight">Remidy</h1>
+      <p className="text-ink-2">{describe(health)}</p>
     </main>
   );
 }

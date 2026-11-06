@@ -1,0 +1,37 @@
+/*
+ * The only place colors are defined. Each token is light-dark(light value, dark value).
+ * Neutral for now: the final look is still open, and changing it only means editing this file.
+ * tooling/rule-tests/contrast.test.ts checks these values against WCAG 2.2 AA.
+ */
+:root {
+  color-scheme: light dark;
+
+  --bg: light-dark(#f6f6f7, #0f0f11);
+  --surface: light-dark(#ffffff, #1a1a1d);
+  --surface-2: light-dark(#ececee, #27272b);
+  --ink: light-dark(#18181b, #f4f4f5);
+  --ink-2: light-dark(#52525b, #b4b4bc);
+  --line: light-dark(#e2e2e5, #303035);
+  --field: light-dark(#7c7c85, #7c7c85);
+  --accent: light-dark(#18181b, #f4f4f5);
+  --on-accent: light-dark(#ffffff, #18181b);
+  --accent-text: light-dark(#18181b, #f4f4f5);
+  --accent-soft: light-dark(#e8e8eb, #2f2f34);
+  --paid: light-dark(#2563a8, #7fb2ee);
+  --upcoming: light-dark(#85858e, #85858e);
+  --danger: light-dark(#bc3417, #ff9d7e);
+  --danger-soft: light-dark(#fbe7e0, #3a1f16);
+  --warn: light-dark(#7d5100, #ebc163);
+  --warn-soft: light-dark(#f9edd3, #32290f);
+  --scrim: light-dark(rgb(24 24 27 / 50%), rgb(0 0 0 / 62%));
+
+  --font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
