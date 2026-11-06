@@ -29,7 +29,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', (route) => route.fulfill({ json: healthy }));
   await page.route('**/api/features', (route) => route.fulfill({ json: { enabled: [] } }));
   await page.route('**/api/sign-in-options', (route) =>
-    route.fulfill({ json: { adminPasswordInConsole: false } }),
+    route.fulfill({ json: { adminPasswordInConsole: false, passwordReset: true } }),
   );
   await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: signedIn }));
   await page.route('**/api/spaces', (route) =>
@@ -220,7 +220,7 @@ test.describe('signing in', () => {
 test.describe('first sign-in', () => {
   test('says where to find the admin password, with no violations', async ({ page }) => {
     await page.route('**/api/sign-in-options', (route) =>
-      route.fulfill({ json: { adminPasswordInConsole: true } }),
+      route.fulfill({ json: { adminPasswordInConsole: true, passwordReset: true } }),
     );
     await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: null }));
     await page.goto('/');
@@ -289,6 +289,90 @@ test.describe('first sign-in', () => {
       /Choose a different password/,
     );
     await expect(page.getByLabel('New password')).toHaveAttribute('aria-invalid', 'true');
+    await expectNoViolations(page);
+  });
+});
+
+test.describe('forgetting a password', () => {
+  const noSession = (page: Page) =>
+    page.route('**/api/auth/get-session', (route) => route.fulfill({ json: null }));
+
+  test('asks for an address, then gives an answer that reveals nothing', async ({ page }) => {
+    await noSession(page);
+    let asked: unknown = null;
+    await page.route('**/api/auth/request-password-reset', (route) => {
+      asked = route.request().postDataJSON();
+      return route.fulfill({ json: { status: true } });
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Forgot your password?' }).click();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Forgot your password?');
+    await expect(page.getByText('reset-admin-password')).toBeVisible();
+    await expectNoViolations(page);
+    await saveScreenshot(page, 'forgot-password');
+
+    await page.getByLabel('Email').fill('alex@example.com');
+    await page.getByRole('button', { name: 'Email me a link' }).click();
+    await expect(page.getByRole('status')).toContainText('If alex@example.com has an account');
+    expect(asked).toEqual({ email: 'alex@example.com' });
+    await expectNoViolations(page);
+
+    await page.getByRole('button', { name: 'Back to sign in' }).click();
+    await expect(page.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible();
+  });
+
+  test('isn’t offered when the server can’t send mail', async ({ page }) => {
+    await noSession(page);
+    await page.route('**/api/sign-in-options', (route) =>
+      route.fulfill({ json: { adminPasswordInConsole: false, passwordReset: false } }),
+    );
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Forgot your password?' })).toHaveCount(0);
+  });
+
+  test('a reset link needs a password that meets the requirements', async ({ page }) => {
+    await noSession(page);
+    let sent: unknown = null;
+    await page.route('**/api/auth/reset-password', (route) => {
+      sent = route.request().postDataJSON();
+      return route.fulfill({ json: { status: true } });
+    });
+    await page.goto('/reset-password#token=abc123');
+    await expect(page.getByRole('heading', { name: 'Choose a password', level: 1 })).toBeVisible();
+
+    const field = page.getByLabel('New password');
+    await field.fill('too short');
+    await expect(field).toHaveAttribute('aria-invalid', 'true');
+    await expectNoViolations(page);
+    await saveScreenshot(page, 'reset-password');
+    await page.getByRole('button', { name: 'Save password' }).click();
+    await expect(field).toBeFocused();
+    expect(sent).toBeNull();
+
+    await field.fill('tulip-cactus-river');
+    await page.getByRole('button', { name: 'Save password' }).click();
+    await expect(page.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible();
+    expect(sent).toEqual({ token: 'abc123', newPassword: 'tulip-cactus-river' });
+  });
+
+  test('says so when a link has expired', async ({ page }) => {
+    await noSession(page);
+    await page.route('**/api/auth/reset-password', (route) =>
+      route.fulfill({ status: 400, json: { code: 'INVALID_TOKEN', message: 'Invalid token' } }),
+    );
+    await page.goto('/reset-password#token=old');
+    await page.getByLabel('New password').fill('tulip-cactus-river');
+    await page.getByRole('button', { name: 'Save password' }).click();
+    await expect(page.getByRole('alert')).toHaveText('This link has expired or was already used.');
+    await expect(page.getByRole('link', { name: 'Back to sign in' })).toBeVisible();
+    await expectNoViolations(page);
+  });
+
+  test('explains a link with no token', async ({ page }) => {
+    await noSession(page);
+    await page.goto('/reset-password');
+    await expect(page.getByRole('alert')).toContainText('Open the link from your email again');
     await expectNoViolations(page);
   });
 });

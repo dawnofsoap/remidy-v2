@@ -14,6 +14,8 @@ import {
   fetchSession,
   fetchSignInOptions,
   RequestFailure,
+  requestPasswordReset,
+  resetPassword,
   SESSION_QUERY_KEY,
   signIn,
   SIGN_IN_OPTIONS_QUERY_KEY,
@@ -76,7 +78,15 @@ function FormError({ failure }: { failure: RequestFailure | null }) {
   );
 }
 
-function SignInPage({ adminPasswordInConsole }: { adminPasswordInConsole: boolean }) {
+function SignInPage({
+  adminPasswordInConsole,
+  passwordReset,
+  onForgot,
+}: {
+  adminPasswordInConsole: boolean;
+  passwordReset: boolean;
+  onForgot: () => void;
+}) {
   const queryClient = useQueryClient();
   const { busy, failure, run } = useFormAction();
   const [identifier, setIdentifier] = useState('');
@@ -123,7 +133,128 @@ function SignInPage({ adminPasswordInConsole }: { adminPasswordInConsole: boolea
         <Button type="submit" busy={busy}>
           Sign in
         </Button>
+        {passwordReset ? (
+          <Button variant="secondary" onClick={onForgot}>
+            Forgot your password?
+          </Button>
+        ) : null}
       </form>
+    </AuthShell>
+  );
+}
+
+function ForgotPasswordPage({ onBack }: { onBack: () => void }) {
+  const { busy, failure, run } = useFormAction();
+  const [email, setEmail] = useState('');
+  const [sentTo, setSentTo] = useState<string | null>(null);
+
+  function submit(event: SyntheticEvent) {
+    event.preventDefault();
+    void run(async () => {
+      await requestPasswordReset(email);
+      setSentTo(email);
+    });
+  }
+
+  const back = (
+    <Button variant="secondary" onClick={onBack}>
+      Back to sign in
+    </Button>
+  );
+
+  if (sentTo !== null) {
+    return (
+      <AuthShell title="Check your email" intro="Your request has been received.">
+        <p role="status">
+          If {sentTo} has an account, a link to choose a new password is on its way. It works for
+          the next hour.
+        </p>
+        {back}
+      </AuthShell>
+    );
+  }
+
+  return (
+    <AuthShell title="Forgot your password?" intro="We’ll email you a link to choose a new one.">
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <FormError failure={failure} />
+        <TextField
+          label="Email"
+          type="email"
+          autoComplete="username"
+          required
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value);
+          }}
+        />
+        <Button type="submit" busy={busy}>
+          Email me a link
+        </Button>
+        {back}
+      </form>
+      <p className="text-sm text-ink-2">
+        The admin account has no email address. To replace its password, run the{' '}
+        <code>reset-admin-password</code> command on the server.
+      </p>
+    </AuthShell>
+  );
+}
+
+/** Where a reset link leads. The token is after the #, so it never reaches a server's logs. */
+function ResetPasswordPage() {
+  const { busy, failure, run } = useFormAction();
+  const [next, setNext] = useState('');
+  const newPasswordRef = useRef<HTMLInputElement>(null);
+  const token = new URLSearchParams(window.location.hash.slice(1)).get('token');
+  const newPasswordError = failure?.fields.newPassword;
+
+  function submit(event: SyntheticEvent) {
+    event.preventDefault();
+    if (!isPasswordReady(next)) {
+      newPasswordRef.current?.focus();
+      return;
+    }
+    void run(async () => {
+      await resetPassword(token ?? '', next);
+      window.location.assign('/');
+    });
+  }
+
+  const startOver = (
+    <a href="/" className="font-semibold underline">
+      Back to sign in
+    </a>
+  );
+
+  if (!token) {
+    return (
+      <AuthShell title="Choose a password" intro="This link isn’t complete.">
+        <p role="alert">Open the link from your email again, or ask for a new one.</p>
+        {startOver}
+      </AuthShell>
+    );
+  }
+
+  return (
+    <AuthShell title="Choose a password" intro="This also signs you out on all your devices.">
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <FormError failure={failure} />
+        <NewPasswordField
+          ref={newPasswordRef}
+          label="New password"
+          required
+          value={next}
+          onChange={(event) => {
+            setNext(event.target.value);
+          }}
+          {...(newPasswordError ? { error: newPasswordError } : {})}
+        />
+        <Button type="submit" busy={busy}>
+          Save password
+        </Button>
+      </form>
+      {startOver}
     </AuthShell>
   );
 }
@@ -187,6 +318,7 @@ function ChoosePasswordPage() {
 
 /** Shows sign-in until someone is signed in with a password of their own, and then the app. */
 export function AuthGate({ children }: { children: ReactNode }) {
+  const [forgot, setForgot] = useState(false);
   const options = useQuery({
     queryKey: SIGN_IN_OPTIONS_QUERY_KEY,
     queryFn: fetchSignInOptions,
@@ -194,6 +326,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   });
   const session = useQuery({ queryKey: SESSION_QUERY_KEY, queryFn: fetchSession, retry: false });
 
+  if (window.location.pathname === '/reset-password') return <ResetPasswordPage />;
   if (options.isPending || session.isPending) {
     return <LoadingState label="Loading Remidy" />;
   }
@@ -209,7 +342,24 @@ export function AuthGate({ children }: { children: ReactNode }) {
     );
   }
   if (!session.data) {
-    return <SignInPage adminPasswordInConsole={options.data.adminPasswordInConsole} />;
+    if (forgot) {
+      return (
+        <ForgotPasswordPage
+          onBack={() => {
+            setForgot(false);
+          }}
+        />
+      );
+    }
+    return (
+      <SignInPage
+        adminPasswordInConsole={options.data.adminPasswordInConsole}
+        passwordReset={options.data.passwordReset}
+        onForgot={() => {
+          setForgot(true);
+        }}
+      />
+    );
   }
   if (session.data.user.mustChangePassword) return <ChoosePasswordPage />;
   return children;

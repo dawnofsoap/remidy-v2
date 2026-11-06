@@ -345,8 +345,6 @@ describe('what is reachable', () => {
     ['POST', '/api/auth/update-user'],
     ['POST', '/api/auth/delete-user'],
     ['POST', '/api/auth/change-email'],
-    ['POST', '/api/auth/request-password-reset'],
-    ['POST', '/api/auth/reset-password'],
     ['GET', '/api/auth/ok'],
     ['GET', '/api/auth/error'],
     ['GET', '/api/auth/sign-in/email'],

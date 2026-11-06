@@ -12,6 +12,8 @@ export type HealthResponse = z.infer<typeof healthResponse>;
 export const signInOptionsResponse = z.object({
   /** True while the admin's generated password, printed in the server console, is still in use. */
   adminPasswordInConsole: z.boolean(),
+  /** False when the server has no way to send mail, so the page shouldn't offer it. */
+  passwordReset: z.boolean(),
 });
 
 const timeZone = z.string().refine(

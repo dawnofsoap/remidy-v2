@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { buildApp } from '../app.ts';
 import { defineFeature, defineRoute } from '../feature.ts';
 import { createAuth, createAuthorize, type Auth } from './index.ts';
+import type { Mail } from '../mail.ts';
 import { signInOptionsFeature } from './sign-in-options.ts';
 
 export const PUBLIC_URL = 'https://remidy.test';
@@ -60,6 +61,11 @@ export function useAuthHarness() {
     auth: undefined as unknown as Auth,
     app: undefined as unknown as FastifyInstance,
     address: freshAddress(),
+    /** Messages sent so far. */
+    mail: [] as Mail[],
+    /** Set this to make sending fail. */
+    mailFailure: null as Error | null,
+    mailFailures: [] as unknown[],
   };
 
   const post = (url: string, payload: object, headers: Record<string, string> = {}) =>
@@ -106,12 +112,22 @@ export function useAuthHarness() {
       orm,
       secret: 'test-secret-that-is-long-enough-to-use',
       publicUrl: PUBLIC_URL,
+      mailer: {
+        send: (mail) => {
+          if (state.mailFailure) return Promise.reject(state.mailFailure);
+          state.mail.push(mail);
+          return Promise.resolve();
+        },
+      },
+      onMailFailure: (error) => {
+        state.mailFailures.push(error);
+      },
     });
     state.app = buildApp({
       database: state.test.database,
-      features: [signInOptionsFeature({ orm }), signedInRoute],
+      features: [signInOptionsFeature({ orm, passwordReset: true }), signedInRoute],
       authorize: createAuthorize(state.auth, orm),
-      auth: { auth: state.auth, orm },
+      auth: { auth: state.auth, orm, passwordReset: true },
       publicUrl: PUBLIC_URL,
     });
     await state.app.ready();
@@ -124,6 +140,8 @@ export function useAuthHarness() {
 
   beforeEach(async () => {
     state.address = freshAddress();
+    state.mail.length = 0;
+    state.mailFailures.length = 0;
     await state.test.database.orm.execute(
       sql`truncate "user", session, account, verification, rate_limit, login_throttle, space, membership cascade`,
     );

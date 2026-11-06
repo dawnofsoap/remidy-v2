@@ -86,6 +86,22 @@ export async function signIn(emailOrUsername: string, password: string): Promise
   }
 }
 
+/** The answer is the same whether or not the address has an account, so there's nothing to report. */
+export function requestPasswordReset(email: string) {
+  return post('/api/auth/request-password-reset', { email });
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  try {
+    await post('/api/auth/reset-password', { token, newPassword });
+  } catch (error) {
+    if (error instanceof RequestFailure && error.status === 400) {
+      throw new RequestFailure(400, 'This link has expired or was already used.');
+    }
+    throw error;
+  }
+}
+
 export function signOut() {
   return post('/api/auth/sign-out', {});
 }

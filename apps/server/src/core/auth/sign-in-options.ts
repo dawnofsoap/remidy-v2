@@ -4,7 +4,13 @@ import { eq } from 'drizzle-orm';
 import { defineFeature, defineRoute, type Feature } from '../feature.ts';
 
 /** What the sign-in page needs to know before anyone has signed in. */
-export function signInOptionsFeature({ orm }: { orm: Orm }): Feature {
+export function signInOptionsFeature({
+  orm,
+  passwordReset,
+}: {
+  orm: Orm;
+  passwordReset: boolean;
+}): Feature {
   return defineFeature({
     name: 'sign-in-options',
     routes: () => [
@@ -18,7 +24,7 @@ export function signInOptionsFeature({ orm }: { orm: Orm }): Feature {
             .select({ mustChangePassword: user.mustChangePassword })
             .from(user)
             .where(eq(user.email, ADMIN_EMAIL));
-          return { adminPasswordInConsole: admin?.mustChangePassword === true };
+          return { adminPasswordInConsole: admin?.mustChangePassword === true, passwordReset };
         },
       }),
     ],
