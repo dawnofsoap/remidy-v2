@@ -10,7 +10,8 @@
   "dependencies": {
     "@remidy/contracts": "workspace:*",
     "@remidy/db": "workspace:*",
-    "fastify": "5.12.8"
+    "fastify": "5.12.8",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "nodemon": "3.1.14"

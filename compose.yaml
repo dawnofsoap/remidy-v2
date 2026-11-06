@@ -45,6 +45,7 @@ services:
     command: pnpm --filter @remidy/server dev
     environment:
       <<: *app-env
+      NODE_ENV: development
       DATABASE_URL: postgresql://remidy:remidy_dev_only@db:5432/remidy
     depends_on:
       db:

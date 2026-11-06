@@ -1,13 +1,23 @@
 import { createDatabase } from '@remidy/db';
 import { buildApp } from './core/app.ts';
+import { ConfigError, loadConfig, type Config } from './core/config.ts';
+import { loggerOptions } from './core/logging.ts';
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL is required');
+function readConfig(): Config {
+  try {
+    return loadConfig(process.env);
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      process.stderr.write(`${error.message}\n`);
+      process.exit(1);
+    }
+    throw error;
+  }
 }
 
-const database = createDatabase(databaseUrl);
-const app = buildApp({ database, logger: true });
+const config = readConfig();
+const database = createDatabase(config.DATABASE_URL);
+const app = buildApp({ database, logger: loggerOptions(config.LOG_LEVEL) });
 
 async function shutdown(): Promise<void> {
   await app.close();
@@ -16,4 +26,4 @@ async function shutdown(): Promise<void> {
 process.once('SIGTERM', () => void shutdown());
 process.once('SIGINT', () => void shutdown());
 
-await app.listen({ host: '0.0.0.0', port: Number(process.env.PORT ?? 3000) });
+await app.listen({ host: '0.0.0.0', port: config.PORT });
