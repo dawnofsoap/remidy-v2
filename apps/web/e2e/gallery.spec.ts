@@ -70,6 +70,49 @@ test('a toast appears at the top, top-right on larger screens', async ({ page },
   }
 });
 
+test.describe('closing a toast', () => {
+  const show = async (page: Page) => {
+    await page.goto('/gallery.html');
+    await page.getByRole('button', { name: 'Show toast' }).click();
+    const toast = page.locator('[data-sonner-toast]');
+    await expect(toast).toHaveCSS('opacity', '1');
+    return toast;
+  };
+  const closeButton = (page: Page) => page.getByRole('button', { name: 'Close toast' });
+
+  test('has an X on larger screens, at the end of the toast', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'Phones swipe toasts away.');
+    const toast = await show(page);
+    await expect(closeButton(page)).toBeVisible();
+
+    const box = await toast.boundingBox();
+    const button = await closeButton(page).boundingBox();
+    if (!box || !button) throw new Error('Not on the page.');
+    expect(button.x).toBeGreaterThan(box.x + box.width / 2);
+    expect(button.width).toBeGreaterThanOrEqual(24);
+    expect(button.height).toBeGreaterThanOrEqual(24);
+    await expectNoViolations(page);
+    await saveScreenshot(page, 'toast', false);
+
+    await closeButton(page).click();
+    await expect(toast).toHaveCount(0);
+  });
+
+  test('closes by keyboard', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'Phones swipe toasts away.');
+    const toast = await show(page);
+    await closeButton(page).focus();
+    await page.keyboard.press('Enter');
+    await expect(toast).toHaveCount(0);
+  });
+
+  test('has no X on a phone', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'phone', 'Only phones hide it.');
+    await show(page);
+    await expect(closeButton(page)).toBeHidden();
+  });
+});
+
 test('the theme setting overrides the system preference', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/gallery.html?theme=light');
