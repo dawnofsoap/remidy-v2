@@ -91,7 +91,7 @@ features -> core -> packages (domain, contracts, db)
 | Rule | Enforced by |
 |---|---|
 | Types, lint, tests and production build pass before merging | Required CI checks, branch protection |
-| Nothing reaches `alpha` or `main` until it has passed CI, and history is never rewritten | GitHub rulesets with no bypass: required checks on every change; force-pushes and branch deletion blocked |
+| Changes reach `alpha` and `main` only through pull requests that pass CI, and history is never rewritten | GitHub rulesets with no bypass; no second approval is required, since this is a solo project |
 | Dependency directions above | dependency-cruiser, failing CI |
 | SQL only in `repo.ts` and `packages/db` | Lint rule |
 | Request and response shapes validated | Routes must declare a contract schema; `defineRoute` won't accept one without |
@@ -121,22 +121,6 @@ Most pull requests merge once CI passes. These stay open until the owner has rev
 - Anything else that surprised the author or was hard to test
 
 The pull request says why it was flagged and what to look at.
-
-## Pushing directly to `alpha`
-
-Pull requests aren't required, but every commit on `alpha` must have passed CI. GitHub can't run CI during a push, so a commit has to pass first:
-
-```
-git push origin HEAD:wip/my-change
-```
-
-Once CI passes on that branch, push the same commit to `alpha`:
-
-```
-git push origin HEAD:alpha
-```
-
-If you push a commit that has failed or hasn't been checked, GitHub rejects it. If `alpha` has moved on, pull and rebase, which creates a new commit that has to pass again. Delete the `wip` branch afterward.
 
 ## Pull request rules
 
