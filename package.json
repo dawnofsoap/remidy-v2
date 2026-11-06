@@ -11,6 +11,7 @@
     "boundaries": "depcruise apps packages --config .dependency-cruiser.mjs",
     "build": "pnpm -r build",
     "check": "pnpm format:check && pnpm lint && pnpm boundaries && pnpm typecheck && pnpm test && pnpm build",
+    "e2e": "pnpm --filter @remidy/web e2e",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings 0",

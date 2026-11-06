@@ -145,6 +145,6 @@ asset before bringing it over, because this repo is public; bank and card artwor
 
 The table above is the target. Some rules need code that doesn't exist yet.
 
-- **Active:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning, design token lint and contrast checks.
-- **Arrive in milestone 1:** contract schemas on routes, the permission test across all routes, axe checks, domain coverage threshold, migration checks, generated versions and changelog.
+- **Active:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning, design token lint and contrast checks, axe and keyboard checks in a real browser.
+- **Arrive in milestone 1:** contract schemas on routes, the permission test across all routes, domain coverage threshold, migration checks, generated versions and changelog.
 - **Arrive in milestone 4:** the history invariance test.
