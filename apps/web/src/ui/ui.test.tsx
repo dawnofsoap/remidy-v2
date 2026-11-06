@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { parseCalendarDate, toCents, type CalendarDate, type Cents } from '@remidy/domain';
 import { cn } from './cn.ts';
 import {
@@ -356,6 +356,22 @@ describe('MoneyField', () => {
 });
 
 describe('DateField', () => {
+  // Clicking the field opens the calendar, whose positioning needs this, and jsdom doesn't have it.
+  beforeAll(() => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      },
+    );
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
   const on = (text: string) => {
     const date = parseCalendarDate(text);
     if (!date) throw new Error('Not a date.');

@@ -68,12 +68,12 @@ function Gallery() {
         <TextField label="Amount" defaultValue="abc" error="Enter an amount, such as 42.50." />
         <MoneyField label="Amount due" hint="Type 5 and leave the field." />
         <PasswordExample />
-        <DateField label="Due date" hint="Type 3/8/26 and leave the field, or use the calendar." />
+        <DateField label="Due date" hint="Type a date such as 3/8/26, or use the calendar." />
         <DateField
           label="Paid on"
-          hint="Jan 15 to Dec 15, 2026."
-          min={parseCalendarDate('2026-01-15') ?? undefined}
-          max={parseCalendarDate('2026-12-15') ?? undefined}
+          hint="Mar 15, 2026 to Jun 15, 2027."
+          min={parseCalendarDate('2026-03-15') ?? undefined}
+          max={parseCalendarDate('2027-06-15') ?? undefined}
         />
         <SelectField label="Paid from">
           <option>Everyday Checking</option>
