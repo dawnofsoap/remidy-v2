@@ -137,7 +137,8 @@ describe('error format', () => {
     app.get('/boom', () => {
       throw error;
     });
-    app.post('/echo', (request) => request.body);
+    // Only needs to parse the body. It must never send input back.
+    app.post('/echo', () => ({ received: true }));
     return app;
   }
 
