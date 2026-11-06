@@ -10,6 +10,7 @@ import {
   TextField,
 } from '../ui/index.ts';
 import {
+  adoptBrowserTimeZone,
   changePassword,
   fetchSession,
   fetchSignInOptions,
@@ -145,6 +146,7 @@ function ChoosePasswordPage() {
     }
     void run(async () => {
       await changePassword(current, next);
+      await adoptBrowserTimeZone();
       await queryClient.invalidateQueries();
     });
   }

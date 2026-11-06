@@ -110,7 +110,7 @@ export function useAuthHarness() {
     state.app = buildApp({
       database: state.test.database,
       features: [signInOptionsFeature({ orm }), signedInRoute],
-      authorize: createAuthorize(state.auth),
+      authorize: createAuthorize(state.auth, orm),
       auth: { auth: state.auth, orm },
       publicUrl: PUBLIC_URL,
     });
@@ -125,7 +125,7 @@ export function useAuthHarness() {
   beforeEach(async () => {
     state.address = freshAddress();
     await state.test.database.orm.execute(
-      sql`truncate "user", session, account, verification, rate_limit, login_throttle cascade`,
+      sql`truncate "user", session, account, verification, rate_limit, login_throttle, space, membership cascade`,
     );
   });
 

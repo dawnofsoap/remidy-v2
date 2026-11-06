@@ -1,4 +1,9 @@
-import { apiErrorResponse, sessionResponse, signInOptionsResponse } from '@remidy/contracts';
+import {
+  apiErrorResponse,
+  sessionResponse,
+  signInOptionsResponse,
+  spaceResponse,
+} from '@remidy/contracts';
 import { z } from 'zod';
 
 /** A failed request, with a message that's safe to show and any problems with individual fields. */
@@ -49,6 +54,20 @@ export const fetchSignInOptions = ({ signal }: { signal: AbortSignal }) =>
 export const fetchSession = ({ signal }: { signal: AbortSignal }) =>
   get('/api/auth/get-session', sessionResponse, signal);
 
+const spacesResponse = z.array(spaceResponse);
+
+export const fetchSpaces = ({ signal }: { signal: AbortSignal }) =>
+  get('/api/spaces', spacesResponse, signal);
+
+export async function updateSpace(id: string, changes: { timeZone: string }): Promise<void> {
+  const response = await fetch(`/api/spaces/${id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(changes),
+  });
+  if (!response.ok) throw await failureFrom(response, GENERIC_FAILURE);
+}
+
 export const SESSION_QUERY_KEY = ['session'];
 export const SIGN_IN_OPTIONS_QUERY_KEY = ['sign-in-options'];
 
@@ -95,4 +114,21 @@ export const fetchOtherSessionCount = async ({ signal }: { signal: AbortSignal }
 
 export function revokeOtherSessions() {
   return post('/api/auth/revoke-other-sessions', {});
+}
+
+/**
+ * Gives a new account's personal space the browser's time zone, in place of the default. Settings
+ * can always change it, so a failure here isn't worth interrupting anyone over.
+ */
+export async function adoptBrowserTimeZone(): Promise<void> {
+  try {
+    const spaces = await get('/api/spaces', spacesResponse);
+    const personal = spaces.find((space) => space.kind === 'personal');
+    if (personal?.timeZone === 'UTC') {
+      const { timeZone } = Intl.DateTimeFormat().resolvedOptions();
+      await updateSpace(personal.id, { timeZone });
+    }
+  } catch {
+    // Left as it is.
+  }
 }

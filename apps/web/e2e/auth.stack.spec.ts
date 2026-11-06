@@ -105,6 +105,26 @@ test('a session survives a reload, and shows the account in settings', async ({ 
   await expect(page.getByText(ADMIN_EMAIL)).toBeVisible();
 });
 
+test('a personal space exists, using the browser time zone, and its time zone can change', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await signInWith(page, CHOSEN_PASSWORD);
+  await expect(appHeading(page, 'Home')).toBeVisible();
+  await page.goto('/settings');
+
+  const browserZone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const field = page.getByLabel('Time zone');
+  await expect(field).toHaveValue(browserZone);
+
+  const next = browserZone === 'Asia/Tokyo' ? 'Europe/Paris' : 'Asia/Tokyo';
+  await field.selectOption(next);
+  await expect(page.getByText('Time zone saved.')).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByLabel('Time zone')).toHaveValue(next);
+});
+
 test('a wrong password is refused with a clear message', async ({ page }) => {
   await page.goto('/');
   await signInWith(page, 'not the right password');

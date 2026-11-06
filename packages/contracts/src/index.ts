@@ -14,6 +14,47 @@ export const signInOptionsResponse = z.object({
   adminPasswordInConsole: z.boolean(),
 });
 
+const timeZone = z.string().refine(
+  (value) => {
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: value });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  { error: 'Choose a valid time zone.' },
+);
+
+export const spaceRole = z.enum(['member', 'manager', 'owner']);
+export type SpaceRole = z.infer<typeof spaceRole>;
+
+export const spaceResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: z.enum(['personal', 'shared']),
+  timeZone: z.string(),
+  role: spaceRole,
+});
+export type SpaceResponse = z.infer<typeof spaceResponse>;
+
+export const updateSpaceRequest = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Enter a name.')
+    .max(100, 'Use 100 characters or fewer.')
+    .optional(),
+  timeZone: timeZone.optional(),
+});
+
+export const spaceMemberResponse = z.object({
+  userId: z.string(),
+  name: z.string(),
+  email: z.string(),
+  role: spaceRole,
+});
+
 /** The signed-in person, or null when nobody is. */
 export const sessionResponse = z
   .object({

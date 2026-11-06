@@ -3,11 +3,15 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { z } from 'zod';
 import { AppError } from './errors.ts';
 
+export type SpaceRole = 'member' | 'manager' | 'owner';
+
 /**
  * Who may call a route. Every route must say so.
  * `public` needs no sign-in, and adding one means updating the list in permissions.test.ts.
+ * `{ space: role }` needs :spaceId in the URL, and at least that role in that space.
+ * `instance-admin` manages the instance, and gives no access to anyone's space.
  */
-export type Access = 'public' | 'signed-in';
+export type Access = 'public' | 'signed-in' | 'instance-admin' | { space: SpaceRole };
 
 /** The signed-in person a request belongs to. */
 export interface Principal {
@@ -17,10 +21,21 @@ export interface Principal {
   isInstanceAdmin: boolean;
 }
 
+/** The space a request is about, once the caller's role in it has been checked. */
+export interface SpaceAccess {
+  id: string;
+  role: SpaceRole;
+}
+
+export interface Authorized {
+  user: Principal;
+  space: SpaceAccess | null;
+}
+
 export type Authorize = (
   access: Exclude<Access, 'public'>,
   request: FastifyRequest,
-) => Promise<Principal>;
+) => Promise<Authorized>;
 
 /** Until sign-in exists, anything that isn't public is refused. */
 export const denyAll: Authorize = () =>
@@ -32,6 +47,8 @@ interface RouteContext<Params, Query, Body, A extends Access> {
   body: Body;
   /** Who is calling. Routes that aren't public always have one. */
   user: A extends 'public' ? null : Principal;
+  /** The space in the URL. Space routes always have one, and every query must be scoped to it. */
+  space: A extends { space: SpaceRole } ? SpaceAccess : null;
   /** Changes the status code of a successful response. */
   setStatus: (code: number) => void;
   request: FastifyRequest;
@@ -84,6 +101,10 @@ export function defineRoute<
   Response = unknown,
   A extends Access = Access,
 >(definition: RouteDefinition<Params, Query, Body, Response, A>): Route {
+  const { access } = definition;
+  if (typeof access === 'object' && !definition.url.includes(':spaceId')) {
+    throw new Error(`${definition.url} needs :spaceId in its URL to check space access.`);
+  }
   return {
     method: definition.method,
     url: definition.url,
@@ -91,14 +112,14 @@ export function defineRoute<
     ...(definition.logLevel ? { logLevel: definition.logLevel } : {}),
     async run(request, reply, authorize) {
       // Check access first, so a caller without it learns nothing from validation errors.
-      const user =
-        definition.access === 'public' ? null : await authorize(definition.access, request);
+      const authorized = access === 'public' ? null : await authorize(access, request);
       let status = definition.status ?? 200;
       const result = await definition.handler({
         params: parseInput(definition.params, request.params, 'params'),
         query: parseInput(definition.query, request.query, 'query'),
         body: parseInput(definition.body, request.body, 'body'),
-        user: user as RouteContext<Params, Query, Body, A>['user'],
+        user: (authorized?.user ?? null) as RouteContext<Params, Query, Body, A>['user'],
+        space: (authorized?.space ?? null) as RouteContext<Params, Query, Body, A>['space'],
         setStatus: (code) => {
           status = code;
         },
