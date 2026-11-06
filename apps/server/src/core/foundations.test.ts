@@ -20,14 +20,14 @@ function testFeature(error: unknown = new Error('real cause for the logs')) {
     routes: () => [
       defineRoute({
         method: 'GET',
-        url: '/api/thing',
+        url: '/api/v1/thing',
         access: 'public',
         response,
         handler: () => ({ ok: true }),
       }),
       defineRoute({
         method: 'GET',
-        url: '/api/boom',
+        url: '/api/v1/boom',
         access: 'public',
         response,
         handler: () => {
@@ -37,7 +37,7 @@ function testFeature(error: unknown = new Error('real cause for the logs')) {
       // Only needs to parse the body. It must never send input back.
       defineRoute({
         method: 'POST',
-        url: '/api/echo',
+        url: '/api/v1/echo',
         access: 'public',
         response,
         handler: () => ({ ok: true }),
@@ -195,7 +195,7 @@ describe('error format', () => {
   }
 
   it('answers unknown routes with the standard format', async () => {
-    const response = await buildApp({ database }).inject({ url: '/api/nope' });
+    const response = await buildApp({ database }).inject({ url: '/api/v1/nope' });
     expect(response.statusCode).toBe(404);
     const { error } = apiErrorResponse.parse(response.json());
     expect(error.code).toBe('not_found');
@@ -205,7 +205,7 @@ describe('error format', () => {
   it('passes on an expected error, with its fields', async () => {
     const fields = [{ path: 'amount', message: 'Enter an amount.' }];
     const app = appThatThrows(new AppError(422, 'validation_failed', 'Check the form.', fields));
-    const response = await app.inject({ url: '/api/boom' });
+    const response = await app.inject({ url: '/api/v1/boom' });
     expect(response.statusCode).toBe(422);
     expect(apiErrorResponse.parse(response.json()).error).toMatchObject({
       code: 'validation_failed',
@@ -216,7 +216,7 @@ describe('error format', () => {
 
   it('hides the details of an unexpected error', async () => {
     const app = appThatThrows(new Error('connection to db:5432 failed for secret-user'));
-    const response = await app.inject({ url: '/api/boom' });
+    const response = await app.inject({ url: '/api/v1/boom' });
     expect(response.statusCode).toBe(500);
     expect(response.body).not.toContain('secret-user');
     expect(apiErrorResponse.parse(response.json()).error.code).toBe('internal_error');
@@ -225,7 +225,7 @@ describe('error format', () => {
   it('does not repeat malformed input', async () => {
     const response = await appThatThrows(null).inject({
       method: 'POST',
-      url: '/api/echo',
+      url: '/api/v1/echo',
       headers: { 'content-type': 'application/json' },
       payload: '{"oops": secret-input',
     });
@@ -237,7 +237,7 @@ describe('error format', () => {
   it('rejects oversized requests', async () => {
     const response = await appThatThrows(null).inject({
       method: 'POST',
-      url: '/api/echo',
+      url: '/api/v1/echo',
       headers: { 'content-type': 'application/json' },
       payload: JSON.stringify({ data: 'x'.repeat(300 * 1024) }),
     });
@@ -248,7 +248,7 @@ describe('error format', () => {
   it('rejects unsupported content types', async () => {
     const response = await appThatThrows(null).inject({
       method: 'POST',
-      url: '/api/echo',
+      url: '/api/v1/echo',
       headers: { 'content-type': 'application/xml' },
       payload: '<a/>',
     });
@@ -276,7 +276,7 @@ describe('logging', () => {
 
   it('writes structured lines with the request ID', async () => {
     const { app, output } = capture();
-    await app.inject({ url: '/api/thing', headers: { 'x-request-id': 'trace-me-please' } });
+    await app.inject({ url: '/api/v1/thing', headers: { 'x-request-id': 'trace-me-please' } });
     const first = JSON.parse(output().split('\n')[0] ?? '') as { reqId: string };
     expect(first.reqId).toBe('trace-me-please');
   });
@@ -284,7 +284,7 @@ describe('logging', () => {
   it('leaves out query strings and headers', async () => {
     const { app, output } = capture();
     await app.inject({
-      url: '/api/thing?token=query-secret',
+      url: '/api/v1/thing?token=query-secret',
       headers: { authorization: 'Bearer header-secret', cookie: 'session=cookie-secret' },
     });
     expect(output()).toContain('/thing');
@@ -304,7 +304,7 @@ describe('logging', () => {
 
   it('records the details of an unexpected error', async () => {
     const { app, output } = capture();
-    await app.inject({ url: '/api/boom' });
+    await app.inject({ url: '/api/v1/boom' });
     expect(output()).toContain('real cause for the logs');
   });
 

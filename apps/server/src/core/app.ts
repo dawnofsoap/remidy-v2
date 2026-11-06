@@ -73,7 +73,7 @@ function coreFeature(database: AppOptions['database'], enabledFeatures: string[]
       }),
       defineRoute({
         method: 'GET',
-        url: '/api/features',
+        url: '/api/v1/features',
         access: 'public',
         response: enabledFeaturesResponse,
         handler: () => ({ enabled: enabledFeatures }),

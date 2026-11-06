@@ -16,7 +16,7 @@ export function signInOptionsFeature({
     routes: () => [
       defineRoute({
         method: 'GET',
-        url: '/api/sign-in-options',
+        url: '/api/v1/sign-in-options',
         access: 'public',
         response: signInOptionsResponse,
         handler: async () => ({

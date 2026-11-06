@@ -14,7 +14,7 @@ const FeaturesContext = createContext<WebFeature[]>([]);
 export const FeaturesProvider = FeaturesContext.Provider;
 
 async function fetchEnabledFeatures({ signal }: { signal: AbortSignal }): Promise<string[]> {
-  const response = await fetch('/api/features', { signal });
+  const response = await fetch('/api/v1/features', { signal });
   return enabledFeaturesResponse.parse(await response.json()).enabled;
 }
 

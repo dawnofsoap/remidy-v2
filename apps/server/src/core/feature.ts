@@ -56,7 +56,9 @@ interface RouteContext<Params, Query, Body, A extends Access> {
 
 interface RouteDefinition<Params, Query, Body, Response, A extends Access> {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-  url: `/api/${string}`;
+  /** Under the API version. The health check is the only exception, because it describes the
+   * server rather than the API, and Docker and proxies shouldn't depend on the version. */
+  url: `/api/v1/${string}` | '/api/health';
   access: A;
   params?: z.ZodType<Params>;
   query?: z.ZodType<Query>;

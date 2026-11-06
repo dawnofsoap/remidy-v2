@@ -24,7 +24,7 @@ const authorized = {
 describe('adding a route', () => {
   it('refuses to start with a route added any other way', () => {
     const app = buildApp({ database });
-    expect(() => app.get('/api/sneaky', () => ({ ok: true }))).toThrow(/defineRoute/);
+    expect(() => app.get('/api/v1/sneaky', () => ({ ok: true }))).toThrow(/defineRoute/);
   });
 
   it('refuses duplicate feature names', () => {
@@ -38,7 +38,7 @@ describe('space routes', () => {
     expect(() =>
       defineRoute({
         method: 'GET',
-        url: '/api/bills',
+        url: '/api/v1/bills',
         access: { space: 'member' },
         response: ok,
         handler: () => ({ ok: true }),
@@ -49,7 +49,7 @@ describe('space routes', () => {
   it('give the handler the checked space', async () => {
     const route = defineRoute({
       method: 'GET',
-      url: '/api/spaces/:spaceId/thing',
+      url: '/api/v1/spaces/:spaceId/thing',
       access: { space: 'manager' },
       response: z.object({ id: z.string(), role: z.string() }),
       handler: ({ space }) => ({ id: space.id, role: space.role }),
@@ -57,7 +57,7 @@ describe('space routes', () => {
     const authorize = vi.fn<Authorize>(() =>
       Promise.resolve({ ...authorized, space: { id: 's1', role: 'owner' } }),
     );
-    const response = await appWith([route], authorize).inject({ url: '/api/spaces/s1/thing' });
+    const response = await appWith([route], authorize).inject({ url: '/api/v1/spaces/s1/thing' });
     expect(response.json()).toEqual({ id: 's1', role: 'owner' });
     expect(authorize).toHaveBeenCalledWith({ space: 'manager' }, expect.anything());
   });
@@ -67,7 +67,7 @@ describe('access', () => {
   const secret = (handler = vi.fn(() => ({ ok: true }))) =>
     defineRoute({
       method: 'POST',
-      url: '/api/secret',
+      url: '/api/v1/secret',
       access: 'signed-in',
       body: z.object({ amount: z.number() }),
       response: ok,
@@ -78,7 +78,7 @@ describe('access', () => {
     const handler = vi.fn(() => ({ ok: true }));
     const response = await appWith([secret(handler)]).inject({
       method: 'POST',
-      url: '/api/secret',
+      url: '/api/v1/secret',
       payload: { amount: 1 },
     });
     expect(response.statusCode).toBe(401);
@@ -89,7 +89,7 @@ describe('access', () => {
   it('checks access before validating, so validation errors reveal nothing', async () => {
     const response = await appWith([secret()]).inject({
       method: 'POST',
-      url: '/api/secret',
+      url: '/api/v1/secret',
       payload: { amount: 'not a number' },
     });
     expect(response.statusCode).toBe(401);
@@ -99,7 +99,7 @@ describe('access', () => {
     const authorize = vi.fn<Authorize>(() => Promise.resolve(authorized));
     const response = await appWith([secret()], authorize).inject({
       method: 'POST',
-      url: '/api/secret',
+      url: '/api/v1/secret',
       payload: { amount: 1 },
     });
     expect(response.statusCode).toBe(200);
@@ -111,7 +111,7 @@ describe('access', () => {
       Promise.reject(new AppError(403, 'forbidden', 'You can’t do that.'));
     const response = await appWith([secret()], authorize).inject({
       method: 'POST',
-      url: '/api/secret',
+      url: '/api/v1/secret',
       payload: { amount: 1 },
     });
     expect(response.statusCode).toBe(403);
@@ -127,7 +127,7 @@ describe('access', () => {
 describe('validation', () => {
   const route = defineRoute({
     method: 'POST',
-    url: '/api/items/:id',
+    url: '/api/v1/items/:id',
     access: 'public',
     params: z.object({ id: z.coerce.number().int() }),
     query: z.object({ limit: z.coerce.number().max(10).default(5) }),
@@ -139,7 +139,7 @@ describe('validation', () => {
   it('gives the handler parsed and typed input', async () => {
     const response = await appWith([route]).inject({
       method: 'POST',
-      url: '/api/items/7?limit=3',
+      url: '/api/v1/items/7?limit=3',
       payload: { name: 'Water' },
     });
     expect(response.statusCode).toBe(200);
@@ -147,10 +147,10 @@ describe('validation', () => {
   });
 
   it.each([
-    ['params', '/api/items/abc', { name: 'Water' }, 'params.id'],
-    ['query', '/api/items/7?limit=99', { name: 'Water' }, 'query.limit'],
-    ['body', '/api/items/7', { name: '' }, 'body.name'],
-    ['a missing body', '/api/items/7', {}, 'body.name'],
+    ['params', '/api/v1/items/abc', { name: 'Water' }, 'params.id'],
+    ['query', '/api/v1/items/7?limit=99', { name: 'Water' }, 'query.limit'],
+    ['body', '/api/v1/items/7', { name: '' }, 'body.name'],
+    ['a missing body', '/api/v1/items/7', {}, 'body.name'],
   ])('rejects bad %s and names the field', async (_name, url, payload, path) => {
     const response = await appWith([route]).inject({ method: 'POST', url, payload });
     expect(response.statusCode).toBe(422);
@@ -162,7 +162,7 @@ describe('validation', () => {
   it('does not repeat rejected input', async () => {
     const response = await appWith([route]).inject({
       method: 'POST',
-      url: '/api/items/7',
+      url: '/api/v1/items/7',
       payload: { name: 12345678 },
     });
     expect(response.statusCode).toBe(422);
@@ -174,12 +174,12 @@ describe('responses', () => {
   it('removes fields the schema does not list', async () => {
     const route = defineRoute({
       method: 'GET',
-      url: '/api/user',
+      url: '/api/v1/user',
       access: 'public',
       response: z.object({ email: z.string() }),
       handler: () => ({ email: 'a@example.com', passwordHash: 'should-not-leak' }),
     });
-    const response = await appWith([route]).inject({ url: '/api/user' });
+    const response = await appWith([route]).inject({ url: '/api/v1/user' });
     expect(response.body).not.toContain('should-not-leak');
     expect(response.json()).toEqual({ email: 'a@example.com' });
   });
@@ -187,12 +187,12 @@ describe('responses', () => {
   it('treats a response that breaks its schema as a server error, and hides it', async () => {
     const route = defineRoute({
       method: 'GET',
-      url: '/api/bad',
+      url: '/api/v1/bad',
       access: 'public',
       response: z.object({ count: z.number() }),
       handler: () => ({ count: 'private-value' }) as unknown as { count: number },
     });
-    const response = await appWith([route]).inject({ url: '/api/bad' });
+    const response = await appWith([route]).inject({ url: '/api/v1/bad' });
     expect(response.statusCode).toBe(500);
     expect(response.body).not.toContain('private-value');
   });
@@ -200,7 +200,7 @@ describe('responses', () => {
   it('uses the declared status, and sends nothing for 204', async () => {
     const created = defineRoute({
       method: 'POST',
-      url: '/api/made',
+      url: '/api/v1/made',
       access: 'public',
       status: 201,
       response: ok,
@@ -208,17 +208,31 @@ describe('responses', () => {
     });
     const removed = defineRoute({
       method: 'DELETE',
-      url: '/api/made',
+      url: '/api/v1/made',
       access: 'public',
       status: 204,
       response: z.undefined(),
       handler: () => undefined,
     });
     const app = appWith([created, removed]);
-    expect((await app.inject({ method: 'POST', url: '/api/made' })).statusCode).toBe(201);
-    const response = await app.inject({ method: 'DELETE', url: '/api/made' });
+    expect((await app.inject({ method: 'POST', url: '/api/v1/made' })).statusCode).toBe(201);
+    const response = await app.inject({ method: 'DELETE', url: '/api/v1/made' });
     expect(response.statusCode).toBe(204);
     expect(response.body).toBe('');
+  });
+});
+
+describe('route URLs', () => {
+  it('must be under the API version, which typecheck enforces', () => {
+    const route = defineRoute({
+      method: 'GET',
+      // @ts-expect-error A URL outside the API version doesn't compile.
+      url: '/api/unversioned',
+      access: 'public',
+      response: ok,
+      handler: () => ({ ok: true }),
+    });
+    expect(route.url).toBe('/api/unversioned');
   });
 });
 
@@ -233,7 +247,7 @@ describe('the general rate limit', () => {
           routes: () => [
             defineRoute({
               method: 'GET',
-              url: '/api/thing',
+              url: '/api/v1/thing',
               access: 'public',
               response: ok,
               handler: () => ({ ok: true }),
@@ -246,7 +260,7 @@ describe('the general rate limit', () => {
     app: ReturnType<typeof limited>,
     headers: Record<string, string> = {},
     ip = '10.0.0.5',
-  ) => app.inject({ url: '/api/thing', remoteAddress: ip, headers });
+  ) => app.inject({ url: '/api/v1/thing', remoteAddress: ip, headers });
 
   it('refuses requests over the limit, in the standard error format', async () => {
     const app = limited(2);
@@ -283,7 +297,7 @@ describe('the general rate limit', () => {
 describe('client addresses', () => {
   const ipRoute = defineRoute({
     method: 'GET',
-    url: '/api/ip',
+    url: '/api/v1/ip',
     access: 'public',
     response: z.object({ ip: z.string() }),
     handler: ({ request }) => ({ ip: request.ip }),
@@ -295,7 +309,7 @@ describe('client addresses', () => {
       features: [defineFeature({ name: 'test', routes: () => [ipRoute] })],
     });
     const response = await app.inject({
-      url: '/api/ip',
+      url: '/api/v1/ip',
       remoteAddress,
       headers: { 'x-forwarded-for': '203.0.113.7, 198.51.100.9' },
     });
@@ -331,7 +345,7 @@ describe('feature flags', () => {
     routes: () => [
       defineRoute({
         method: 'GET',
-        url: '/api/beta',
+        url: '/api/v1/beta',
         access: 'public',
         response: ok,
         handler: () => ({ ok: true }),
@@ -341,14 +355,14 @@ describe('feature flags', () => {
 
   it('keeps a flagged feature off by default', async () => {
     const app = buildApp({ database, features: [flagged] });
-    expect((await app.inject({ url: '/api/beta' })).statusCode).toBe(404);
-    expect((await app.inject({ url: '/api/features' })).json()).toEqual({ enabled: [] });
+    expect((await app.inject({ url: '/api/v1/beta' })).statusCode).toBe(404);
+    expect((await app.inject({ url: '/api/v1/features' })).json()).toEqual({ enabled: [] });
   });
 
   it('turns it on when enabled, and reports that', async () => {
     const app = buildApp({ database, features: [flagged], enabledFeatures: ['beta'] });
-    expect((await app.inject({ url: '/api/beta' })).statusCode).toBe(200);
-    expect((await app.inject({ url: '/api/features' })).json()).toEqual({ enabled: ['beta'] });
+    expect((await app.inject({ url: '/api/v1/beta' })).statusCode).toBe(200);
+    expect((await app.inject({ url: '/api/v1/features' })).json()).toEqual({ enabled: ['beta'] });
   });
 
   it('refuses to start when the setting names an unknown feature', () => {

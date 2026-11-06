@@ -33,12 +33,12 @@ const signedIn = {
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', (route) => route.fulfill({ json: healthy }));
-  await page.route('**/api/features', (route) => route.fulfill({ json: { enabled: [] } }));
-  await page.route('**/api/sign-in-options', (route) =>
+  await page.route('**/api/v1/features', (route) => route.fulfill({ json: { enabled: [] } }));
+  await page.route('**/api/v1/sign-in-options', (route) =>
     route.fulfill({ json: { adminPasswordInConsole: false, passwordReset: true } }),
   );
-  await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: signedIn }));
-  await page.route('**/api/spaces', (route) =>
+  await page.route('**/api/v1/auth/get-session', (route) => route.fulfill({ json: signedIn }));
+  await page.route('**/api/v1/spaces', (route) =>
     route.fulfill({
       json: [
         {
@@ -51,7 +51,9 @@ test.beforeEach(async ({ page }) => {
       ],
     }),
   );
-  await page.route('**/api/auth/list-sessions', (route) => route.fulfill({ json: [{ id: 's1' }] }));
+  await page.route('**/api/v1/auth/list-sessions', (route) =>
+    route.fulfill({ json: [{ id: 's1' }] }),
+  );
 });
 
 for (const theme of ['light', 'dark'] as const) {
@@ -170,7 +172,7 @@ test.describe('appearance setting', () => {
 
 test.describe('signing in', () => {
   test.beforeEach(async ({ page }) => {
-    await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: null }));
+    await page.route('**/api/v1/auth/get-session', (route) => route.fulfill({ json: null }));
   });
 
   for (const theme of ['light', 'dark'] as const) {
@@ -195,7 +197,7 @@ test.describe('signing in', () => {
   test('a wrong password gets a message that reveals nothing, and no violations', async ({
     page,
   }) => {
-    await page.route('**/api/auth/sign-in/email', (route) =>
+    await page.route('**/api/v1/auth/sign-in/email', (route) =>
       route.fulfill({ status: 401, json: { code: 'INVALID_EMAIL_OR_PASSWORD', message: 'x' } }),
     );
     await page.goto('/');
@@ -207,7 +209,7 @@ test.describe('signing in', () => {
   });
 
   test('a locked account is told to wait', async ({ page }) => {
-    await page.route('**/api/auth/sign-in/email', (route) =>
+    await page.route('**/api/v1/auth/sign-in/email', (route) =>
       route.fulfill({
         status: 429,
         json: { error: { code: 'too_many_attempts', message: 'x', requestId: 'abcdefgh' } },
@@ -223,7 +225,7 @@ test.describe('signing in', () => {
 
 test.describe('background job status', () => {
   const asAdmin = (page: Page) =>
-    page.route('**/api/auth/get-session', (route) =>
+    page.route('**/api/v1/auth/get-session', (route) =>
       route.fulfill({
         json: { ...signedIn, user: { ...signedIn.user, isInstanceAdmin: true } },
       }),
@@ -231,7 +233,7 @@ test.describe('background job status', () => {
 
   test('is hidden from people who aren’t instance admins', async ({ page }) => {
     let asked = false;
-    await page.route('**/api/admin/jobs', (route) => {
+    await page.route('**/api/v1/admin/jobs', (route) => {
       asked = true;
       return route.abort();
     });
@@ -250,7 +252,7 @@ test.describe('background job status', () => {
       lastSucceededAt: state === 'waiting' ? null : '2026-01-05T20:30:00.000Z',
       lastFailedAt: failed,
     });
-    await page.route('**/api/admin/jobs', (route) =>
+    await page.route('**/api/v1/admin/jobs', (route) =>
       route.fulfill({
         json: [
           job('ok', 'A working job'),
@@ -273,7 +275,7 @@ test.describe('background job status', () => {
 
   test('says so when the status can’t be loaded', async ({ page }) => {
     await asAdmin(page);
-    await page.route('**/api/admin/jobs', (route) => route.abort());
+    await page.route('**/api/v1/admin/jobs', (route) => route.abort());
     await page.goto('/settings');
     // The app tries a few times before giving up.
     await expect(page.getByRole('alert')).toContainText('couldn’t be loaded', { timeout: 20_000 });
@@ -283,16 +285,16 @@ test.describe('background job status', () => {
 
 test.describe('first sign-in', () => {
   test('leaves the email empty once the admin has chosen a password', async ({ page }) => {
-    await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: null }));
+    await page.route('**/api/v1/auth/get-session', (route) => route.fulfill({ json: null }));
     await page.goto('/');
     await expect(page.getByLabel('Email')).toHaveValue('');
   });
 
   test('says where to find the admin password, with no violations', async ({ page }) => {
-    await page.route('**/api/sign-in-options', (route) =>
+    await page.route('**/api/v1/sign-in-options', (route) =>
       route.fulfill({ json: { adminPasswordInConsole: true, passwordReset: true } }),
     );
-    await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: null }));
+    await page.route('**/api/v1/auth/get-session', (route) => route.fulfill({ json: null }));
     await page.goto('/');
     await expect(page.getByText('printed in the server’s console')).toBeVisible();
     await expect(page.getByText('reset-admin-password')).toBeVisible();
@@ -305,7 +307,7 @@ test.describe('first sign-in', () => {
   });
 
   test('asks for a new password before anything else, with no violations', async ({ page }) => {
-    await page.route('**/api/auth/get-session', (route) =>
+    await page.route('**/api/v1/auth/get-session', (route) =>
       route.fulfill({
         json: { ...signedIn, user: { ...signedIn.user, mustChangePassword: true } },
       }),
@@ -322,7 +324,7 @@ test.describe('first sign-in', () => {
     await saveScreenshot(page, 'choose-password');
 
     let submitted = false;
-    await page.route('**/api/auth/change-password', (route) => {
+    await page.route('**/api/v1/auth/change-password', (route) => {
       submitted = true;
       return route.fulfill({ json: { token: null } });
     });
@@ -338,12 +340,12 @@ test.describe('first sign-in', () => {
   });
 
   test('shows a problem from the server beside the new password', async ({ page }) => {
-    await page.route('**/api/auth/get-session', (route) =>
+    await page.route('**/api/v1/auth/get-session', (route) =>
       route.fulfill({
         json: { ...signedIn, user: { ...signedIn.user, mustChangePassword: true } },
       }),
     );
-    await page.route('**/api/auth/change-password', (route) =>
+    await page.route('**/api/v1/auth/change-password', (route) =>
       route.fulfill({
         status: 422,
         json: {
@@ -370,12 +372,12 @@ test.describe('first sign-in', () => {
 
 test.describe('forgetting a password', () => {
   const noSession = (page: Page) =>
-    page.route('**/api/auth/get-session', (route) => route.fulfill({ json: null }));
+    page.route('**/api/v1/auth/get-session', (route) => route.fulfill({ json: null }));
 
   test('asks for an address, then gives an answer that reveals nothing', async ({ page }) => {
     await noSession(page);
     let asked: unknown = null;
-    await page.route('**/api/auth/request-password-reset', (route) => {
+    await page.route('**/api/v1/auth/request-password-reset', (route) => {
       asked = route.request().postDataJSON();
       return route.fulfill({ json: { status: true } });
     });
@@ -398,7 +400,7 @@ test.describe('forgetting a password', () => {
 
   test('isn’t offered when the server can’t send mail', async ({ page }) => {
     await noSession(page);
-    await page.route('**/api/sign-in-options', (route) =>
+    await page.route('**/api/v1/sign-in-options', (route) =>
       route.fulfill({ json: { adminPasswordInConsole: false, passwordReset: false } }),
     );
     await page.goto('/');
@@ -409,7 +411,7 @@ test.describe('forgetting a password', () => {
   test('a reset link needs a password that meets the requirements', async ({ page }) => {
     await noSession(page);
     let sent: unknown = null;
-    await page.route('**/api/auth/reset-password', (route) => {
+    await page.route('**/api/v1/auth/reset-password', (route) => {
       sent = route.request().postDataJSON();
       return route.fulfill({ json: { status: true } });
     });
@@ -433,7 +435,7 @@ test.describe('forgetting a password', () => {
 
   test('says so when a link has expired', async ({ page }) => {
     await noSession(page);
-    await page.route('**/api/auth/reset-password', (route) =>
+    await page.route('**/api/v1/auth/reset-password', (route) =>
       route.fulfill({ status: 400, json: { code: 'INVALID_TOKEN', message: 'Invalid token' } }),
     );
     await page.goto('/reset-password#token=old');
@@ -453,7 +455,7 @@ test.describe('forgetting a password', () => {
 });
 
 test('explains when the server cannot be reached at startup', async ({ page }) => {
-  await page.route('**/api/sign-in-options', (route) => route.abort());
+  await page.route('**/api/v1/sign-in-options', (route) => route.abort());
   await page.goto('/');
   await expect(page.getByRole('alert')).toContainText('can’t reach the server');
   await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();

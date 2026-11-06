@@ -38,7 +38,7 @@ test('the first start prints the admin password, which must then be replaced', a
   page,
   request,
 }) => {
-  const options = (await (await request.get('/api/sign-in-options')).json()) as {
+  const options = (await (await request.get('/api/v1/sign-in-options')).json()) as {
     adminPasswordInConsole: boolean;
   };
   test.skip(!options.adminPasswordInConsole && !process.env.CI, 'Needs a new database');
@@ -51,7 +51,7 @@ test('the first start prints the admin password, which must then be replaced', a
   await expect(appHeading(page, 'Choose a password')).toBeVisible();
 
   // Nothing else works yet, even when asked for directly.
-  const refused = await page.request.get('/api/spaces');
+  const refused = await page.request.get('/api/v1/spaces');
   expect([403, 404]).toContain(refused.status());
 
   await replacePassword(page, printed, CHOSEN_PASSWORD);

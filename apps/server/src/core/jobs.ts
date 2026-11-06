@@ -182,7 +182,7 @@ export function jobStatusFeature({ orm, jobs }: { orm: Orm; jobs: Job[] }): Feat
     routes: () => [
       defineRoute({
         method: 'GET',
-        url: '/api/admin/jobs',
+        url: '/api/v1/admin/jobs',
         access: 'instance-admin',
         response: jobStatusResponse satisfies z.ZodType<JobStatusResponse>,
         handler: () => readJobStatuses(orm, jobs),

@@ -50,18 +50,18 @@ async function get<T>(url: string, schema: z.ZodType<T>, signal?: AbortSignal): 
 }
 
 export const fetchSignInOptions = ({ signal }: { signal: AbortSignal }) =>
-  get('/api/sign-in-options', signInOptionsResponse, signal);
+  get('/api/v1/sign-in-options', signInOptionsResponse, signal);
 
 export const fetchSession = ({ signal }: { signal: AbortSignal }) =>
-  get('/api/auth/get-session', sessionResponse, signal);
+  get('/api/v1/auth/get-session', sessionResponse, signal);
 
 const spacesResponse = z.array(spaceResponse);
 
 export const fetchSpaces = ({ signal }: { signal: AbortSignal }) =>
-  get('/api/spaces', spacesResponse, signal);
+  get('/api/v1/spaces', spacesResponse, signal);
 
 export async function updateSpace(id: string, changes: { timeZone: string }): Promise<void> {
-  const response = await fetch(`/api/spaces/${id}`, {
+  const response = await fetch(`/api/v1/spaces/${id}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(changes),
@@ -70,14 +70,14 @@ export async function updateSpace(id: string, changes: { timeZone: string }): Pr
 }
 
 export const fetchJobStatuses = ({ signal }: { signal: AbortSignal }) =>
-  get('/api/admin/jobs', jobStatusResponse, signal);
+  get('/api/v1/admin/jobs', jobStatusResponse, signal);
 
 export const SESSION_QUERY_KEY = ['session'];
 export const SIGN_IN_OPTIONS_QUERY_KEY = ['sign-in-options'];
 
 export async function signIn(email: string, password: string): Promise<void> {
   try {
-    await post('/api/auth/sign-in/email', { email, password });
+    await post('/api/v1/auth/sign-in/email', { email, password });
   } catch (error) {
     if (error instanceof RequestFailure && (error.status === 401 || error.status === 400)) {
       // The same message either way, so this doesn't reveal which accounts exist.
@@ -92,12 +92,12 @@ export async function signIn(email: string, password: string): Promise<void> {
 
 /** The answer is the same whether or not the address has an account, so there's nothing to report. */
 export function requestPasswordReset(email: string) {
-  return post('/api/auth/request-password-reset', { email });
+  return post('/api/v1/auth/request-password-reset', { email });
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<void> {
   try {
-    await post('/api/auth/reset-password', { token, newPassword });
+    await post('/api/v1/auth/reset-password', { token, newPassword });
   } catch (error) {
     if (error instanceof RequestFailure && error.status === 400) {
       throw new RequestFailure(400, 'This link has expired or was already used.');
@@ -107,12 +107,12 @@ export async function resetPassword(token: string, newPassword: string): Promise
 }
 
 export function signOut() {
-  return post('/api/auth/sign-out', {});
+  return post('/api/v1/auth/sign-out', {});
 }
 
 export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
   try {
-    await post('/api/auth/change-password', {
+    await post('/api/v1/auth/change-password', {
       currentPassword,
       newPassword,
       revokeOtherSessions: true,
@@ -128,12 +128,12 @@ export async function changePassword(currentPassword: string, newPassword: strin
 const sessionsResponse = z.array(z.object({ id: z.string() }));
 
 export const fetchOtherSessionCount = async ({ signal }: { signal: AbortSignal }) => {
-  const sessions = await get('/api/auth/list-sessions', sessionsResponse, signal);
+  const sessions = await get('/api/v1/auth/list-sessions', sessionsResponse, signal);
   return Math.max(0, sessions.length - 1);
 };
 
 export function revokeOtherSessions() {
-  return post('/api/auth/revoke-other-sessions', {});
+  return post('/api/v1/auth/revoke-other-sessions', {});
 }
 
 /**
@@ -142,7 +142,7 @@ export function revokeOtherSessions() {
  */
 export async function adoptBrowserTimeZone(): Promise<void> {
   try {
-    const spaces = await get('/api/spaces', spacesResponse);
+    const spaces = await get('/api/v1/spaces', spacesResponse);
     const personal = spaces.find((space) => space.kind === 'personal');
     if (personal?.timeZone === 'UTC') {
       const { timeZone } = Intl.DateTimeFormat().resolvedOptions();

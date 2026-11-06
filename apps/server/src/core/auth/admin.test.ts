@@ -16,9 +16,10 @@ const { post, signIn, whoami, signedInCookie, createAccount } = h;
 
 describe('the admin account', () => {
   const NEW = 'a passphrase of my own';
-  const options = async () => (await h.app.inject({ url: '/api/sign-in-options' })).json<unknown>();
+  const options = async () =>
+    (await h.app.inject({ url: '/api/v1/sign-in-options' })).json<unknown>();
   const choosePassword = (cookie: string, currentPassword: string, newPassword = NEW) =>
-    post('/api/auth/change-password', { currentPassword, newPassword }, { cookie });
+    post('/api/v1/auth/change-password', { currentPassword, newPassword }, { cookie });
 
   /** Signs in as admin with a generated password, and returns the session cookie. */
   async function asAdmin(password: string): Promise<string> {
@@ -67,7 +68,7 @@ describe('the admin account', () => {
     const refused = await whoami(cookie);
     expect(refused.statusCode).toBe(403);
     expect(apiErrorResponse.parse(refused.json()).error.code).toBe('password_change_required');
-    const current = await h.app.inject({ url: '/api/auth/get-session', headers: { cookie } });
+    const current = await h.app.inject({ url: '/api/v1/auth/get-session', headers: { cookie } });
     expect(current.json()).toMatchObject({ user: { mustChangePassword: true } });
 
     expect((await choosePassword(cookie, password)).statusCode).toBe(200);

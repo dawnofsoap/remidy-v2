@@ -33,7 +33,7 @@ describe('signing in', () => {
     expect(response.body).not.toContain(PERSON.password);
     expect(response.body.toLowerCase()).not.toContain('"password"');
     const cookie = cookieFrom(response);
-    const current = await h.app.inject({ url: '/api/auth/get-session', headers: { cookie } });
+    const current = await h.app.inject({ url: '/api/v1/auth/get-session', headers: { cookie } });
     expect(current.body.toLowerCase()).not.toContain('"password"');
   });
 
@@ -72,7 +72,7 @@ describe('sessions', () => {
 
   it('stops working after signing out', async () => {
     const cookie = await signedInCookie();
-    const out = await post('/api/auth/sign-out', {}, { cookie });
+    const out = await post('/api/v1/auth/sign-out', {}, { cookie });
     expect(out.statusCode).toBe(200);
     expect((await whoami(cookie)).statusCode).toBe(401);
   });
@@ -80,9 +80,9 @@ describe('sessions', () => {
   it('stops working the moment it is revoked', async () => {
     const phone = await signedInCookie();
     const laptop = await signedInCookie();
-    expect((await post('/api/auth/revoke-other-sessions', {}, { cookie: laptop })).statusCode).toBe(
-      200,
-    );
+    expect(
+      (await post('/api/v1/auth/revoke-other-sessions', {}, { cookie: laptop })).statusCode,
+    ).toBe(200);
     expect((await whoami(phone)).statusCode).toBe(401);
     expect((await whoami(laptop)).statusCode).toBe(200);
   });
@@ -95,7 +95,7 @@ describe('sessions', () => {
 
   it('lists sessions without exposing their tokens', async () => {
     const cookie = await signedInCookie();
-    const response = await h.app.inject({ url: '/api/auth/list-sessions', headers: { cookie } });
+    const response = await h.app.inject({ url: '/api/v1/auth/list-sessions', headers: { cookie } });
     expect(response.statusCode).toBe(200);
     expect(response.json<unknown[]>()).toHaveLength(1);
   });
@@ -107,7 +107,7 @@ describe('changing a password', () => {
   });
   const change = (cookie: string, currentPassword: string, newPassword: string) =>
     post(
-      '/api/auth/change-password',
+      '/api/v1/auth/change-password',
       { currentPassword, newPassword, revokeOtherSessions: true },
       { cookie },
     );
@@ -123,7 +123,7 @@ describe('changing a password', () => {
   });
 
   it('needs to be signed in', async () => {
-    const response = await post('/api/auth/change-password', {
+    const response = await post('/api/v1/auth/change-password', {
       currentPassword: PERSON.password,
       newPassword: 'a brand new passphrase',
     });
@@ -253,7 +253,7 @@ describe('rate limiting', () => {
   });
   const attempt = (i: number, headers: Record<string, string> = {}) =>
     post(
-      '/api/auth/sign-in/email',
+      '/api/v1/auth/sign-in/email',
       { email: `person${String(i)}@example.com`, password: 'wrong password here' },
       headers,
     );
@@ -296,7 +296,7 @@ describe('the sign-in routes’ own rate limit', () => {
     const hit = () =>
       limited.inject({
         method: 'POST',
-        url: '/api/auth/sign-in/email',
+        url: '/api/v1/auth/sign-in/email',
         remoteAddress: '10.2.0.1',
         headers: ORIGIN,
         payload: { email: 'nobody@example.com', password: 'wrong password here' },
@@ -323,10 +323,10 @@ describe('the sign-in routes’ own rate limit', () => {
       authRequestsPerMinute: 2,
     });
     const from = { remoteAddress: '10.2.0.2' };
-    const session = () => limited.inject({ url: '/api/auth/get-session', ...from });
+    const session = () => limited.inject({ url: '/api/v1/auth/get-session', ...from });
 
-    expect((await limited.inject({ url: '/api/features', ...from })).statusCode).toBe(200);
-    expect((await limited.inject({ url: '/api/features', ...from })).statusCode).toBe(429);
+    expect((await limited.inject({ url: '/api/v1/features', ...from })).statusCode).toBe(200);
+    expect((await limited.inject({ url: '/api/v1/features', ...from })).statusCode).toBe(429);
 
     expect((await session()).statusCode).toBe(200);
     expect((await session()).statusCode).toBe(200);
@@ -341,15 +341,15 @@ describe('what is reachable', () => {
   });
 
   it.each([
-    ['POST', '/api/auth/sign-up/email'],
-    ['POST', '/api/auth/update-user'],
-    ['POST', '/api/auth/delete-user'],
-    ['POST', '/api/auth/change-email'],
-    ['GET', '/api/auth/ok'],
-    ['GET', '/api/auth/error'],
-    ['GET', '/api/auth/sign-in/email'],
-    ['GET', '/api/auth/constructor'],
-    ['GET', '/api/auth/__proto__'],
+    ['POST', '/api/v1/auth/sign-up/email'],
+    ['POST', '/api/v1/auth/update-user'],
+    ['POST', '/api/v1/auth/delete-user'],
+    ['POST', '/api/v1/auth/change-email'],
+    ['GET', '/api/v1/auth/ok'],
+    ['GET', '/api/v1/auth/error'],
+    ['GET', '/api/v1/auth/sign-in/email'],
+    ['GET', '/api/v1/auth/constructor'],
+    ['GET', '/api/v1/auth/__proto__'],
   ] as const)('%s %s does not exist', async (method, url) => {
     const cookie = await signedInCookie();
     const response = await h.app.inject({
@@ -362,7 +362,7 @@ describe('what is reachable', () => {
   });
 
   it('cannot create an account through public sign-up', async () => {
-    const response = await post('/api/auth/sign-up/email', {
+    const response = await post('/api/v1/auth/sign-up/email', {
       name: 'Mallory',
       email: 'mallory@example.com',
       password: 'a long enough password',
@@ -380,7 +380,7 @@ describe('requests from other sites', () => {
   it('refuses a change from another origin, with a valid cookie', async () => {
     const cookie = await signedInCookie();
     const response = await post(
-      '/api/change-something',
+      '/api/v1/change-something',
       {},
       { cookie, origin: 'https://evil.test' },
     );
@@ -392,7 +392,7 @@ describe('requests from other sites', () => {
     const cookie = await signedInCookie();
     const response = await h.app.inject({
       method: 'POST',
-      url: '/api/change-something',
+      url: '/api/v1/change-something',
       payload: {},
       headers: { cookie },
     });
@@ -401,12 +401,12 @@ describe('requests from other sites', () => {
 
   it('allows a change from this site', async () => {
     const cookie = await signedInCookie();
-    expect((await post('/api/change-something', {}, { cookie })).statusCode).toBe(200);
+    expect((await post('/api/v1/change-something', {}, { cookie })).statusCode).toBe(200);
   });
 
   it('refuses sign-in from another origin', async () => {
     const evil = { origin: 'https://evil.test' };
     const body = { email: PERSON.email, password: PERSON.password };
-    expect((await post('/api/auth/sign-in/email', body, evil)).statusCode).toBe(403);
+    expect((await post('/api/v1/auth/sign-in/email', body, evil)).statusCode).toBe(403);
   });
 });
