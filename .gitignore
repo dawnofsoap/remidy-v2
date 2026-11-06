@@ -1,0 +1,25 @@
+# Private working notes. Includes the v1 security audit; never publish.
+notes/
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Database dumps
+*.sql.gz
+*.dump
+backups/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
