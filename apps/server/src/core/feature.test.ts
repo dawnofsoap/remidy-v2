@@ -16,7 +16,10 @@ function appWith(routes: ReturnType<typeof defineRoute>[], authorize?: Authorize
 }
 
 const ok = z.object({ ok: z.boolean() });
-const principal = { userId: 'u1', email: 'a@example.com', name: 'A', isInstanceAdmin: false };
+const authorized = {
+  user: { userId: 'u1', email: 'a@example.com', name: 'A', isInstanceAdmin: false },
+  space: null,
+};
 
 describe('adding a route', () => {
   it('refuses to start with a route added any other way', () => {
@@ -27,6 +30,36 @@ describe('adding a route', () => {
   it('refuses duplicate feature names', () => {
     const twin: Feature = defineFeature({ name: 'twin', routes: () => [] });
     expect(() => buildApp({ database, features: [twin, twin] })).toThrow(/twin/);
+  });
+});
+
+describe('space routes', () => {
+  it('cannot be defined without a space in the URL', () => {
+    expect(() =>
+      defineRoute({
+        method: 'GET',
+        url: '/api/bills',
+        access: { space: 'member' },
+        response: ok,
+        handler: () => ({ ok: true }),
+      }),
+    ).toThrow(/:spaceId/);
+  });
+
+  it('give the handler the checked space', async () => {
+    const route = defineRoute({
+      method: 'GET',
+      url: '/api/spaces/:spaceId/thing',
+      access: { space: 'manager' },
+      response: z.object({ id: z.string(), role: z.string() }),
+      handler: ({ space }) => ({ id: space.id, role: space.role }),
+    });
+    const authorize = vi.fn<Authorize>(() =>
+      Promise.resolve({ ...authorized, space: { id: 's1', role: 'owner' } }),
+    );
+    const response = await appWith([route], authorize).inject({ url: '/api/spaces/s1/thing' });
+    expect(response.json()).toEqual({ id: 's1', role: 'owner' });
+    expect(authorize).toHaveBeenCalledWith({ space: 'manager' }, expect.anything());
   });
 });
 
@@ -63,7 +96,7 @@ describe('access', () => {
   });
 
   it('runs the handler when access is granted', async () => {
-    const authorize = vi.fn<Authorize>(() => Promise.resolve(principal));
+    const authorize = vi.fn<Authorize>(() => Promise.resolve(authorized));
     const response = await appWith([secret()], authorize).inject({
       method: 'POST',
       url: '/api/secret',
@@ -85,7 +118,7 @@ describe('access', () => {
   });
 
   it('never asks about public routes', async () => {
-    const authorize = vi.fn<Authorize>(() => Promise.resolve(principal));
+    const authorize = vi.fn<Authorize>(() => Promise.resolve(authorized));
     await appWith([], authorize).inject({ url: '/api/health' });
     expect(authorize).not.toHaveBeenCalled();
   });

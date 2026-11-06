@@ -3,11 +3,15 @@ import {
   bigint,
   boolean,
   integer,
+  pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
+  uuid,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -87,3 +91,34 @@ export const loginThrottle = pgTable('login_throttle', {
   windowStartedAt: timestamp('window_started_at', { withTimezone: true }).notNull().defaultNow(),
   lockedUntil: timestamp('locked_until', { withTimezone: true }),
 });
+
+export const spaceKind = pgEnum('space_kind', ['personal', 'shared']);
+export const spaceRole = pgEnum('space_role', ['member', 'manager', 'owner']);
+
+/** Everything a person tracks belongs to a space: their personal one, or a shared household. */
+export const space = pgTable('space', {
+  id: uuid('id')
+    .primaryKey()
+    .default(sql`uuidv7()`),
+  name: text('name').notNull(),
+  kind: spaceKind('kind').notNull(),
+  /** Decides what "today" means for this space's due dates. */
+  timeZone: text('time_zone').notNull().default('UTC'),
+  ...timestamps,
+});
+
+/** The only record of who belongs to a space, and of their role in it. */
+export const membership = pgTable(
+  'membership',
+  {
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => space.id, { onDelete: 'cascade' }),
+    role: spaceRole('role').notNull(),
+    createdAt: timestamps.createdAt,
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.spaceId] })],
+);

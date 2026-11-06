@@ -30,6 +30,19 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/features', (route) => route.fulfill({ json: { enabled: [] } }));
   await page.route('**/api/setup', (route) => route.fulfill({ json: { needed: false } }));
   await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: signedIn }));
+  await page.route('**/api/spaces', (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: 'sp1',
+          name: 'Personal',
+          kind: 'personal',
+          timeZone: 'America/Chicago',
+          role: 'owner',
+        },
+      ],
+    }),
+  );
   await page.route('**/api/auth/list-sessions', (route) => route.fulfill({ json: [{ id: 's1' }] }));
 });
 

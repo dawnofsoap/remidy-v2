@@ -1,10 +1,11 @@
 import { createSetupRequest, setupStatusResponse } from '@remidy/contracts';
-import { setupClaim, type Orm } from '@remidy/db';
+import { setupClaim, user, type Orm } from '@remidy/db';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { AppError } from '../errors.ts';
 import { defineFeature, defineRoute, type Feature } from '../feature.ts';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, type Auth } from './index.ts';
+import { setUserSpacesTimeZone } from '../spaces.ts';
 import { normalizeEmail } from './throttle.ts';
 
 const CLAIM_ID = 1;
@@ -59,8 +60,10 @@ export function setupFeature({ auth, orm }: { auth: Auth; orm: Orm }): Feature {
               accountId: created.id,
               password: await context.password.hash(body.password),
             });
+            if (body.timeZone) await setUserSpacesTimeZone(orm, created.id, body.timeZone);
           } catch (error) {
             // Let setup be tried again rather than leaving the instance with no way in.
+            await orm.delete(user).where(eq(user.email, normalizeEmail(body.email)));
             await orm.delete(setupClaim).where(eq(setupClaim.id, CLAIM_ID));
             throw error;
           }

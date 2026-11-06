@@ -86,6 +86,7 @@ export const payments = defineFeature({
 });
 ```
 
+- **Space routes say the role they need**, such as `access: { space: 'manager' }`, with `:spaceId` in the URL. The handler gets the checked space as `space`, and every query must be scoped to `space.id`. Someone who isn't a member gets "not found", so they can't tell the space exists.
 - **Access is checked first**, before input is validated, so a caller without access learns nothing from error messages. Anything that isn't public is refused until the access check allows it.
 - **Responses are filtered.** A field missing from the response schema never reaches the client, so adding a column can't leak it.
 - **A public route is a deliberate choice.** A new one fails a test until it's added to the list in `permissions.test.ts`.
@@ -121,7 +122,7 @@ features -> core -> packages (domain, contracts, db)
 | Dependency directions above | dependency-cruiser, failing CI |
 | SQL only in `repo.ts` and `packages/db` | Lint rule |
 | Request and response shapes validated | `defineRoute` requires a response schema and validates what it's given; the server refuses to start with a route added any other way; server features can't import Fastify |
-| Permissions always checked | Every route must declare its access, and non-public routes are refused by default. A test walks every route: public ones must be on a known list, and the rest must refuse anonymous callers. Space and role checks arrive with spaces |
+| Permissions always checked | Every route must declare its access, and non-public routes are refused by default. A test walks every real route against a real database: public ones must be on a known list, and the rest must refuse anonymous callers, non-members and members with too low a role |
 | Dates and money go through `domain` | Lint bans `new Date()` and `parseFloat` in feature code, with named exceptions |
 | Modals, forms and buttons come from `ui/` | Lint bans the raw patterns outside `ui/` |
 | Files stay small | Lint `max-lines`: fail above 500 lines |
@@ -172,5 +173,5 @@ asset before bringing it over, because this repo is public; bank and card artwor
 The table above is the target. Some rules need code that doesn't exist yet.
 
 - **Active:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning, design token lint and contrast checks, axe and keyboard checks in a real browser, migration checks, route schemas and the anonymous access test, GitHub blocking merges on high-severity CodeQL alerts.
-- **Arrive in milestone 1:** space and role checks in the permission test, domain coverage threshold, generated versions and changelog.
+- **Arrive in milestone 1:** domain coverage threshold, generated versions and changelog.
 - **Arrive in milestone 4:** the history invariance test.

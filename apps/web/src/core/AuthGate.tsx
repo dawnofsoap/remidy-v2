@@ -128,7 +128,8 @@ function SetupPage() {
   function submit(event: SyntheticEvent) {
     event.preventDefault();
     void run(async () => {
-      await completeSetup({ name, email, password });
+      const { timeZone } = Intl.DateTimeFormat().resolvedOptions();
+      await completeSetup({ name, email, password, timeZone });
       await signIn(email, password);
       await queryClient.invalidateQueries();
     });

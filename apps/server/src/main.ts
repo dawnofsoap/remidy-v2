@@ -30,7 +30,7 @@ const app = buildApp({
   logger: loggerOptions(config.LOG_LEVEL),
   features: [setupFeature({ auth, orm: database.orm }), ...features],
   enabledFeatures: config.ENABLED_FEATURES,
-  authorize: createAuthorize(auth),
+  authorize: createAuthorize(auth, database.orm),
   auth: { auth, orm: database.orm },
   publicUrl: config.PUBLIC_URL,
   trustProxy: config.TRUST_PROXY,

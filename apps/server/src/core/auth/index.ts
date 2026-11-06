@@ -3,7 +3,8 @@ import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { AppError } from '../errors.ts';
-import type { Authorize, Principal, Route } from '../feature.ts';
+import type { Authorize, Authorized, Route } from '../feature.ts';
+import { createPersonalSpace, findMembership, roleAtLeast } from '../spaces.ts';
 import { clearFailedSignIns, isLockedOut, recordFailedSignIn } from './throttle.ts';
 
 /** A header only this server sets, replacing anything a client sends, so limits can't be dodged. */
@@ -53,6 +54,16 @@ export function createAuth({ orm, secret, publicUrl }: AuthOptions) {
       disableSignUp: true,
       minPasswordLength: MIN_PASSWORD_LENGTH,
       maxPasswordLength: MAX_PASSWORD_LENGTH,
+    },
+    databaseHooks: {
+      user: {
+        create: {
+          // Everyone has a personal space from the moment their account exists.
+          after: async (created) => {
+            await createPersonalSpace(orm, created.id);
+          },
+        },
+      },
     },
     session: {
       expiresIn: 60 * 60 * 24 * 30,
@@ -161,16 +172,35 @@ export function registerAuthRoutes(
   });
 }
 
-/** Decides who may call a route, using the session cookie. */
-export function createAuthorize(auth: Auth): Authorize {
-  return async (_access, request): Promise<Principal> => {
+/** Decides who may call a route, using the session cookie and the caller's memberships. */
+export function createAuthorize(auth: Auth, orm: Orm): Authorize {
+  return async (access, request): Promise<Authorized> => {
     const session = await auth.api.getSession({ headers: toFetchHeaders(request) });
     if (!session) throw new AppError(401, 'not_signed_in', 'Sign in to continue.');
-    return {
+    const user = {
       userId: session.user.id,
       email: session.user.email,
       name: session.user.name,
       isInstanceAdmin: session.user.isInstanceAdmin === true,
     };
+
+    if (access === 'signed-in') return { user, space: null };
+    if (access === 'instance-admin') {
+      if (!user.isInstanceAdmin)
+        throw new AppError(403, 'forbidden', 'You don’t have access to that.');
+      return { user, space: null };
+    }
+
+    const { spaceId } = request.params as { spaceId?: unknown };
+    const role =
+      typeof spaceId === 'string' ? await findMembership(orm, user.userId, spaceId) : null;
+    // Not a member gets the same answer as no such space, so this reveals nothing about others.
+    if (!role || typeof spaceId !== 'string') {
+      throw new AppError(404, 'not_found', 'That wasn’t found.');
+    }
+    if (!roleAtLeast(role, access.space)) {
+      throw new AppError(403, 'forbidden', 'Your role in this space doesn’t allow that.');
+    }
+    return { user, space: { id: spaceId, role } };
   };
 }

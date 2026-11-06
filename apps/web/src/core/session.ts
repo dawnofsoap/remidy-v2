@@ -1,4 +1,9 @@
-import { apiErrorResponse, sessionResponse, setupStatusResponse } from '@remidy/contracts';
+import {
+  apiErrorResponse,
+  sessionResponse,
+  setupStatusResponse,
+  spaceResponse,
+} from '@remidy/contracts';
 import { z } from 'zod';
 
 /** A failed request, with a message that's safe to show and any problems with individual fields. */
@@ -49,10 +54,29 @@ export const fetchSetupStatus = ({ signal }: { signal: AbortSignal }) =>
 export const fetchSession = ({ signal }: { signal: AbortSignal }) =>
   get('/api/auth/get-session', sessionResponse, signal);
 
+const spacesResponse = z.array(spaceResponse);
+
+export const fetchSpaces = ({ signal }: { signal: AbortSignal }) =>
+  get('/api/spaces', spacesResponse, signal);
+
+export async function updateSpace(id: string, changes: { timeZone: string }): Promise<void> {
+  const response = await fetch(`/api/spaces/${id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(changes),
+  });
+  if (!response.ok) throw await failureFrom(response, GENERIC_FAILURE);
+}
+
 export const SESSION_QUERY_KEY = ['session'];
 export const SETUP_QUERY_KEY = ['setup'];
 
-export function completeSetup(body: { name: string; email: string; password: string }) {
+export function completeSetup(body: {
+  name: string;
+  email: string;
+  password: string;
+  timeZone: string;
+}) {
   return post('/api/setup', body);
 }
 

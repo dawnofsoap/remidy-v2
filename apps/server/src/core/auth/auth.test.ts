@@ -80,7 +80,7 @@ const whoami = (cookie?: string) =>
 
 async function resetToFirstRun() {
   await test.database.orm.execute(
-    sql`truncate "user", session, account, verification, rate_limit, setup_claim, login_throttle cascade`,
+    sql`truncate "user", session, account, verification, rate_limit, setup_claim, login_throttle, space, membership cascade`,
   );
 }
 
@@ -96,7 +96,7 @@ beforeAll(async () => {
   app = buildApp({
     database: test.database,
     features: [setupFeature({ auth, orm }), signedInRoute],
-    authorize: createAuthorize(auth),
+    authorize: createAuthorize(auth, orm),
     auth: { auth, orm },
     publicUrl: PUBLIC_URL,
   });
