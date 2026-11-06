@@ -16,13 +16,14 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings 0",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "typecheck": "tsc -p . && pnpm -r typecheck"
   },
   "devDependencies": {
     "@eslint/compat": "2.1.1",
     "@eslint/js": "10.0.1",
     "@types/node": "26.6.6",
+    "@vitest/coverage-v8": "5.1.0",
     "dependency-cruiser": "18.7.2",
     "eslint": "10.14.0",
     "eslint-config-prettier": "10.1.8",
