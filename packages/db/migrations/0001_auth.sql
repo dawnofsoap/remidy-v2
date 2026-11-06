@@ -15,10 +15,12 @@ CREATE TABLE "account" (
 );
 --> statement-breakpoint
 CREATE TABLE "login_throttle" (
-	"email" text PRIMARY KEY NOT NULL,
+	"email" text NOT NULL,
+	"address" text NOT NULL,
 	"failed_count" integer DEFAULT 0 NOT NULL,
 	"window_started_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"locked_until" timestamp with time zone
+	"locked_until" timestamp with time zone,
+	CONSTRAINT "login_throttle_email_address_pk" PRIMARY KEY("email","address")
 );
 --> statement-breakpoint
 CREATE TABLE "rate_limit" (
@@ -41,11 +43,6 @@ CREATE TABLE "session" (
 	CONSTRAINT "session_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
-CREATE TABLE "setup_claim" (
-	"id" integer PRIMARY KEY NOT NULL,
-	"claimed_at" timestamp with time zone DEFAULT now() NOT NULL
-);
---> statement-breakpoint
 CREATE TABLE "user" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
@@ -53,6 +50,7 @@ CREATE TABLE "user" (
 	"email_verified" boolean DEFAULT false NOT NULL,
 	"image" text,
 	"is_instance_admin" boolean DEFAULT false NOT NULL,
+	"must_change_password" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "user_email_unique" UNIQUE("email")

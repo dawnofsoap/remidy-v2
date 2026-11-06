@@ -27,6 +27,8 @@ export const user = pgTable('user', {
   image: text('image'),
   /** Manages the instance. Grants no access to anyone's bills. */
   isInstanceAdmin: boolean('is_instance_admin').notNull().default(false),
+  /** Set while the password is a generated one, shown in a console. Nothing else works until it's replaced. */
+  mustChangePassword: boolean('must_change_password').notNull().default(false),
   ...timestamps,
 });
 
@@ -78,19 +80,22 @@ export const rateLimit = pgTable('rate_limit', {
   lastRequest: bigint('last_request', { mode: 'number' }).notNull(),
 });
 
-/** One row, created by whoever finishes first-run setup. Its key makes setup happen only once. */
-export const setupClaim = pgTable('setup_claim', {
-  id: integer('id').primaryKey(),
-  claimedAt: timestamp('claimed_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-/** Failed sign-ins by email, including emails with no account, so results don't reveal which exist. */
-export const loginThrottle = pgTable('login_throttle', {
-  email: text('email').primaryKey(),
-  failedCount: integer('failed_count').notNull().default(0),
-  windowStartedAt: timestamp('window_started_at', { withTimezone: true }).notNull().defaultNow(),
-  lockedUntil: timestamp('locked_until', { withTimezone: true }),
-});
+/**
+ * Failed sign-ins by email and client address, including emails with no account, so results don't
+ * reveal which exist. Counting per address means a stranger can't lock the real person out, which
+ * matters because the admin's username is public knowledge.
+ */
+export const loginThrottle = pgTable(
+  'login_throttle',
+  {
+    email: text('email').notNull(),
+    address: text('address').notNull(),
+    failedCount: integer('failed_count').notNull().default(0),
+    windowStartedAt: timestamp('window_started_at', { withTimezone: true }).notNull().defaultNow(),
+    lockedUntil: timestamp('locked_until', { withTimezone: true }),
+  },
+  (table) => [primaryKey({ columns: [table.email, table.address] })],
+);
 
 export const spaceKind = pgEnum('space_kind', ['personal', 'shared']);
 export const spaceRole = pgEnum('space_role', ['member', 'manager', 'owner']);

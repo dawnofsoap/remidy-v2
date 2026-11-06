@@ -6,7 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from './core/app.ts';
 import { createAuth, createAuthorize, type Auth } from './core/auth/index.ts';
-import { setupFeature } from './core/auth/setup.ts';
+import { signInOptionsFeature } from './core/auth/sign-in-options.ts';
 import type { Route, SpaceRole } from './core/feature.ts';
 import { roleAtLeast } from './core/spaces.ts';
 import { features } from './features/index.ts';
@@ -18,9 +18,8 @@ const PASSWORD = 'a perfectly long test password';
 const PUBLIC_ROUTES = [
   'GET /api/features',
   'GET /api/health',
-  'GET /api/setup',
+  'GET /api/sign-in-options',
   'POST /api/auth/*',
-  'POST /api/setup',
 ];
 
 let test: TestDatabase;
@@ -80,7 +79,7 @@ beforeAll(async () => {
   });
   app = buildApp({
     database: test.database,
-    features: [setupFeature({ auth, orm }), ...features],
+    features: [signInOptionsFeature({ orm }), ...features],
     authorize: createAuthorize(auth, orm),
     auth: { auth, orm },
     publicUrl: PUBLIC_URL,

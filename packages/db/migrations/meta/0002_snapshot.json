@@ -1,6 +1,6 @@
 {
-  "id": "d716571f-c435-418f-8217-cf4da10784bf",
-  "prevId": "78d246d9-2cb5-4468-98ac-32cc338938c7",
+  "id": "ba3e1419-7c6f-435f-a40e-4b6e0faddc21",
+  "prevId": "9eb9fa59-10da-4963-9c36-12d542c0052c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -140,7 +140,13 @@
         "email": {
           "name": "email",
           "type": "text",
-          "primaryKey": true,
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true
         },
         "failed_count": {
@@ -166,7 +172,15 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "login_throttle_email_address_pk": {
+          "name": "login_throttle_email_address_pk",
+          "columns": [
+            "email",
+            "address"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -376,32 +390,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.setup_claim": {
-      "name": "setup_claim",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "claimed_at": {
-          "name": "claimed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.space": {
       "name": "space",
       "schema": "",
@@ -493,6 +481,13 @@
         },
         "is_instance_admin": {
           "name": "is_instance_admin",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "must_change_password": {
+          "name": "must_change_password",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,

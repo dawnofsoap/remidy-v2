@@ -1,5 +1,5 @@
 import { membership, space, type Orm } from '@remidy/db';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { SpaceRole } from './feature.ts';
 
 const RANK: Record<SpaceRole, number> = { member: 1, manager: 2, owner: 3 };
@@ -34,16 +34,4 @@ export async function createPersonalSpace(orm: Orm, userId: string): Promise<voi
     if (!created) throw new Error('The space was not created.');
     await transaction.insert(membership).values({ userId, spaceId: created.id, role: 'owner' });
   });
-}
-
-export async function setUserSpacesTimeZone(
-  orm: Orm,
-  userId: string,
-  timeZone: string,
-): Promise<void> {
-  const owned = orm
-    .select({ id: membership.spaceId })
-    .from(membership)
-    .where(eq(membership.userId, userId));
-  await orm.update(space).set({ timeZone }).where(inArray(space.id, owned));
 }

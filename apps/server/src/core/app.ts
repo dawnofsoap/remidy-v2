@@ -48,6 +48,8 @@ interface AppOptions {
   publicUrl?: string;
   /** Requests allowed per minute from one address, across all routes. */
   requestsPerMinute?: number;
+  /** Requests allowed per minute from one address to the sign-in routes. */
+  authRequestsPerMinute?: number;
   /** Addresses of reverse proxies in front of the app, separated by commas. */
   trustProxy?: string;
 }
@@ -89,6 +91,7 @@ export function buildApp({
   auth,
   publicUrl = 'http://localhost:5173',
   requestsPerMinute = 600,
+  authRequestsPerMinute = 120,
   trustProxy = '',
 }: AppOptions): FastifyInstance {
   const app = Fastify({
@@ -148,7 +151,9 @@ export function buildApp({
 
   // Routes are added once the rate limit plugin has loaded, so that every one of them gets it.
   app.after(() => {
-    if (auth) registerAuthRoutes(app, { ...auth, publicUrl });
+    if (auth) {
+      registerAuthRoutes(app, { ...auth, publicUrl, requestsPerMinute: authRequestsPerMinute });
+    }
 
     for (const feature of all) {
       if (feature.flagged && !enabledFeatures.includes(feature.name)) continue;

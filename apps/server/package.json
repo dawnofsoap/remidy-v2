@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon",
+    "reset-admin-password": "node src/core/auth/reset-admin-password.ts",
     "typecheck": "tsc -p ."
   },
   "dependencies": {
