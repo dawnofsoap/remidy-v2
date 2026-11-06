@@ -4,6 +4,7 @@ export {
   compareDates,
   daysBetween,
   formatDate,
+  formatInstant,
   isValidTimeZone,
   parseCalendarDate,
   today,

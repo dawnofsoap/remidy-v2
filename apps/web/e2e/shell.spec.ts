@@ -21,7 +21,13 @@ const visibleNav = (page: Page) =>
   page.getByRole('navigation', { name: 'Main' }).filter({ visible: true });
 
 const signedIn = {
-  user: { id: 'u1', name: 'Alex Example', email: 'alex@example.com', mustChangePassword: false },
+  user: {
+    id: 'u1',
+    name: 'Alex Example',
+    email: 'alex@example.com',
+    mustChangePassword: false,
+    isInstanceAdmin: false,
+  },
   session: { id: 's1' },
 };
 
@@ -212,6 +218,66 @@ test.describe('signing in', () => {
     await page.getByLabel('Password').fill('wrong password');
     await page.keyboard.press('Enter');
     await expect(page.getByRole('alert')).toContainText('Wait 15 minutes');
+  });
+});
+
+test.describe('background job status', () => {
+  const asAdmin = (page: Page) =>
+    page.route('**/api/auth/get-session', (route) =>
+      route.fulfill({
+        json: { ...signedIn, user: { ...signedIn.user, isInstanceAdmin: true } },
+      }),
+    );
+
+  test('is hidden from people who aren’t instance admins', async ({ page }) => {
+    let asked = false;
+    await page.route('**/api/admin/jobs', (route) => {
+      asked = true;
+      return route.abort();
+    });
+    await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Devices' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Background jobs' })).toHaveCount(0);
+    expect(asked).toBe(false);
+  });
+
+  test('shows each state in words, with no violations', async ({ page }) => {
+    await asAdmin(page);
+    const job = (state: string, description: string, failed: string | null = null) => ({
+      name: description,
+      description,
+      state,
+      lastSucceededAt: state === 'waiting' ? null : '2026-01-05T20:30:00.000Z',
+      lastFailedAt: failed,
+    });
+    await page.route('**/api/admin/jobs', (route) =>
+      route.fulfill({
+        json: [
+          job('ok', 'A working job'),
+          job('waiting', 'A new job'),
+          job('late', 'A late job'),
+          job('failing', 'A failing job', '2026-01-06T20:30:00.000Z'),
+        ],
+      }),
+    );
+    await page.goto('/settings');
+    const list = page.getByRole('list', { name: 'Background jobs' });
+    await expect(list.getByText('Working', { exact: true })).toBeVisible();
+    await expect(list.getByText('Hasn’t run yet')).toBeVisible();
+    await expect(list.getByText('Late', { exact: true })).toBeVisible();
+    await expect(list.getByText('Failing', { exact: true })).toBeVisible();
+    await expect(list.getByText('The server logs have the details')).toBeVisible();
+    await expectNoViolations(page);
+    await saveScreenshot(page, 'job-status');
+  });
+
+  test('says so when the status can’t be loaded', async ({ page }) => {
+    await asAdmin(page);
+    await page.route('**/api/admin/jobs', (route) => route.abort());
+    await page.goto('/settings');
+    // The app tries a few times before giving up.
+    await expect(page.getByRole('alert')).toContainText('couldn’t be loaded', { timeout: 20_000 });
+    await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   });
 });
 

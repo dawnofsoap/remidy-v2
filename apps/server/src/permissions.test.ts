@@ -8,6 +8,7 @@ import { buildApp } from './core/app.ts';
 import { createAuth, createAuthorize, type Auth } from './core/auth/index.ts';
 import { signInOptionsFeature } from './core/auth/sign-in-options.ts';
 import type { Route, SpaceRole } from './core/feature.ts';
+import { heartbeatJob, jobStatusFeature } from './core/jobs.ts';
 import { roleAtLeast } from './core/spaces.ts';
 import { features } from './features/index.ts';
 
@@ -79,7 +80,11 @@ beforeAll(async () => {
   });
   app = buildApp({
     database: test.database,
-    features: [signInOptionsFeature({ orm, passwordReset: true }), ...features],
+    features: [
+      signInOptionsFeature({ orm, passwordReset: true }),
+      jobStatusFeature({ orm, jobs: [heartbeatJob] }),
+      ...features,
+    ],
     authorize: createAuthorize(auth, orm),
     auth: { auth, orm },
     publicUrl: PUBLIC_URL,
@@ -136,6 +141,23 @@ const errorCode = (response: { json: () => unknown }) =>
 
 // These walk the real app, so every route added by any feature is covered automatically.
 describe('every route in the app', () => {
+  it('lets only instance admins reach instance-admin routes', async () => {
+    const adminRoutes = routes().filter((route) => route.access === 'instance-admin');
+    expect(adminRoutes.map(key)).toContain('GET /api/admin/jobs');
+    for (const route of adminRoutes) {
+      const url = urlFor(route, people.owner.personalSpaceId);
+      expect((await call(route, url)).statusCode, key(route)).toBe(401);
+      for (const name of ['owner', 'manager', 'member', 'stranger'] as const) {
+        const refused = await call(route, url, people[name].cookie);
+        expect(refused.statusCode, `${key(route)} as ${name}`).toBe(403);
+      }
+      expect((await call(route, url, people.admin.cookie)).statusCode, key(route)).toBeLessThan(
+        500,
+      );
+      expect((await call(route, url, people.admin.cookie)).statusCode, key(route)).not.toBe(403);
+    }
+  });
+
   it('has only the known public routes', () => {
     const open = routes()
       .filter((route) => route.access === 'public')

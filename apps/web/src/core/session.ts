@@ -1,5 +1,6 @@
 import {
   apiErrorResponse,
+  jobStatusResponse,
   sessionResponse,
   signInOptionsResponse,
   spaceResponse,
@@ -67,6 +68,9 @@ export async function updateSpace(id: string, changes: { timeZone: string }): Pr
   });
   if (!response.ok) throw await failureFrom(response, GENERIC_FAILURE);
 }
+
+export const fetchJobStatuses = ({ signal }: { signal: AbortSignal }) =>
+  get('/api/admin/jobs', jobStatusResponse, signal);
 
 export const SESSION_QUERY_KEY = ['session'];
 export const SIGN_IN_OPTIONS_QUERY_KEY = ['sign-in-options'];

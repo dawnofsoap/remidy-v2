@@ -137,11 +137,25 @@ export interface FeatureDependencies {
   database: Database;
 }
 
+/** Work that runs on a schedule. It's retried if it fails, so it must be safe to run again. */
+export interface Job {
+  /** Letters, numbers and dashes. */
+  name: string;
+  /** Shown to instance admins, so it must make sense to a person. */
+  description: string;
+  /** When to run, in UTC, such as `17 * * * *` for 17 minutes past each hour. */
+  cron: string;
+  /** How often that is, so that a job that has stopped running can be noticed. */
+  everyMinutes: number;
+  run: () => Promise<void>;
+}
+
 export interface Feature {
   name: string;
   /** A flagged feature stays off unless named in the ENABLED_FEATURES setting. */
   flagged?: boolean;
   routes(dependencies: FeatureDependencies): Route[];
+  jobs?(dependencies: FeatureDependencies): Job[];
 }
 
 export function defineFeature(feature: Feature): Feature {

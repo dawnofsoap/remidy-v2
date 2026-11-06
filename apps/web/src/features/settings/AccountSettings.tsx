@@ -19,6 +19,7 @@ import {
   TextField,
   toast,
 } from '../../ui/index.ts';
+import { JobStatus } from './JobStatus.tsx';
 
 const OTHER_SESSIONS_KEY = ['other-sessions'];
 
@@ -200,6 +201,7 @@ export function AccountSettings() {
       <TimeZoneSetting />
       <ChangePasswordForm />
       <SessionControls />
+      {session.data?.user.isInstanceAdmin ? <JobStatus /> : null}
     </div>
   );
 }

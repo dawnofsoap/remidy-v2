@@ -46,6 +46,9 @@ const RESET_ENDPOINTS: Record<string, readonly ('GET' | 'POST')[]> = {
 
 const RESET_LINK_MINUTES = 60;
 
+/** Rate limit records older than this can't affect anything, so they can be removed. */
+export const LONGEST_RATE_LIMIT_SECONDS = 60 * 60;
+
 interface AuthOptions {
   orm: Orm;
   secret: string;
@@ -132,7 +135,7 @@ export function createAuth({ orm, secret, publicUrl, mailer, onMailFailure }: Au
       customRules: {
         '/sign-in/email': { window: 60, max: 20 },
         '/change-password': { window: 60, max: 10 },
-        '/request-password-reset': { window: 60 * 60, max: 10 },
+        '/request-password-reset': { window: LONGEST_RATE_LIMIT_SECONDS, max: 10 },
         '/reset-password': { window: 60, max: 10 },
       },
     },

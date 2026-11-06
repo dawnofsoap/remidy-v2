@@ -75,3 +75,13 @@ const FORMATS = {
 export function formatDate(date: CalendarDate, style: keyof typeof FORMATS = 'medium'): string {
   return plain(date).toLocaleString('en-US', FORMATS[style]);
 }
+
+/**
+ * Shows a moment in time, such as when a job last ran, like `Jan 5, 2026, 2:30 PM`. This is for
+ * things that happened at an instant. Due dates and other calendar dates use `formatDate`.
+ */
+export function formatInstant(iso: string, timeZone: string): string {
+  return Temporal.Instant.from(iso)
+    .toZonedDateTimeISO(timeZone)
+    .toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+}
