@@ -1,9 +1,11 @@
 // A page showing every UI kit component, used by the browser tests. Not part of the production build.
+import { parseCalendarDate } from '@remidy/domain';
 import { StrictMode, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import '../../index.css';
 import {
   Button,
+  DateField,
   EmptyState,
   ErrorState,
   List,
@@ -66,6 +68,13 @@ function Gallery() {
         <TextField label="Amount" defaultValue="abc" error="Enter an amount, such as 42.50." />
         <MoneyField label="Amount due" hint="Type 5 and leave the field." />
         <PasswordExample />
+        <DateField label="Due date" hint="Choose or type a date." />
+        <DateField
+          label="Paid on"
+          hint="Only during 2026."
+          min={parseCalendarDate('2026-01-01') ?? undefined}
+          max={parseCalendarDate('2026-12-31') ?? undefined}
+        />
         <SelectField label="Paid from">
           <option>Everyday Checking</option>
           <option>Travel Card</option>

@@ -106,3 +106,43 @@ test('the page never scrolls sideways', async ({ page }) => {
   );
   expect(overflow).toBe(0);
 });
+
+test.describe('date field, in a real browser', () => {
+  const dueDate = (page: Page) => page.getByLabel('Due date');
+  const paidOn = (page: Page) => page.getByLabel('Paid on');
+  const tapElsewhere = (page: Page) => page.getByRole('heading', { name: 'UI kit' }).click();
+
+  test('asks for the rest of a partly typed date', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'phone', 'Touch screens use a picker, not typed parts.');
+    await page.goto('/gallery.html');
+    await dueDate(page).click();
+    await page.keyboard.type('03');
+    await tapElsewhere(page);
+    await expect(dueDate(page)).toHaveAttribute('aria-invalid', 'true');
+    await expect(dueDate(page)).toHaveAccessibleDescription(/Enter the full date/);
+  });
+
+  test('takes a date and keeps it exactly, in any time zone', async ({ browser }) => {
+    for (const timezoneId of ['Pacific/Kiritimati', 'Pacific/Pago_Pago', 'America/Chicago']) {
+      const context = await browser.newContext({ timezoneId });
+      const page = await context.newPage();
+      await page.goto('/gallery.html');
+      await dueDate(page).fill('2026-03-08');
+      await tapElsewhere(page);
+      await expect(dueDate(page)).toHaveValue('2026-03-08');
+      await expect(dueDate(page)).not.toHaveAttribute('aria-invalid');
+      await context.close();
+    }
+  });
+
+  test('tells the browser its limits, and refuses a date outside them', async ({ page }) => {
+    await page.goto('/gallery.html');
+    await expect(paidOn(page)).toHaveAttribute('min', '2026-01-01');
+    await expect(paidOn(page)).toHaveAttribute('max', '2026-12-31');
+    await paidOn(page).fill('2027-01-01');
+    await tapElsewhere(page);
+    await expect(paidOn(page)).toHaveAttribute('aria-invalid', 'true');
+    await expect(paidOn(page)).toHaveAccessibleDescription(/2026 or earlier/);
+    await expectNoViolations(page);
+  });
+});
