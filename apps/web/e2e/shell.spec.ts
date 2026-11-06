@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { join } from 'node:path';
 
 const WCAG_22_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
@@ -281,6 +281,32 @@ test.describe('background job status', () => {
     await expect(page.getByRole('alert')).toContainText('couldn’t be loaded', { timeout: 20_000 });
     await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
   });
+});
+
+test('a toast leaves the navigation and the button just pressed uncovered', async ({ page }) => {
+  await page.route('**/api/v1/auth/revoke-other-sessions', (route) =>
+    route.fulfill({ json: { status: true } }),
+  );
+  await page.route('**/api/v1/auth/list-sessions', (route) =>
+    route.fulfill({ json: [{ id: 's1' }, { id: 's2' }] }),
+  );
+  await page.goto('/settings');
+  const button = page.getByRole('button', { name: 'Sign out other devices' });
+  await button.click();
+  const toast = page.locator('[data-sonner-toast]');
+  await expect(toast).toHaveCSS('opacity', '1');
+
+  const overlaps = async (other: Locator) => {
+    await other.scrollIntoViewIfNeeded();
+    const a = await toast.boundingBox();
+    const b = await other.boundingBox();
+    if (!a || !b) throw new Error('Not on the page.');
+    return (
+      a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+    );
+  };
+  expect(await overlaps(visibleNav(page))).toBe(false);
+  expect(await overlaps(page.getByRole('button', { name: 'Sign out', exact: true }))).toBe(false);
 });
 
 test.describe('first sign-in', () => {
