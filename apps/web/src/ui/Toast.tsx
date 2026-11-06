@@ -1,10 +1,17 @@
 import { Toaster as Sonner, toast } from 'sonner';
 
-/** Render once near the root of the app. Show messages with `toast('Saved')`. */
+/**
+ * Render once near the root of the app. Show messages with `toast('Saved')`.
+ *
+ * Toasts go at the top, because the bottom of a phone screen has the navigation bar and the buttons
+ * people are about to press. Nothing needed should ever be underneath one.
+ */
 export function Toaster() {
   return (
     <Sonner
-      position="bottom-center"
+      position="top-right"
+      // Clear of the notch and status bar on phones.
+      mobileOffset={{ top: 'calc(env(safe-area-inset-top) + 16px)', left: 16, right: 16 }}
       toastOptions={{
         unstyled: true,
         classNames: {
