@@ -10,6 +10,7 @@ import {
   type ThemePreference,
 } from '../../core/theme.ts';
 import { RadioField } from '../../ui/index.ts';
+import { AccountSettings } from './AccountSettings.tsx';
 
 const themeOptions = [
   { value: 'system', label: 'Match system' },
@@ -31,6 +32,7 @@ function SettingsPage() {
           saveThemePreference(next);
         }}
       />
+      <AccountSettings />
     </Page>
   );
 }

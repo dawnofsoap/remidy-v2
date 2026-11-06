@@ -9,28 +9,38 @@ import { AppError } from './errors.ts';
  */
 export type Access = 'public' | 'signed-in';
 
+/** The signed-in person a request belongs to. */
+export interface Principal {
+  userId: string;
+  email: string;
+  name: string;
+  isInstanceAdmin: boolean;
+}
+
 export type Authorize = (
   access: Exclude<Access, 'public'>,
   request: FastifyRequest,
-) => Promise<void>;
+) => Promise<Principal>;
 
 /** Until sign-in exists, anything that isn't public is refused. */
 export const denyAll: Authorize = () =>
   Promise.reject(new AppError(401, 'not_signed_in', 'Sign in to continue.'));
 
-interface RouteContext<Params, Query, Body> {
+interface RouteContext<Params, Query, Body, A extends Access> {
   params: Params;
   query: Query;
   body: Body;
+  /** Who is calling. Routes that aren't public always have one. */
+  user: A extends 'public' ? null : Principal;
   /** Changes the status code of a successful response. */
   setStatus: (code: number) => void;
   request: FastifyRequest;
 }
 
-interface RouteDefinition<Params, Query, Body, Response> {
+interface RouteDefinition<Params, Query, Body, Response, A extends Access> {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   url: `/api/${string}`;
-  access: Access;
+  access: A;
   params?: z.ZodType<Params>;
   query?: z.ZodType<Query>;
   body?: z.ZodType<Body>;
@@ -39,11 +49,11 @@ interface RouteDefinition<Params, Query, Body, Response> {
   /** The default status code. */
   status?: number;
   logLevel?: 'warn';
-  handler(context: RouteContext<Params, Query, Body>): Promise<Response> | Response;
+  handler(context: RouteContext<Params, Query, Body, A>): Promise<Response> | Response;
 }
 
 export interface Route {
-  method: RouteDefinition<unknown, unknown, unknown, unknown>['method'];
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   url: string;
   access: Access;
   logLevel?: 'warn';
@@ -72,7 +82,8 @@ export function defineRoute<
   Query = undefined,
   Body = undefined,
   Response = unknown,
->(definition: RouteDefinition<Params, Query, Body, Response>): Route {
+  A extends Access = Access,
+>(definition: RouteDefinition<Params, Query, Body, Response, A>): Route {
   return {
     method: definition.method,
     url: definition.url,
@@ -80,14 +91,14 @@ export function defineRoute<
     ...(definition.logLevel ? { logLevel: definition.logLevel } : {}),
     async run(request, reply, authorize) {
       // Check access first, so a caller without it learns nothing from validation errors.
-      if (definition.access !== 'public') {
-        await authorize(definition.access, request);
-      }
+      const user =
+        definition.access === 'public' ? null : await authorize(definition.access, request);
       let status = definition.status ?? 200;
       const result = await definition.handler({
         params: parseInput(definition.params, request.params, 'params'),
         query: parseInput(definition.query, request.query, 'query'),
         body: parseInput(definition.body, request.body, 'body'),
+        user: user as RouteContext<Params, Query, Body, A>['user'],
         setStatus: (code) => {
           status = code;
         },

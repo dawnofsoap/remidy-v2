@@ -111,7 +111,7 @@ isn't on this list, it's a feature and waits its turn.
 
 | Area | Included |
 |---|---|
-| **Sign-in** | First-run setup, sign in and out, password change, revocable sessions, rate limits and lockout |
+| **Sign-in** | Admin account created on first start, sign in and out, password change, revocable sessions, rate limits and lockout |
 | **Spaces and roles** | Personal space per user, memberships, one permission check, enforced on every route |
 | **API conventions** | `defineRoute` with required schemas, one error format, request IDs, pagination |
 | **Database** | Migrations, connection handling, test database setup, seed data |
@@ -129,7 +129,7 @@ isn't on this list, it's a feature and waits its turn.
 The base is finished when all of these are true:
 
 - A fresh clone runs with one command, and a clean machine can deploy from the published image.
-- Someone can complete setup, sign in, and see an empty app shell on phone and desktop.
+- Someone can sign in as admin, choose a password, and see an empty app shell on phone and desktop.
 - The app refuses to start on missing or default secrets.
 - Repeated failed logins are throttled.
 - A request for another space's data is rejected, and a test covers every registered route.

@@ -15,6 +15,7 @@ import {
   LoadingState,
   Modal,
   MoneyField,
+  NewPasswordField,
   SelectField,
   TextField,
 } from './index.ts';
@@ -177,6 +178,94 @@ describe('state panels', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Bills couldn’t load.');
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+});
+
+describe('NewPasswordField', () => {
+  function Example() {
+    const [value, setValue] = useState('');
+    return (
+      <NewPasswordField
+        label="New password"
+        value={value}
+        onChange={(event) => {
+          setValue(event.target.value);
+        }}
+      />
+    );
+  }
+  const field = () => screen.getByLabelText('New password');
+  const requirement = (name: RegExp) => screen.getByText(name).closest('li');
+
+  it('lists the requirements before anything is typed, without an error yet', () => {
+    render(<Example />);
+    expect(screen.getByText('At least 12 characters')).toBeVisible();
+    expect(screen.getByText('A letter')).toBeVisible();
+    expect(field()).not.toHaveAttribute('aria-invalid');
+    expect(field()).toHaveAttribute('autocomplete', 'new-password');
+  });
+
+  it('is in its error state from the moment it is used', async () => {
+    render(<Example />);
+    await userEvent.click(field());
+    expect(field()).toBeInvalid();
+  });
+
+  it('ticks requirements off during typing, and stays in error until all are met', async () => {
+    render(<Example />);
+    await userEvent.type(field(), 'tulip');
+    expect(requirement(/^A letter/)).toHaveTextContent('(met)');
+    expect(requirement(/^At least 12/)).toHaveTextContent('(not met)');
+    expect(field()).toBeInvalid();
+
+    await userEvent.type(field(), '-ca');
+    expect(requirement(/^A number or symbol/)).toHaveTextContent('(met)');
+    expect(field()).toBeInvalid();
+
+    await userEvent.type(field(), 'ctus-river');
+    expect(requirement(/^At least 12/)).toHaveTextContent('(met)');
+    expect(field()).not.toHaveAttribute('aria-invalid');
+    expect(screen.getByText('4 of 4 requirements met')).toBeInTheDocument();
+  });
+
+  it('goes back to its error state if the password stops qualifying', async () => {
+    render(<Example />);
+    await userEvent.type(field(), 'tulip-cactus-river');
+    expect(field()).not.toHaveAttribute('aria-invalid');
+    await userEvent.type(field(), '{Backspace}'.repeat(10));
+    expect(field()).toBeInvalid();
+  });
+
+  it('flags a common word once it appears', async () => {
+    render(<Example />);
+    await userEvent.type(field(), 'my password 1');
+    expect(requirement(/^No common words/)).toHaveTextContent('(not met)');
+    expect(field()).toBeInvalid();
+  });
+
+  it('only mentions the longest length when it is exceeded', () => {
+    const { rerender } = render(<NewPasswordField label="New password" value="short" readOnly />);
+    expect(screen.queryByText(/No more than/)).not.toBeInTheDocument();
+    rerender(<NewPasswordField label="New password" value={'x'.repeat(129)} readOnly />);
+    expect(screen.getByText(/No more than 128/)).toBeVisible();
+  });
+
+  it('describes the requirements to screen readers', () => {
+    render(<Example />);
+    expect(field()).toHaveAccessibleDescription(/At least 12 characters ?\(not met\)/);
+  });
+
+  it('shows a problem from the server, even for a password that looks fine', () => {
+    render(
+      <NewPasswordField
+        label="New password"
+        value="tulip-cactus-river"
+        readOnly
+        error="Choose a different one."
+      />,
+    );
+    expect(field()).toBeInvalid();
+    expect(field()).toHaveAccessibleDescription(/Choose a different one/);
   });
 });
 

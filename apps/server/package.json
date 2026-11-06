@@ -5,11 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon",
+    "reset-admin-password": "node src/core/auth/reset-admin-password.ts",
     "typecheck": "tsc -p ."
   },
   "dependencies": {
+    "@fastify/rate-limit": "11.2.2",
     "@remidy/contracts": "workspace:*",
     "@remidy/db": "workspace:*",
+    "better-auth": "1.7.17",
+    "drizzle-orm": "0.45.4",
     "fastify": "5.12.8",
     "zod": "4.6.7"
   },

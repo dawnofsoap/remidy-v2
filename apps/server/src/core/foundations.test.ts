@@ -46,6 +46,11 @@ function testFeature(error: unknown = new Error('real cause for the logs')) {
   });
 }
 const STRONG_URL = 'postgresql://remidy:Xk29fj3LmQ81vbZa@db:5432/remidy';
+const REQUIRED = {
+  DATABASE_URL: STRONG_URL,
+  PUBLIC_URL: 'https://remidy.example.com',
+  AUTH_SECRET: 'q'.repeat(48),
+};
 
 function failure(env: Record<string, string>): string {
   try {
@@ -59,17 +64,18 @@ function failure(env: Record<string, string>): string {
 
 describe('loadConfig', () => {
   it('accepts a complete production configuration', () => {
-    expect(loadConfig({ DATABASE_URL: STRONG_URL, PORT: '8080' })).toEqual({
+    expect(loadConfig({ ...REQUIRED, PORT: '8080' })).toEqual({
       NODE_ENV: 'production',
       PORT: 8080,
       LOG_LEVEL: 'info',
       ENABLED_FEATURES: [],
-      DATABASE_URL: STRONG_URL,
+      TRUST_PROXY: '',
+      ...REQUIRED,
     });
   });
 
   it('treats an unset environment as production', () => {
-    expect(loadConfig({ DATABASE_URL: STRONG_URL }).NODE_ENV).toBe('production');
+    expect(loadConfig(REQUIRED).NODE_ENV).toBe('production');
   });
 
   it('requires a database', () => {
@@ -79,19 +85,27 @@ describe('loadConfig', () => {
   it.each(['remidy_dev_only', 'replace-me', 'changeme', 'PASSWORD', 'postgres', 'remidy'])(
     'refuses the password %s in production',
     (password) => {
-      const message = failure({ DATABASE_URL: `postgresql://remidy:${password}@db/remidy` });
+      const message = failure({
+        ...REQUIRED,
+        DATABASE_URL: `postgresql://remidy:${password}@db/remidy`,
+      });
       expect(message).toContain('DATABASE_URL needs a strong, unique password');
     },
   );
 
   it('refuses a missing password in production', () => {
-    expect(failure({ DATABASE_URL: 'postgresql://remidy@db/remidy' })).toContain('strong, unique');
+    expect(failure({ ...REQUIRED, DATABASE_URL: 'postgresql://remidy@db/remidy' })).toContain(
+      'strong, unique',
+    );
   });
 
   it('allows the development password in development', () => {
     const env = {
+      ...REQUIRED,
       NODE_ENV: 'development',
       DATABASE_URL: 'postgresql://remidy:remidy_dev_only@db/remidy',
+      PUBLIC_URL: 'http://localhost:5173',
+      AUTH_SECRET: 'remidy_dev_only_secret_not_for_production',
     };
     expect(loadConfig(env).NODE_ENV).toBe('development');
   });
@@ -102,8 +116,12 @@ describe('loadConfig', () => {
     ['PORT', '0'],
     ['LOG_LEVEL', 'loud'],
     ['NODE_ENV', 'staging'],
+    ['AUTH_SECRET', 'too-short'],
+    ['AUTH_SECRET', 'remidy_dev_only_secret_not_for_production'],
+    ['PUBLIC_URL', 'not a url'],
+    ['PUBLIC_URL', 'http://remidy.example.com'],
   ])('rejects %s=%s', (name, value) => {
-    expect(failure({ DATABASE_URL: STRONG_URL, [name]: value })).toContain(name);
+    expect(failure({ ...REQUIRED, [name]: value })).toContain(name);
   });
 
   it('reports every problem at once', () => {
@@ -136,7 +154,10 @@ describe('starting the server', () => {
   }, 25_000);
 
   it('refuses the development password when mode is not set', () => {
-    const result = run({ DATABASE_URL: 'postgresql://remidy:remidy_dev_only@db/remidy' });
+    const result = run({
+      ...REQUIRED,
+      DATABASE_URL: 'postgresql://remidy:remidy_dev_only@db/remidy',
+    });
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('strong, unique password');
     expect(result.stderr).not.toContain('remidy_dev_only');

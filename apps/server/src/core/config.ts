@@ -33,6 +33,17 @@ const schema = z
         error: 'must be one of fatal, error, warn, info, debug, trace or silent',
       })
       .default('info'),
+    /** The address people use to reach Remidy. Cookies and origin checks depend on it. */
+    PUBLIC_URL: z.url({
+      error: 'must be the address of this app, such as https://remidy.example.com',
+    }),
+    /** Signs sessions. Generate one with: openssl rand -base64 48 */
+    AUTH_SECRET: z.string({ error: 'is required' }).min(32, 'must be at least 32 characters'),
+    /**
+     * Addresses of reverse proxies in front of the app, separated by commas, such as 172.18.0.0/16.
+     * Only these may say which client a request came from.
+     */
+    TRUST_PROXY: z.string().default(''),
     /** Flagged features to switch on, separated by commas. */
     ENABLED_FEATURES: z
       .string()
@@ -49,6 +60,20 @@ const schema = z
   })
   .superRefine((env, context) => {
     if (env.NODE_ENV !== 'production') return;
+    if (/dev_only|replace-me|changeme/i.test(env.AUTH_SECRET)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['AUTH_SECRET'],
+        message: 'needs a unique random value in production',
+      });
+    }
+    if (!env.PUBLIC_URL.startsWith('https://')) {
+      context.addIssue({
+        code: 'custom',
+        path: ['PUBLIC_URL'],
+        message: 'must use https in production, so session cookies stay protected',
+      });
+    }
     const password = databasePassword(env.DATABASE_URL);
     if (!password || UNSAFE_PASSWORDS.has(password.toLowerCase())) {
       context.addIssue({

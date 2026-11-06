@@ -20,8 +20,19 @@ async function saveScreenshot(page: Page, name: string) {
 const visibleNav = (page: Page) =>
   page.getByRole('navigation', { name: 'Main' }).filter({ visible: true });
 
+const signedIn = {
+  user: { id: 'u1', name: 'Alex Example', email: 'alex@example.com', mustChangePassword: false },
+  session: { id: 's1' },
+};
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/health', (route) => route.fulfill({ json: healthy }));
+  await page.route('**/api/features', (route) => route.fulfill({ json: { enabled: [] } }));
+  await page.route('**/api/sign-in-options', (route) =>
+    route.fulfill({ json: { adminPasswordInConsole: false } }),
+  );
+  await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: signedIn }));
+  await page.route('**/api/auth/list-sessions', (route) => route.fulfill({ json: [{ id: 's1' }] }));
 });
 
 for (const theme of ['light', 'dark'] as const) {
@@ -138,6 +149,142 @@ test.describe('appearance setting', () => {
   });
 });
 
+test.describe('signing in', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: null }));
+  });
+
+  for (const theme of ['light', 'dark'] as const) {
+    test(`the sign-in page has no violations in ${theme}`, async ({ page }) => {
+      await page.addInitScript((value) => {
+        localStorage.setItem('remidy.theme', value);
+      }, theme);
+      await page.goto('/settings');
+      await expect(page.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible();
+      await expect(page).toHaveTitle('Sign in · Remidy');
+      await expectNoViolations(page);
+      await saveScreenshot(page, `sign-in-${theme}`);
+    });
+  }
+
+  test('shows nothing from the app until signed in', async ({ page }) => {
+    await page.goto('/settings');
+    await expect(page.getByRole('heading', { name: 'Sign in', level: 1 })).toBeVisible();
+    await expect(page.getByRole('navigation')).toHaveCount(0);
+  });
+
+  test('a wrong password gets a message that reveals nothing, and no violations', async ({
+    page,
+  }) => {
+    await page.route('**/api/auth/sign-in/email', (route) =>
+      route.fulfill({ status: 401, json: { code: 'INVALID_EMAIL_OR_PASSWORD', message: 'x' } }),
+    );
+    await page.goto('/');
+    await page.getByLabel('Email').fill('alex@example.com');
+    await page.getByLabel('Password').fill('wrong password');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByRole('alert')).toHaveText('That email or password isn’t right.');
+    await expectNoViolations(page);
+  });
+
+  test('a locked account is told to wait', async ({ page }) => {
+    await page.route('**/api/auth/sign-in/email', (route) =>
+      route.fulfill({
+        status: 429,
+        json: { error: { code: 'too_many_attempts', message: 'x', requestId: 'abcdefgh' } },
+      }),
+    );
+    await page.goto('/');
+    await page.getByLabel('Email').fill('alex@example.com');
+    await page.getByLabel('Password').fill('wrong password');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('alert')).toContainText('Wait 15 minutes');
+  });
+});
+
+test.describe('first sign-in', () => {
+  test('says where to find the admin password, with no violations', async ({ page }) => {
+    await page.route('**/api/sign-in-options', (route) =>
+      route.fulfill({ json: { adminPasswordInConsole: true } }),
+    );
+    await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: null }));
+    await page.goto('/');
+    await expect(page.getByText('printed in the server’s console')).toBeVisible();
+    await expectNoViolations(page);
+    await saveScreenshot(page, 'first-sign-in');
+  });
+
+  test('asks for a new password before anything else, with no violations', async ({ page }) => {
+    await page.route('**/api/auth/get-session', (route) =>
+      route.fulfill({
+        json: { ...signedIn, user: { ...signedIn.user, mustChangePassword: true } },
+      }),
+    );
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Choose a password', level: 1 })).toBeVisible();
+    await expect(page.getByRole('navigation')).toHaveCount(0);
+
+    const field = page.getByLabel('New password');
+    await field.fill('too short');
+    await expect(field).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.getByText('This password doesn’t meet every requirement yet.')).toBeVisible();
+    await expectNoViolations(page);
+    await saveScreenshot(page, 'choose-password');
+
+    let submitted = false;
+    await page.route('**/api/auth/change-password', (route) => {
+      submitted = true;
+      return route.fulfill({ json: { token: null } });
+    });
+    await page.getByLabel('Temporary password').fill('the temporary one');
+    await page.getByRole('button', { name: 'Save password' }).click();
+    await expect(field).toBeFocused();
+    expect(submitted).toBe(false);
+
+    await field.fill('tulip-cactus-river');
+    await expect(field).not.toHaveAttribute('aria-invalid');
+    await page.getByRole('button', { name: 'Save password' }).click();
+    await expect.poll(() => submitted).toBe(true);
+  });
+
+  test('shows a problem from the server beside the new password', async ({ page }) => {
+    await page.route('**/api/auth/get-session', (route) =>
+      route.fulfill({
+        json: { ...signedIn, user: { ...signedIn.user, mustChangePassword: true } },
+      }),
+    );
+    await page.route('**/api/auth/change-password', (route) =>
+      route.fulfill({
+        status: 422,
+        json: {
+          error: {
+            code: 'validation_failed',
+            message: 'Check the highlighted fields and try again.',
+            requestId: 'abcdefgh',
+            fields: [{ path: 'body.newPassword', message: 'Choose a different password.' }],
+          },
+        },
+      }),
+    );
+    await page.goto('/');
+    await page.getByLabel('Temporary password').fill('tulip-cactus-river');
+    await page.getByLabel('New password').fill('tulip-cactus-river');
+    await page.getByRole('button', { name: 'Save password' }).click();
+    await expect(page.getByLabel('New password')).toHaveAccessibleDescription(
+      /Choose a different password/,
+    );
+    await expect(page.getByLabel('New password')).toHaveAttribute('aria-invalid', 'true');
+    await expectNoViolations(page);
+  });
+});
+
+test('explains when the server cannot be reached at startup', async ({ page }) => {
+  await page.route('**/api/sign-in-options', (route) => route.abort());
+  await page.goto('/');
+  await expect(page.getByRole('alert')).toContainText('can’t reach the server');
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+});
+
 test.describe('server status', () => {
   test('stays hidden when everything is healthy', async ({ page }) => {
     await page.goto('/');
@@ -164,7 +311,7 @@ test.describe('server status', () => {
 test('controls and links are large enough to tap', async ({ page }) => {
   await page.goto('/settings');
   const nav = visibleNav(page).getByRole('link');
-  expect(await nav.count()).toBeGreaterThan(1);
+  await expect(nav).toHaveCount(2);
   for (let i = 0; i < (await nav.count()); i += 1) {
     expect((await nav.nth(i).boundingBox())?.height).toBeGreaterThanOrEqual(44);
   }

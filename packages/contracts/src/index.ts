@@ -1,11 +1,31 @@
 import { z } from 'zod';
 
+export * from './password.ts';
+
 export const healthResponse = z.object({
   status: z.enum(['ok', 'degraded']),
   database: z.enum(['up', 'down']),
 });
 
 export type HealthResponse = z.infer<typeof healthResponse>;
+
+export const signInOptionsResponse = z.object({
+  /** True while the admin's generated password, printed in the server console, is still in use. */
+  adminPasswordInConsole: z.boolean(),
+});
+
+/** The signed-in person, or null when nobody is. */
+export const sessionResponse = z
+  .object({
+    user: z.object({
+      id: z.string(),
+      name: z.string(),
+      email: z.string(),
+      /** Set while the password is a generated one, which must be replaced before anything else. */
+      mustChangePassword: z.boolean(),
+    }),
+  })
+  .nullable();
 
 export const enabledFeaturesResponse = z.object({
   /** Flagged features that are switched on. */
