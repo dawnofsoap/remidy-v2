@@ -98,7 +98,7 @@ features -> core -> packages (domain, contracts, db)
 | Permissions always checked | Space-scoped routes get the space from middleware; a test walks every registered route and requires a rejection |
 | Dates and money go through `domain` | Lint bans `new Date()` and `parseFloat` in feature code, with named exceptions |
 | Modals, forms and buttons come from `ui/` | Lint bans the raw patterns outside `ui/` |
-| Files stay small | Lint `max-lines`: warn at 300, fail at 500 |
+| Files stay small | Lint `max-lines`: fail above 500 lines |
 | Colors and spacing come from design tokens | Tailwind theme limited to tokens; lint bans arbitrary values such as `bg-[#fff]` and `!important` |
 | Accessibility basics hold | jsx-a11y lint rules and axe checks in Playwright |
 | Domain logic is well tested | CI coverage threshold on `packages/domain` |

@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+  - tooling
+
+# Exact versions, so upgrades are always a visible change.
+savePrefix: ''
+
+# Skip packages published in the last day, to reduce exposure to compromised releases.
+minimumReleaseAge: 1440

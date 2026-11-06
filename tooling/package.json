@@ -1,0 +1,12 @@
+{
+  "name": "@remidy/tooling",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "pg": "8.23.1"
+  }
+}
