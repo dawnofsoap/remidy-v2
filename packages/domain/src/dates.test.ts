@@ -6,6 +6,7 @@ import {
   compareDates,
   daysBetween,
   formatDate,
+  formatInstant,
   isValidTimeZone,
   parseCalendarDate,
   today,
@@ -214,5 +215,15 @@ describe('formatDate', () => {
   it('shows the same day whatever the time zone of the computer', () => {
     // A date stored as midnight UTC would show as Dec 31 in the Americas.
     expect(formatDate(date('2027-01-01'))).toBe('Jan 1, 2027');
+  });
+});
+
+describe('formatInstant', () => {
+  it.each([
+    ['America/Chicago', 'Jan 5, 2026, 2:30 PM'],
+    ['Asia/Tokyo', 'Jan 6, 2026, 5:30 AM'],
+    ['UTC', 'Jan 5, 2026, 8:30 PM'],
+  ])('shows the local time in %s', (timeZone, expected) => {
+    expect(formatInstant('2026-01-05T20:30:00.000Z', timeZone).replace(/\s/g, ' ')).toBe(expected);
   });
 });

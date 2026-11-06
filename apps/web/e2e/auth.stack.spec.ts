@@ -125,6 +125,18 @@ test('a personal space exists, using the browser time zone, and its time zone ca
   await expect(page.getByLabel('Time zone')).toHaveValue(next);
 });
 
+test('the real job runner reports its heartbeat to the admin', async ({ page }) => {
+  await page.goto('/');
+  await signInWith(page, CHOSEN_PASSWORD);
+  await expect(appHeading(page, 'Home')).toBeVisible();
+  await page.goto('/settings');
+  const row = page
+    .getByRole('listitem')
+    .filter({ hasText: 'Shows that background jobs are running.' });
+  await expect(row.getByText('Working')).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText('Removes expired sessions')).toBeVisible();
+});
+
 test('a wrong password is refused with a clear message', async ({ page }) => {
   await page.goto('/');
   await signInWith(page, 'not the right password');

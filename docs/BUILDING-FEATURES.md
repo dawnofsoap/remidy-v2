@@ -48,7 +48,7 @@ apps/server/src/
     ├── routes.ts         HTTP only: validate, call the service, respond
     ├── service.ts        workflows and permission checks
     ├── repo.ts           the only file with queries for this feature's tables
-    ├── jobs.ts           background jobs, if any
+    ├── jobs.ts           background jobs, if any; add them through `jobs` in defineFeature
     └── payments.test.ts
 
 apps/web/src/

@@ -97,6 +97,18 @@ export const loginThrottle = pgTable(
   (table) => [primaryKey({ columns: [table.email, table.address] })],
 );
 
+/**
+ * When each background job last ran. It has no error messages, which go to the logs, because
+ * anything could be in one and instance admins have no access to anyone's bills.
+ */
+export const jobStatus = pgTable('job_status', {
+  name: text('name').primaryKey(),
+  lastStartedAt: timestamp('last_started_at', { withTimezone: true }),
+  lastSucceededAt: timestamp('last_succeeded_at', { withTimezone: true }),
+  lastFailedAt: timestamp('last_failed_at', { withTimezone: true }),
+  consecutiveFailures: integer('consecutive_failures').notNull().default(0),
+});
+
 export const spaceKind = pgEnum('space_kind', ['personal', 'shared']);
 export const spaceRole = pgEnum('space_role', ['member', 'manager', 'owner']);
 

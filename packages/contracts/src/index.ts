@@ -66,9 +66,23 @@ export const sessionResponse = z
       email: z.string(),
       /** Set while the password is a generated one, which must be replaced before anything else. */
       mustChangePassword: z.boolean(),
+      /** Manages the instance. Gives no access to anyone's bills. */
+      isInstanceAdmin: z.boolean(),
     }),
   })
   .nullable();
+
+export const jobStatusResponse = z.array(
+  z.object({
+    name: z.string(),
+    description: z.string(),
+    /** `waiting` hasn't run yet, and `late` has missed its schedule. */
+    state: z.enum(['ok', 'waiting', 'late', 'failing']),
+    lastSucceededAt: z.iso.datetime().nullable(),
+    lastFailedAt: z.iso.datetime().nullable(),
+  }),
+);
+export type JobStatusResponse = z.infer<typeof jobStatusResponse>;
 
 export const enabledFeaturesResponse = z.object({
   /** Flagged features that are switched on. */
