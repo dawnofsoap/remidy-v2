@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@remidy/contracts": "workspace:*",
+    "@remidy/domain": "workspace:*",
     "@tanstack/react-query": "5.106.0",
     "@tanstack/react-router": "1.170.46",
     "class-variance-authority": "0.7.1",

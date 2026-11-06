@@ -10,6 +10,7 @@ import {
   ListRow,
   LoadingState,
   Modal,
+  MoneyField,
   SelectField,
   TextField,
   toast,
@@ -49,6 +50,7 @@ function Gallery() {
         <TextField label="Bill name" />
         <TextField label="Website" hint="Where you pay this bill." />
         <TextField label="Amount" defaultValue="abc" error="Enter an amount, such as 42.50." />
+        <MoneyField label="Amount due" hint="Type 5 and leave the field." />
         <SelectField label="Paid from">
           <option>Everyday Checking</option>
           <option>Travel Card</option>
