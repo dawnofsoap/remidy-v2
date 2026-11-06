@@ -230,37 +230,43 @@ export function DateField({
               onOpenChange={changeOpen}
               title={`Choose ${label}`}
               description="Pick a day, or type the date below."
+              hideDescription
             >
-              <div className="self-center">
-                <DateCalendar
-                  month={month ?? toLocalDate(selected ?? browserToday())}
-                  onMonthChange={setMonth}
-                  min={min}
-                  max={max}
-                  selected={selected}
-                  onChoose={choose}
-                  focusDay={false}
-                />
-              </div>
-              <TextField
-                label="Or type the date"
-                placeholder="MM/DD/YYYY"
-                autoComplete="off"
-                value={text}
-                onChange={(event) => {
-                  changeText(event.target.value);
-                }}
-                onBlur={leave}
-                {...(problem ? { error: problem } : {})}
+              <DateCalendar
+                month={month ?? toLocalDate(selected ?? browserToday())}
+                onMonthChange={setMonth}
+                min={min}
+                max={max}
+                selected={selected}
+                onChoose={choose}
+                focusDay={false}
+                fill
               />
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  changeOpen(false);
-                }}
-              >
-                Done
-              </Button>
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <TextField
+                    label="Or type the date"
+                    placeholder="MM/DD/YYYY"
+                    autoComplete="off"
+                    value={text}
+                    onChange={(event) => {
+                      changeText(event.target.value);
+                    }}
+                    onBlur={leave}
+                    {...(problem ? { error: problem } : {})}
+                  />
+                </div>
+                {/* Level with the box, below its label. */}
+                <Button
+                  variant="secondary"
+                  className="mt-7.5"
+                  onClick={() => {
+                    changeOpen(false);
+                  }}
+                >
+                  Done
+                </Button>
+              </div>
             </Modal>
           ) : null}
         </>

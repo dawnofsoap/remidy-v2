@@ -30,6 +30,7 @@ const MONTHS = [
   'December',
 ];
 const COLUMNS = 3;
+const YEARS_PER_PAGE = 12;
 
 /** Counts months, so that two can be compared whatever their years. */
 const monthNumber = (date: Date) => date.getFullYear() * 12 + date.getMonth();
@@ -43,11 +44,11 @@ const iconButton = cn(
 
 const dayStyles = {
   root: 'w-full',
-  month_grid: 'w-full border-collapse',
-  weekday: 'size-11 text-sm font-normal text-ink-2',
+  month_grid: 'w-full table-fixed border-collapse',
+  weekday: 'h-(--row) text-sm font-normal text-ink-2',
   day: 'p-0 text-center',
   day_button: cn(
-    'size-11 rounded-xl hover:bg-surface-2 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+    'mx-auto block h-(--row) w-full max-w-14 rounded-xl hover:bg-surface-2 disabled:cursor-not-allowed disabled:hover:bg-transparent',
     focusRing,
   ),
   selected:
@@ -72,19 +73,17 @@ interface ChoiceGridProps<T> {
   label: string;
   choices: { value: T; text: string; disabled: boolean; current: boolean }[];
   onChoose: (value: T) => void;
-  /** Rows share the space when they all fit, and otherwise keep their size and scroll. */
-  scrolls?: boolean;
 }
 
-/** All the months or all the years. Arrow keys move around it, and it opens on the current one. */
-function ChoiceGrid<T>({ label, choices, onChoose, scrolls = false }: ChoiceGridProps<T>) {
+/** Months or years. Arrow keys move around it, and it opens on the current one. */
+function ChoiceGrid<T>({ label, choices, onChoose }: ChoiceGridProps<T>) {
   const grid = useRef<HTMLDivElement>(null);
   const buttons = () => [...(grid.current?.querySelectorAll('button:not(:disabled)') ?? [])];
+  const hasCurrent = choices.some((choice) => choice.current);
 
   useEffect(() => {
     const start = grid.current?.querySelector<HTMLButtonElement>('[aria-current="true"]');
     start?.focus();
-    start?.scrollIntoView({ block: 'center' });
   }, []);
 
   function moveFocus(event: KeyboardEvent) {
@@ -101,18 +100,16 @@ function ChoiceGrid<T>({ label, choices, onChoose, scrolls = false }: ChoiceGrid
       ref={grid}
       role="group"
       aria-label={label}
-      className={cn(
-        'grid h-77 grid-cols-3 gap-1 p-1',
-        scrolls ? 'content-start overflow-y-auto' : 'auto-rows-fr',
-      )}
+      className="grid h-[calc(var(--row)*7)] auto-rows-fr grid-cols-3 gap-1"
     >
-      {choices.map((choice) => (
+      {choices.map((choice, index) => (
         <button
           key={choice.text}
           type="button"
           disabled={choice.disabled}
           aria-current={choice.current ? 'true' : undefined}
-          tabIndex={choice.current ? 0 : -1}
+          // A page of years may not hold the current one, and the keyboard still needs a way in.
+          tabIndex={choice.current || (index === 0 && !hasCurrent) ? 0 : -1}
           onKeyDown={moveFocus}
           onClick={() => {
             onChoose(choice.value);
@@ -139,6 +136,8 @@ interface DateCalendarProps {
   onChoose: (date: CalendarDate) => void;
   /** Whether a day takes focus on opening, rather than leaving it where it is. */
   focusDay: boolean;
+  /** Fills the width it's given, and fits its rows to the height of a phone's screen. */
+  fill?: boolean;
 }
 
 /** A month of days. Its month and year in the header open the full list of each. */
@@ -150,10 +149,12 @@ export function DateCalendar({
   selected,
   onChoose,
   focusDay,
+  fill = false,
 }: DateCalendarProps) {
   const [view, setView] = useState<'days' | 'months' | 'years'>('days');
   // Once someone has moved around inside, a day should take focus when the days come back.
   const [moved, setMoved] = useState(false);
+  const [yearPage, setYearPage] = useState(0);
 
   const earliest = monthNumber(toLocalDate(min));
   const latest = monthNumber(toLocalDate(max));
@@ -161,8 +162,13 @@ export function DateCalendar({
   const showMonth = (number: number) => {
     onMonthChange(firstOfMonth(Math.min(Math.max(number, earliest), latest)));
   };
+  const firstYear = Math.floor(earliest / 12);
+  const lastYear = Math.floor(latest / 12);
   const toggle = (next: 'months' | 'years') => {
     setMoved(true);
+    if (next === 'years') {
+      setYearPage(Math.floor((month.getFullYear() - firstYear) / YEARS_PER_PAGE));
+    }
     setView(view === next ? 'days' : next);
   };
   const backToDays = (number: number) => {
@@ -180,22 +186,65 @@ export function DateCalendar({
     );
 
   const years = [];
-  for (let each = Math.floor(earliest / 12); each <= Math.floor(latest / 12); each += 1) {
+  const pageStart = firstYear + yearPage * YEARS_PER_PAGE;
+  for (let each = pageStart; each < pageStart + YEARS_PER_PAGE && each <= lastYear; each += 1) {
     years.push(each);
   }
 
+  // The arrows change the month over the days, and the page over the years.
+  const arrows = {
+    days: {
+      back: {
+        label: 'Previous month',
+        disabled: shown <= earliest,
+        go: () => {
+          showMonth(shown - 1);
+        },
+      },
+      next: {
+        label: 'Next month',
+        disabled: shown >= latest,
+        go: () => {
+          showMonth(shown + 1);
+        },
+      },
+    },
+    years: {
+      back: {
+        label: 'Earlier years',
+        disabled: yearPage === 0,
+        go: () => {
+          setYearPage(yearPage - 1);
+        },
+      },
+      next: {
+        label: 'Later years',
+        disabled: pageStart + YEARS_PER_PAGE > lastYear,
+        go: () => {
+          setYearPage(yearPage + 1);
+        },
+      },
+    },
+    months: null,
+  }[view];
+
   return (
-    <div className="flex w-77 flex-col gap-1">
+    <div
+      className={cn(
+        'flex flex-col gap-1',
+        fill
+          ? 'w-full [--row:clamp(2.25rem,calc((90dvh-14.5rem)/7),2.75rem)]'
+          : 'w-77 [--row:2.75rem]',
+      )}
+    >
       <div className="flex items-center justify-between">
-        {view === 'days' ? (
+        {arrows ? (
           <button
             type="button"
-            aria-label="Previous month"
-            disabled={shown <= earliest}
+            aria-label={arrows.back.label}
+            disabled={arrows.back.disabled}
             className={iconButton}
-            onClick={() => {
-              showMonth(shown - 1);
-            }}
+            onClick={arrows.back.go}
           >
             <ChevronLeft aria-hidden="true" className="size-4" />
           </button>
@@ -226,15 +275,13 @@ export function DateCalendar({
             {year}
           </button>
         </div>
-        {view === 'days' ? (
+        {arrows ? (
           <button
             type="button"
-            aria-label="Next month"
-            disabled={shown >= latest}
+            aria-label={arrows.next.label}
+            disabled={arrows.next.disabled}
             className={iconButton}
-            onClick={() => {
-              showMonth(shown + 1);
-            }}
+            onClick={arrows.next.go}
           >
             <ChevronRight aria-hidden="true" className="size-4" />
           </button>
@@ -262,7 +309,6 @@ export function DateCalendar({
       {view === 'years' ? (
         <ChoiceGrid
           label="Years"
-          scrolls
           choices={years.map((each) => ({
             value: each * 12 + month.getMonth(),
             text: String(each),

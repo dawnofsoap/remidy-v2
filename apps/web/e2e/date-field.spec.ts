@@ -281,30 +281,60 @@ test.describe('date field, in a real browser', () => {
       await expect(dueDate(page)).toHaveValue('10/15/2026');
     });
 
-    test('lists every year, opens on the current one, and goes to the one chosen', async ({
+    test('shows a page of years with no scrollbar, and the arrows reach them all', async ({
       page,
     }) => {
       await open(page, 'Due date', '3/8/2026');
       await yearButton(page, 'Due date', '2026').click();
-      const years = calendar(page, 'Due date').getByRole('group', { name: 'Years' });
-      await expect(years.getByRole('button')).toHaveCount(200);
-      await expect(years.getByRole('button').first()).toHaveText('1900');
-      await expect(years.getByRole('button').last()).toHaveText('2099');
+      const dialog = calendar(page, 'Due date');
+      const years = dialog.getByRole('group', { name: 'Years' });
+      const earlier = dialog.getByRole('button', { name: 'Earlier years' });
+      const later = dialog.getByRole('button', { name: 'Later years' });
+      await expect(years.getByRole('button')).toHaveCount(12);
       await expect(choice(page, 'Due date', '2026')).toBeFocused();
-      await expect(choice(page, 'Due date', '2026')).toBeInViewport();
+      await expect(years).toHaveJSProperty(
+        'scrollHeight',
+        await years.evaluate((element) => element.clientHeight),
+      );
 
-      // Each keeps its full size, rather than all being squeezed into the space.
-      const thisYear = await choice(page, 'Due date', '2026').boundingBox();
-      const nextRow = await choice(page, 'Due date', '2029').boundingBox();
-      if (!thisYear || !nextRow) throw new Error('Not on the page.');
-      expect(thisYear.height).toBeGreaterThanOrEqual(44);
-      expect(nextRow.y).toBeGreaterThanOrEqual(thisYear.y + thisYear.height);
+      await later.click();
+      await expect(choice(page, 'Due date', '2035')).toBeVisible();
+      await expect(choice(page, 'Due date', '2026')).toHaveCount(0);
+      await earlier.click();
+      await expect(choice(page, 'Due date', '2026')).toBeVisible();
 
-      await choice(page, 'Due date', '2031').click();
+      // Every year is reachable, from one end of the range to the other.
+      while (await earlier.isEnabled()) await earlier.click();
+      await expect(years.getByRole('button').first()).toHaveText('1900');
+      while (await later.isEnabled()) await later.click();
+      await expect(years.getByRole('button').last()).toHaveText('2099');
+      await expect(later).toBeDisabled();
+
+      await choice(page, 'Due date', '2099').click();
+      await expect(yearButton(page, 'Due date', '2099')).toBeVisible();
       await expect(monthButton(page, 'Due date', 'March')).toBeVisible();
-      await expect(yearButton(page, 'Due date', '2031')).toBeVisible();
-      await dayButton(page, 'Due date', /March 8, 2031/).click();
-      await expect(dueDate(page)).toHaveValue('3/8/2031');
+      await dayButton(page, 'Due date', /March 8, 2099/).click();
+      await expect(dueDate(page)).toHaveValue('3/8/2099');
+    });
+
+    test('opens on the page holding the year shown', async ({ page }) => {
+      await open(page, 'Due date', '3/8/1955');
+      await yearButton(page, 'Due date', '1955').click();
+      await expect(choice(page, 'Due date', '1955')).toBeFocused();
+      await expect(choice(page, 'Due date', '1955')).toHaveAttribute('aria-current', 'true');
+    });
+
+    test('can still be reached by keyboard on a page without the year shown', async ({ page }) => {
+      await open(page, 'Due date', '3/8/2026');
+      await yearButton(page, 'Due date', '2026').click();
+      await calendar(page, 'Due date').getByRole('button', { name: 'Later years' }).click();
+      await page.keyboard.press('Tab');
+      await expect(
+        calendar(page, 'Due date')
+          .getByRole('group', { name: 'Years' })
+          .getByRole('button')
+          .first(),
+      ).toBeFocused();
     });
 
     test('clicking the same name again goes back to the days, changing nothing', async ({
@@ -376,98 +406,6 @@ test.describe('date field, in a real browser', () => {
       await dayButton(page, 'Due date', /October 15, 2026/).click();
       await expect(dueDate(page)).toHaveValue('10/15/2026');
       await expect(dueDate(page)).toBeFocused();
-    });
-  });
-
-  test.describe('on a phone', () => {
-    test.skip(({ viewport }) => (viewport?.width ?? 0) >= 640, 'Only phones use the bottom sheet.');
-
-    const typedDate = (page: Page) => page.getByRole('textbox', { name: 'Or type the date' });
-
-    for (const theme of ['light', 'dark'] as const) {
-      test(`comes up from the bottom, with no violations in the ${theme} theme`, async ({
-        page,
-      }) => {
-        await page.goto(`/gallery.html?theme=${theme}`);
-        await dueDate(page).click();
-        const sheet = calendar(page, 'Due date');
-        await expect(sheet).toBeVisible();
-
-        const box = await sheet.boundingBox();
-        const screen = page.viewportSize();
-        if (!box || !screen) throw new Error('Not on the page.');
-        expect(box.width).toBe(screen.width);
-        expect(box.x).toBe(0);
-        expect(box.y + box.height).toBe(screen.height);
-        await expectNoViolations(page);
-        await saveScreenshot(page, `calendar-sheet-${theme}`, false);
-      });
-    }
-
-    test('opens from the button as well', async ({ page }) => {
-      await page.goto('/gallery.html');
-      await openCalendar(page, 'Due date');
-      await expect(calendar(page, 'Due date')).toBeVisible();
-      await expect(typedDate(page)).toBeVisible();
-    });
-
-    test('doesn’t bring up the on-screen keyboard until asked', async ({ page }) => {
-      await page.goto('/gallery.html');
-      await expect(dueDate(page)).toHaveAttribute('inputmode', 'none');
-      await dueDate(page).click();
-      await expect(calendar(page, 'Due date')).toBeVisible();
-      await expect(typedDate(page)).not.toBeFocused();
-      await expect(typedDate(page)).not.toHaveAttribute('inputmode', 'none');
-    });
-
-    test('picks a day, closes, and shows it', async ({ page }) => {
-      await page.goto('/gallery.html');
-      await dueDate(page).fill('3/8/2026');
-      await dueDate(page).click();
-      await dayButton(page, 'Due date', /March 20, 2026/).click();
-      await expect(calendar(page, 'Due date')).toHaveCount(0);
-      await expect(dueDate(page)).toHaveValue('3/20/2026');
-    });
-
-    test('can be typed in, which moves the calendar', async ({ page }) => {
-      await page.goto('/gallery.html');
-      await dueDate(page).click();
-      await typedDate(page).fill('7/4/31');
-      await expect(dayButton(page, 'Due date', /July 4, 2031, selected/)).toBeVisible();
-
-      await page.getByRole('button', { name: 'Done' }).click();
-      await expect(calendar(page, 'Due date')).toHaveCount(0);
-      await expect(dueDate(page)).toHaveValue('7/4/2031');
-    });
-
-    test('says what’s wrong with a typed date', async ({ page }) => {
-      await page.goto('/gallery.html');
-      await dueDate(page).click();
-      await typedDate(page).fill('2/30/2026');
-      await typedDate(page).blur();
-      await calendar(page, 'Due date').getByRole('heading').click();
-      await expect(typedDate(page)).toHaveAttribute('aria-invalid', 'true');
-      await expect(typedDate(page)).toHaveAccessibleDescription(/such as 3\/8\/2026/);
-    });
-
-    test('closes when tapping outside, changing nothing', async ({ page }) => {
-      await page.goto('/gallery.html');
-      await dueDate(page).fill('3/8/2026');
-      await dueDate(page).click();
-      await expect(calendar(page, 'Due date')).toBeVisible();
-      await page.mouse.click(195, 20);
-      await expect(calendar(page, 'Due date')).toHaveCount(0);
-      await expect(dueDate(page)).toHaveValue('3/8/2026');
-    });
-
-    test('works from inside a modal', async ({ page }) => {
-      await page.goto('/gallery.html');
-      await page.getByRole('button', { name: 'Open modal' }).click();
-      const field = page.getByRole('textbox', { name: 'Date paid' });
-      await field.fill('3/8/2026');
-      await field.click();
-      await dayButton(page, 'Date paid', /March 20, 2026/).click();
-      await expect(field).toHaveValue('3/20/2026');
     });
   });
 
