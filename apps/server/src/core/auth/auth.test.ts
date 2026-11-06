@@ -406,6 +406,37 @@ describe('rate limiting', () => {
   });
 });
 
+describe('the general rate limit', () => {
+  it('covers the sign-in routes, before they reach the database', async () => {
+    const orm = test.database.orm;
+    const limited = buildApp({
+      database: test.database,
+      auth: { auth, orm },
+      publicUrl: PUBLIC_URL,
+      requestsPerMinute: 2,
+    });
+    const hit = () =>
+      limited.inject({
+        method: 'POST',
+        url: '/api/auth/sign-in/email',
+        remoteAddress: '10.2.0.1',
+        headers: ORIGIN,
+        payload: { email: 'nobody@example.com', password: 'wrong password here' },
+      });
+    expect((await hit()).statusCode).toBe(401);
+    expect((await hit()).statusCode).toBe(401);
+
+    const refused = await hit();
+    expect(refused.statusCode).toBe(429);
+    expect(apiErrorResponse.parse(refused.json()).error.code).toBe('too_many_requests');
+
+    // The refused attempt never reached the lockout count.
+    const rows = await orm.select().from(loginThrottle);
+    expect(rows[0]?.failedCount).toBe(2);
+    await limited.close();
+  });
+});
+
 describe('what is reachable', () => {
   beforeEach(async () => {
     await post('/api/setup', ADMIN);
