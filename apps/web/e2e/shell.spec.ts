@@ -193,12 +193,10 @@ test.describe('signing in', () => {
       route.fulfill({ status: 401, json: { code: 'INVALID_EMAIL_OR_PASSWORD', message: 'x' } }),
     );
     await page.goto('/');
-    await page.getByLabel('Email or username').fill('alex@example.com');
+    await page.getByLabel('Email').fill('alex@example.com');
     await page.getByLabel('Password').fill('wrong password');
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page.getByRole('alert')).toHaveText(
-      'That username, email or password isn’t right.',
-    );
+    await expect(page.getByRole('alert')).toHaveText('That email or password isn’t right.');
     await expectNoViolations(page);
   });
 
@@ -210,7 +208,7 @@ test.describe('signing in', () => {
       }),
     );
     await page.goto('/');
-    await page.getByLabel('Email or username').fill('alex@example.com');
+    await page.getByLabel('Email').fill('alex@example.com');
     await page.getByLabel('Password').fill('wrong password');
     await page.keyboard.press('Enter');
     await expect(page.getByRole('alert')).toContainText('Wait 15 minutes');
