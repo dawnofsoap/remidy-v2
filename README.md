@@ -20,9 +20,12 @@ Then open http://localhost:5173. The page should say the server and database are
 reload automatically. To stop, press Ctrl+C. To also delete the development database and installed
 packages, run `docker compose down -v`.
 
+If new packages were added since you last started it, restart with `docker compose down` and then
+`docker compose up`. Otherwise the running server can't find them.
+
 ## Contributing checks
 
-To run the checks on your own machine, install Node 26 and pnpm, then:
+To run the checks on your own machine, install Node 26, pnpm and Docker, then:
 
 ```
 pnpm install

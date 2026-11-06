@@ -103,7 +103,7 @@ features -> core -> packages (domain, contracts, db)
 | Accessibility basics hold | jsx-a11y lint rules and axe checks in Playwright |
 | Domain logic is well tested | CI coverage threshold on `packages/domain` |
 | History stays fixed | History invariance test in CI; database refuses to delete anything with history |
-| Database changes are safe | Migrations are forward-only and CI runs them on a fresh database and on the last release's schema |
+| Database changes are safe | Migrations are forward-only and apply all or none; tests run them on a real, empty database; CI fails if `schema.ts` has changes with no migration. Testing against the last release's schema starts with the first release |
 | Versions and changelog | Generated from tags and commit messages; no version commits |
 | Dependencies stay consistent | Frozen lockfile in CI |
 | No secrets or real data committed | GitHub secret scanning and push protection; seed data is fictional |
@@ -145,6 +145,6 @@ asset before bringing it over, because this repo is public; bank and card artwor
 
 The table above is the target. Some rules need code that doesn't exist yet.
 
-- **Active:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning, design token lint and contrast checks, axe and keyboard checks in a real browser.
-- **Arrive in milestone 1:** contract schemas on routes, the permission test across all routes, domain coverage threshold, migration checks, generated versions and changelog.
+- **Active:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning, design token lint and contrast checks, axe and keyboard checks in a real browser, migration checks, GitHub blocking merges on high-severity CodeQL alerts.
+- **Arrive in milestone 1:** contract schemas on routes, the permission test across all routes, domain coverage threshold, generated versions and changelog.
 - **Arrive in milestone 4:** the history invariance test.

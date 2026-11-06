@@ -8,3 +8,11 @@ savePrefix: ''
 
 # Skip packages published in the last day, to reduce exposure to compromised releases.
 minimumReleaseAge: 1440
+
+# Packages may not run install scripts unless listed as true here. These all work without them:
+# esbuild ships prebuilt binaries, and the others are optional speedups.
+allowBuilds:
+  cpu-features: false
+  esbuild: false
+  protobufjs: false
+  ssh2: false
