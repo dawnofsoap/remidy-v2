@@ -1,5 +1,5 @@
 {
-  "id": "78d246d9-2cb5-4468-98ac-32cc338938c7",
+  "id": "9eb9fa59-10da-4963-9c36-12d542c0052c",
   "prevId": "402fa495-af0d-4fde-b8ec-86ed3a544607",
   "version": "7",
   "dialect": "postgresql",
@@ -140,7 +140,13 @@
         "email": {
           "name": "email",
           "type": "text",
-          "primaryKey": true,
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true
         },
         "failed_count": {
@@ -166,7 +172,15 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "login_throttle_email_address_pk": {
+          "name": "login_throttle_email_address_pk",
+          "columns": [
+            "email",
+            "address"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -302,32 +316,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.setup_claim": {
-      "name": "setup_claim",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "claimed_at": {
-          "name": "claimed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.user": {
       "name": "user",
       "schema": "",
@@ -365,6 +353,13 @@
         },
         "is_instance_admin": {
           "name": "is_instance_admin",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "must_change_password": {
+          "name": "must_change_password",
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,

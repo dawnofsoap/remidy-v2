@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export * from './password.ts';
+
 export const healthResponse = z.object({
   status: z.enum(['ok', 'degraded']),
   database: z.enum(['up', 'down']),
@@ -7,26 +9,21 @@ export const healthResponse = z.object({
 
 export type HealthResponse = z.infer<typeof healthResponse>;
 
-export const setupStatusResponse = z.object({
-  /** True until the first account has been created. */
-  needed: z.boolean(),
+export const signInOptionsResponse = z.object({
+  /** True while the admin's generated password, printed in the server console, is still in use. */
+  adminPasswordInConsole: z.boolean(),
 });
-
-export function createSetupRequest(minPassword: number, maxPassword: number) {
-  return z.object({
-    name: z.string().trim().min(1, 'Enter your name.').max(100, 'Use 100 characters or fewer.'),
-    email: z.email('Enter a valid email address.').max(254, 'Use 254 characters or fewer.'),
-    password: z
-      .string()
-      .min(minPassword, `Use at least ${String(minPassword)} characters.`)
-      .max(maxPassword, `Use ${String(maxPassword)} characters or fewer.`),
-  });
-}
 
 /** The signed-in person, or null when nobody is. */
 export const sessionResponse = z
   .object({
-    user: z.object({ id: z.string(), name: z.string(), email: z.string() }),
+    user: z.object({
+      id: z.string(),
+      name: z.string(),
+      email: z.string(),
+      /** Set while the password is a generated one, which must be replaced before anything else. */
+      mustChangePassword: z.boolean(),
+    }),
   })
   .nullable();
 

@@ -1,5 +1,6 @@
+import { ADMIN_EMAIL } from '@remidy/contracts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   changePassword,
   fetchOtherSessionCount,
@@ -9,7 +10,7 @@ import {
   SESSION_QUERY_KEY,
   signOut,
 } from '../../core/session.ts';
-import { Button, TextField, toast } from '../../ui/index.ts';
+import { Button, isPasswordReady, NewPasswordField, TextField, toast } from '../../ui/index.ts';
 
 const OTHER_SESSIONS_KEY = ['other-sessions'];
 
@@ -23,10 +24,17 @@ function ChangePasswordForm() {
   const [next, setNext] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [newPasswordError, setNewPasswordError] = useState<string | null>(null);
+  const newPasswordRef = useRef<HTMLInputElement>(null);
 
   async function save() {
+    if (!isPasswordReady(next)) {
+      newPasswordRef.current?.focus();
+      return;
+    }
     setBusy(true);
     setError(null);
+    setNewPasswordError(null);
     try {
       await changePassword(current, next);
       setCurrent('');
@@ -34,7 +42,9 @@ function ChangePasswordForm() {
       toast('Password changed. Other devices were signed out.');
       await queryClient.invalidateQueries({ queryKey: OTHER_SESSIONS_KEY });
     } catch (failure) {
-      setError(failureMessage(failure));
+      const onNewPassword = failure instanceof RequestFailure && failure.fields.newPassword;
+      if (onNewPassword) setNewPasswordError(onNewPassword);
+      else setError(failureMessage(failure));
     } finally {
       setBusy(false);
     }
@@ -64,16 +74,17 @@ function ChangePasswordForm() {
           setCurrent(event.target.value);
         }}
       />
-      <TextField
+      <NewPasswordField
+        ref={newPasswordRef}
         label="New password"
-        type="password"
-        autoComplete="new-password"
-        hint="At least 12 characters. Changing it signs out your other devices."
+        hint="Changing it signs out your other devices."
         required
         value={next}
         onChange={(event) => {
           setNext(event.target.value);
+          setNewPasswordError(null);
         }}
+        {...(newPasswordError ? { error: newPasswordError } : {})}
       />
       <Button type="submit" variant="secondary" busy={busy} className="self-start">
         Change password
@@ -139,7 +150,9 @@ export function AccountSettings() {
         <section className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold">Account</h2>
           <p>{session.data.user.name}</p>
-          <p className="text-ink-2">{session.data.user.email}</p>
+          {session.data.user.email === ADMIN_EMAIL ? null : (
+            <p className="text-ink-2">{session.data.user.email}</p>
+          )}
         </section>
       ) : null}
       <ChangePasswordForm />

@@ -1,16 +1,21 @@
-import { schema, type Orm } from '@remidy/db';
+import {
+  ADMIN_EMAIL,
+  ADMIN_USERNAME,
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+  unmetPasswordRequirements,
+} from '@remidy/contracts';
+import { schema, user, type Orm } from '@remidy/db';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { AppError } from '../errors.ts';
 import type { Authorize, Principal, Route } from '../feature.ts';
-import { clearFailedSignIns, isLockedOut, recordFailedSignIn } from './throttle.ts';
+import { clearFailedSignIns, isLockedOut, normalizeEmail, recordFailedSignIn } from './throttle.ts';
 
 /** A header only this server sets, replacing anything a client sends, so limits can't be dodged. */
 const CLIENT_IP_HEADER = 'x-remidy-client-ip';
-
-export const MIN_PASSWORD_LENGTH = 12;
-export const MAX_PASSWORD_LENGTH = 128;
 
 /**
  * The only Better Auth endpoints reachable from outside. Anything else, such as public sign-up
@@ -45,11 +50,12 @@ export function createAuth({ orm, secret, publicUrl }: AuthOptions) {
       additionalFields: {
         // Never settable through the API.
         isInstanceAdmin: { type: 'boolean', required: false, defaultValue: false, input: false },
+        mustChangePassword: { type: 'boolean', required: false, defaultValue: false, input: false },
       },
     },
     emailAndPassword: {
       enabled: true,
-      // Accounts come from first-run setup, and later from invitations.
+      // The admin account is created on first start. Others will come from invitations.
       disableSignUp: true,
       minPasswordLength: MIN_PASSWORD_LENGTH,
       maxPasswordLength: MAX_PASSWORD_LENGTH,
@@ -92,12 +98,17 @@ function toFetchHeaders(request: FastifyRequest): Headers {
   return headers;
 }
 
-function callBetterAuth(auth: Auth, publicUrl: string, request: FastifyRequest): Promise<Response> {
+function callBetterAuth(
+  auth: Auth,
+  publicUrl: string,
+  request: FastifyRequest,
+  body: unknown = request.body,
+): Promise<Response> {
   return auth.handler(
     new Request(new URL(request.url, publicUrl), {
       method: request.method,
       headers: toFetchHeaders(request),
-      ...(request.method === 'POST' ? { body: JSON.stringify(request.body ?? {}) } : {}),
+      ...(request.method === 'POST' ? { body: JSON.stringify(body ?? {}) } : {}),
     }),
   );
 }
@@ -118,9 +129,33 @@ const LOCKED_OUT = new AppError(
   'Too many failed sign-in attempts. Wait 15 minutes and try again.',
 );
 
-function emailFrom(body: unknown): string | null {
-  const email = (body as { email?: unknown } | null | undefined)?.email;
-  return typeof email === 'string' ? email : null;
+function stringField(body: unknown, field: string): string | null {
+  const value = (body as Record<string, unknown> | null | undefined)?.[field];
+  return typeof value === 'string' ? value : null;
+}
+
+/** The admin signs in with a username. Everyone else uses an email address. */
+function emailForSignIn(typed: string): string {
+  return normalizeEmail(typed) === ADMIN_USERNAME ? ADMIN_EMAIL : typed;
+}
+
+function refuseNewPassword(message: string): AppError {
+  return new AppError(422, 'validation_failed', 'Check the highlighted fields and try again.', [
+    { path: 'body.newPassword', message },
+  ]);
+}
+
+function checkNewPassword(body: unknown): void {
+  const newPassword = stringField(body, 'newPassword');
+  if (newPassword === null) return;
+  const unmet = unmetPasswordRequirements(newPassword);
+  if (unmet.length > 0) {
+    const needed = unmet.map((requirement) => requirement.label.toLowerCase()).join(', ');
+    throw refuseNewPassword(`This password needs: ${needed}.`);
+  }
+  if (newPassword === stringField(body, 'currentPassword')) {
+    throw refuseNewPassword('Choose a password different from your current one.');
+  }
 }
 
 /** Makes the allowed sign-in endpoints reachable, with account lockout around sign-in. */
@@ -148,14 +183,29 @@ export function registerAuthRoutes(
       throw new AppError(404, 'not_found', 'That wasn’t found.');
     }
 
-    const email = path === '/sign-in/email' ? emailFrom(request.body) : null;
-    if (email === null) return sendResponse(await callBetterAuth(auth, publicUrl, request), reply);
+    if (path === '/change-password') {
+      checkNewPassword(request.body);
+      const current = await auth.api.getSession({ headers: toFetchHeaders(request) });
+      const response = await callBetterAuth(auth, publicUrl, request);
+      if (response.status === 200 && current) {
+        await orm
+          .update(user)
+          .set({ mustChangePassword: false })
+          .where(eq(user.id, current.user.id));
+      }
+      return sendResponse(response, reply);
+    }
 
-    if (await isLockedOut(orm, email)) throw LOCKED_OUT;
-    const response = await callBetterAuth(auth, publicUrl, request);
+    const typed = path === '/sign-in/email' ? stringField(request.body, 'email') : null;
+    if (typed === null) return sendResponse(await callBetterAuth(auth, publicUrl, request), reply);
+
+    const email = emailForSignIn(typed);
+    if (await isLockedOut(orm, email, request.ip)) throw LOCKED_OUT;
+    const body = { ...(request.body as object), email };
+    const response = await callBetterAuth(auth, publicUrl, request, body);
     // Count the attempt before answering, so the next attempt always sees it.
-    if (response.status === 200) await clearFailedSignIns(orm, email);
-    else if (response.status === 401) await recordFailedSignIn(orm, email);
+    if (response.status === 200) await clearFailedSignIns(orm, email, request.ip);
+    else if (response.status === 401) await recordFailedSignIn(orm, email, request.ip);
     return sendResponse(response, reply);
   };
 
@@ -171,6 +221,9 @@ export function createAuthorize(auth: Auth): Authorize {
   return async (_access, request): Promise<Principal> => {
     const session = await auth.api.getSession({ headers: toFetchHeaders(request) });
     if (!session) throw new AppError(401, 'not_signed_in', 'Sign in to continue.');
+    if (session.user.mustChangePassword === true) {
+      throw new AppError(403, 'password_change_required', 'Choose a new password to continue.');
+    }
     return {
       userId: session.user.id,
       email: session.user.email,

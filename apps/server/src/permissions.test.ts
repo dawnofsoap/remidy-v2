@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from './core/app.ts';
 import type { Auth } from './core/auth/index.ts';
-import { setupFeature } from './core/auth/setup.ts';
+import { signInOptionsFeature } from './core/auth/sign-in-options.ts';
 import { features } from './features/index.ts';
 import type { Orm } from '@remidy/db';
 
@@ -11,9 +11,8 @@ describe('every route in the app', () => {
   const PUBLIC_ROUTES = [
     'GET /api/features',
     'GET /api/health',
-    'GET /api/setup',
+    'GET /api/sign-in-options',
     'POST /api/auth/*',
-    'POST /api/setup',
   ];
 
   // Stand-ins, because this only inspects routes. Nothing here reaches a real database.
@@ -21,7 +20,7 @@ describe('every route in the app', () => {
   const orm = {} as Orm;
   const app = buildApp({
     database: { ping: () => Promise.resolve(true) },
-    features: [setupFeature({ auth, orm }), ...features],
+    features: [signInOptionsFeature({ orm }), ...features],
     auth: { auth, orm },
   });
   beforeAll(async () => {

@@ -1,4 +1,4 @@
-import { apiErrorResponse, sessionResponse, setupStatusResponse } from '@remidy/contracts';
+import { apiErrorResponse, sessionResponse, signInOptionsResponse } from '@remidy/contracts';
 import { z } from 'zod';
 
 /** A failed request, with a message that's safe to show and any problems with individual fields. */
@@ -43,26 +43,22 @@ async function get<T>(url: string, schema: z.ZodType<T>, signal?: AbortSignal): 
   return schema.parse(await response.json());
 }
 
-export const fetchSetupStatus = ({ signal }: { signal: AbortSignal }) =>
-  get('/api/setup', setupStatusResponse, signal);
+export const fetchSignInOptions = ({ signal }: { signal: AbortSignal }) =>
+  get('/api/sign-in-options', signInOptionsResponse, signal);
 
 export const fetchSession = ({ signal }: { signal: AbortSignal }) =>
   get('/api/auth/get-session', sessionResponse, signal);
 
 export const SESSION_QUERY_KEY = ['session'];
-export const SETUP_QUERY_KEY = ['setup'];
+export const SIGN_IN_OPTIONS_QUERY_KEY = ['sign-in-options'];
 
-export function completeSetup(body: { name: string; email: string; password: string }) {
-  return post('/api/setup', body);
-}
-
-export async function signIn(email: string, password: string): Promise<void> {
+export async function signIn(emailOrUsername: string, password: string): Promise<void> {
   try {
-    await post('/api/auth/sign-in/email', { email, password });
+    await post('/api/auth/sign-in/email', { email: emailOrUsername, password });
   } catch (error) {
     if (error instanceof RequestFailure && (error.status === 401 || error.status === 400)) {
       // The same message either way, so this doesn't reveal which accounts exist.
-      throw new RequestFailure(error.status, 'That email or password isn’t right.');
+      throw new RequestFailure(error.status, 'That username, email or password isn’t right.');
     }
     if (error instanceof RequestFailure && error.status === 429) {
       throw new RequestFailure(429, 'Too many attempts. Wait 15 minutes and try again.');
@@ -84,10 +80,7 @@ export async function changePassword(currentPassword: string, newPassword: strin
     });
   } catch (error) {
     if (error instanceof RequestFailure && error.status === 400) {
-      throw new RequestFailure(
-        400,
-        'Your current password isn’t right, or the new one is too short.',
-      );
+      throw new RequestFailure(400, 'Your current password isn’t right.');
     }
     throw error;
   }

@@ -1,14 +1,21 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState, type ReactNode, type SyntheticEvent } from 'react';
-import { Button, ErrorState, LoadingState, TextField } from '../ui/index.ts';
+import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
 import {
-  completeSetup,
+  Button,
+  ErrorState,
+  isPasswordReady,
+  LoadingState,
+  NewPasswordField,
+  TextField,
+} from '../ui/index.ts';
+import {
+  changePassword,
   fetchSession,
-  fetchSetupStatus,
+  fetchSignInOptions,
   RequestFailure,
   SESSION_QUERY_KEY,
-  SETUP_QUERY_KEY,
   signIn,
+  SIGN_IN_OPTIONS_QUERY_KEY,
 } from './session.ts';
 
 const SERVER_UNREACHABLE = 'Remidy can’t reach the server. Check your connection and try again.';
@@ -68,16 +75,16 @@ function FormError({ failure }: { failure: RequestFailure | null }) {
   );
 }
 
-function SignInPage() {
+function SignInPage({ adminPasswordInConsole }: { adminPasswordInConsole: boolean }) {
   const queryClient = useQueryClient();
   const { busy, failure, run } = useFormAction();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
 
   function submit(event: SyntheticEvent) {
     event.preventDefault();
     void run(async () => {
-      await signIn(email, password);
+      await signIn(identifier, password);
       await queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY });
     });
   }
@@ -85,15 +92,21 @@ function SignInPage() {
   return (
     <AuthShell title="Sign in" intro="Welcome back.">
       <form onSubmit={submit} className="flex flex-col gap-4">
+        {adminPasswordInConsole ? (
+          <p className="rounded-xl bg-surface-2 p-3">
+            Setting up? Sign in with the username <strong>admin</strong> and the password printed in
+            the server’s console.
+          </p>
+        ) : null}
         <FormError failure={failure} />
         <TextField
-          label="Email"
-          type="email"
+          label="Email or username"
           autoComplete="username"
+          autoCapitalize="none"
           required
-          value={email}
+          value={identifier}
           onChange={(event) => {
-            setEmail(event.target.value);
+            setIdentifier(event.target.value);
           }}
         />
         <TextField
@@ -114,91 +127,88 @@ function SignInPage() {
   );
 }
 
-function SetupPage() {
+/** Replaces a generated password, which has been shown in a console, before anything else. */
+function ChoosePasswordPage() {
   const queryClient = useQueryClient();
   const { busy, failure, run } = useFormAction();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const fieldError = (field: string) => {
-    const message = failure?.fields[field];
-    return message ? { error: message } : {};
-  };
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const newPasswordRef = useRef<HTMLInputElement>(null);
+  const newPasswordError = failure?.fields.newPassword;
 
   function submit(event: SyntheticEvent) {
     event.preventDefault();
+    if (!isPasswordReady(next)) {
+      newPasswordRef.current?.focus();
+      return;
+    }
     void run(async () => {
-      await completeSetup({ name, email, password });
-      await signIn(email, password);
+      await changePassword(current, next);
       await queryClient.invalidateQueries();
     });
   }
 
   return (
-    <AuthShell title="Set up Remidy" intro="Create the first account. It will manage this Remidy.">
+    <AuthShell
+      title="Choose a password"
+      intro="The password you signed in with was temporary. Replace it to continue."
+    >
       <form onSubmit={submit} className="flex flex-col gap-4">
         <FormError failure={failure} />
         <TextField
-          label="Your name"
-          autoComplete="name"
-          required
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value);
-          }}
-          {...fieldError('name')}
-        />
-        <TextField
-          label="Email"
-          type="email"
-          autoComplete="username"
-          required
-          value={email}
-          onChange={(event) => {
-            setEmail(event.target.value);
-          }}
-          {...fieldError('email')}
-        />
-        <TextField
-          label="Password"
+          label="Temporary password"
           type="password"
-          autoComplete="new-password"
-          hint="At least 12 characters. A few random words work well."
+          autoComplete="current-password"
           required
-          value={password}
+          value={current}
           onChange={(event) => {
-            setPassword(event.target.value);
+            setCurrent(event.target.value);
           }}
-          {...fieldError('password')}
+        />
+        <NewPasswordField
+          ref={newPasswordRef}
+          label="New password"
+          required
+          value={next}
+          onChange={(event) => {
+            setNext(event.target.value);
+          }}
+          {...(newPasswordError ? { error: newPasswordError } : {})}
         />
         <Button type="submit" busy={busy}>
-          Create account
+          Save password
         </Button>
       </form>
     </AuthShell>
   );
 }
 
-/** Shows first-run setup or sign-in until someone is signed in, and then the app. */
+/** Shows sign-in until someone is signed in with a password of their own, and then the app. */
 export function AuthGate({ children }: { children: ReactNode }) {
-  const setup = useQuery({ queryKey: SETUP_QUERY_KEY, queryFn: fetchSetupStatus, retry: false });
+  const options = useQuery({
+    queryKey: SIGN_IN_OPTIONS_QUERY_KEY,
+    queryFn: fetchSignInOptions,
+    retry: false,
+  });
   const session = useQuery({ queryKey: SESSION_QUERY_KEY, queryFn: fetchSession, retry: false });
 
-  if (setup.isPending || session.isPending) {
+  if (options.isPending || session.isPending) {
     return <LoadingState label="Loading Remidy" />;
   }
-  if (setup.isError || session.isError) {
+  if (options.isError || session.isError) {
     return (
       <ErrorState
         message={SERVER_UNREACHABLE}
         onRetry={() => {
-          void setup.refetch();
+          void options.refetch();
           void session.refetch();
         }}
       />
     );
   }
-  if (setup.data.needed) return <SetupPage />;
-  if (!session.data) return <SignInPage />;
+  if (!session.data) {
+    return <SignInPage adminPasswordInConsole={options.data.adminPasswordInConsole} />;
+  }
+  if (session.data.user.mustChangePassword) return <ChoosePasswordPage />;
   return children;
 }

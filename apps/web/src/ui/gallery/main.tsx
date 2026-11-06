@@ -10,6 +10,7 @@ import {
   ListRow,
   LoadingState,
   Modal,
+  NewPasswordField,
   SelectField,
   TextField,
   toast,
@@ -27,6 +28,19 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <h2 className="text-lg font-semibold">{title}</h2>
       {children}
     </section>
+  );
+}
+
+function PasswordExample() {
+  const [password, setPassword] = useState('');
+  return (
+    <NewPasswordField
+      label="New password"
+      value={password}
+      onChange={(event) => {
+        setPassword(event.target.value);
+      }}
+    />
   );
 }
 
@@ -49,6 +63,7 @@ function Gallery() {
         <TextField label="Bill name" />
         <TextField label="Website" hint="Where you pay this bill." />
         <TextField label="Amount" defaultValue="abc" error="Enter an amount, such as 42.50." />
+        <PasswordExample />
         <SelectField label="Paid from">
           <option>Everyday Checking</option>
           <option>Travel Card</option>
