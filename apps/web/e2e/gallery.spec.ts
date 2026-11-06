@@ -52,6 +52,24 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
+test('a toast appears at the top, top-right on larger screens', async ({ page }, testInfo) => {
+  await page.goto('/gallery.html');
+  await page.getByRole('button', { name: 'Show toast' }).click();
+  const toast = page.locator('[data-sonner-toast]');
+  await expect(toast).toHaveCSS('opacity', '1');
+
+  const box = await toast.boundingBox();
+  const screen = page.viewportSize();
+  if (!box || !screen) throw new Error('Not on the page.');
+  expect(box.y + box.height).toBeLessThan(screen.height / 4);
+  if (testInfo.project.name === 'desktop') {
+    expect(box.x).toBeGreaterThan(screen.width / 2);
+  } else {
+    expect(box.x).toBeLessThanOrEqual(16);
+    expect(box.x + box.width).toBeGreaterThanOrEqual(screen.width - 16);
+  }
+});
+
 test('the theme setting overrides the system preference', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/gallery.html?theme=light');
