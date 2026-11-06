@@ -1,3 +1,4 @@
+import { ADMIN_EMAIL } from '@remidy/contracts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
 import {
@@ -78,13 +79,13 @@ function FormError({ failure }: { failure: RequestFailure | null }) {
 function SignInPage({ adminPasswordInConsole }: { adminPasswordInConsole: boolean }) {
   const queryClient = useQueryClient();
   const { busy, failure, run } = useFormAction();
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   function submit(event: SyntheticEvent) {
     event.preventDefault();
     void run(async () => {
-      await signIn(identifier, password);
+      await signIn(email, password);
       await queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY });
     });
   }
@@ -94,19 +95,19 @@ function SignInPage({ adminPasswordInConsole }: { adminPasswordInConsole: boolea
       <form onSubmit={submit} className="flex flex-col gap-4">
         {adminPasswordInConsole ? (
           <p className="rounded-xl bg-surface-2 p-3">
-            Setting up? Sign in with the username <strong>admin</strong> and the password printed in
-            the server’s console.
+            Setting up? Sign in with <strong>{ADMIN_EMAIL}</strong> and the password printed in the
+            server’s console.
           </p>
         ) : null}
         <FormError failure={failure} />
         <TextField
-          label="Email or username"
+          label="Email"
+          type="email"
           autoComplete="username"
-          autoCapitalize="none"
           required
-          value={identifier}
+          value={email}
           onChange={(event) => {
-            setIdentifier(event.target.value);
+            setEmail(event.target.value);
           }}
         />
         <TextField

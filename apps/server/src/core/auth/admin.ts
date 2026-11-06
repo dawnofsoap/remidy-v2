@@ -26,7 +26,7 @@ export function adminPasswordNotice(password: string): string {
 ================================================================
   Remidy admin account
 
-  Username: admin
+  Email:    ${ADMIN_EMAIL}
   Password: ${password}
 
   You'll choose a new password the first time you sign in.

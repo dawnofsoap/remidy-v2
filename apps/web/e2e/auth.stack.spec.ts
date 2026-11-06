@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { ADMIN_EMAIL } from '@remidy/contracts';
 import { execSync } from 'node:child_process';
 
 // Runs against the real server and database, with nothing mocked, in the order a person would.
@@ -20,7 +21,7 @@ function passwordIn(output: string): string {
 }
 
 async function signInWith(page: Page, password: string) {
-  await page.getByLabel('Email or username').fill('admin');
+  await page.getByLabel('Email').fill(ADMIN_EMAIL);
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 }
@@ -91,7 +92,7 @@ test('the session cookie is out of reach of scripts', async ({ page, context }) 
   expect(stored).not.toContain('session');
 });
 
-test('a session survives a reload, and settings hide the placeholder email', async ({ page }) => {
+test('a session survives a reload, and shows the account in settings', async ({ page }) => {
   await page.goto('/');
   await signInWith(page, CHOSEN_PASSWORD);
   await expect(appHeading(page, 'Home')).toBeVisible();
@@ -101,13 +102,13 @@ test('a session survives a reload, and settings hide the placeholder email', asy
 
   await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible();
-  await expect(page.getByText('remidy.invalid')).toHaveCount(0);
+  await expect(page.getByText(ADMIN_EMAIL)).toBeVisible();
 });
 
 test('a wrong password is refused with a clear message', async ({ page }) => {
   await page.goto('/');
   await signInWith(page, 'not the right password');
-  await expect(page.getByRole('alert')).toHaveText('That username, email or password isn’t right.');
+  await expect(page.getByRole('alert')).toHaveText('That email or password isn’t right.');
   await expect(page.getByRole('navigation')).toHaveCount(0);
 });
 

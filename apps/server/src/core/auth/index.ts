@@ -1,6 +1,4 @@
 import {
-  ADMIN_EMAIL,
-  ADMIN_USERNAME,
   MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
   unmetPasswordRequirements,
@@ -134,11 +132,6 @@ function stringField(body: unknown, field: string): string | null {
   return typeof value === 'string' ? value : null;
 }
 
-/** The admin signs in with a username. Everyone else uses an email address. */
-function emailForSignIn(typed: string): string {
-  return normalizeEmail(typed) === ADMIN_USERNAME ? ADMIN_EMAIL : typed;
-}
-
 function refuseNewPassword(message: string): AppError {
   return new AppError(422, 'validation_failed', 'Check the highlighted fields and try again.', [
     { path: 'body.newPassword', message },
@@ -199,7 +192,7 @@ export function registerAuthRoutes(
     const typed = path === '/sign-in/email' ? stringField(request.body, 'email') : null;
     if (typed === null) return sendResponse(await callBetterAuth(auth, publicUrl, request), reply);
 
-    const email = emailForSignIn(typed);
+    const email = normalizeEmail(typed);
     if (await isLockedOut(orm, email, request.ip)) throw LOCKED_OUT;
     const body = { ...(request.body as object), email };
     const response = await callBetterAuth(auth, publicUrl, request, body);

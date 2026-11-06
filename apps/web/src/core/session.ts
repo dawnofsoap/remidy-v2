@@ -52,13 +52,13 @@ export const fetchSession = ({ signal }: { signal: AbortSignal }) =>
 export const SESSION_QUERY_KEY = ['session'];
 export const SIGN_IN_OPTIONS_QUERY_KEY = ['sign-in-options'];
 
-export async function signIn(emailOrUsername: string, password: string): Promise<void> {
+export async function signIn(email: string, password: string): Promise<void> {
   try {
-    await post('/api/auth/sign-in/email', { email: emailOrUsername, password });
+    await post('/api/auth/sign-in/email', { email, password });
   } catch (error) {
     if (error instanceof RequestFailure && (error.status === 401 || error.status === 400)) {
       // The same message either way, so this doesn't reveal which accounts exist.
-      throw new RequestFailure(error.status, 'That username, email or password isn’t right.');
+      throw new RequestFailure(error.status, 'That email or password isn’t right.');
     }
     if (error instanceof RequestFailure && error.status === 429) {
       throw new RequestFailure(429, 'Too many attempts. Wait 15 minutes and try again.');

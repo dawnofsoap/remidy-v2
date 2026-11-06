@@ -1,4 +1,3 @@
-import { ADMIN_EMAIL } from '@remidy/contracts';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import {
@@ -150,9 +149,7 @@ export function AccountSettings() {
         <section className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold">Account</h2>
           <p>{session.data.user.name}</p>
-          {session.data.user.email === ADMIN_EMAIL ? null : (
-            <p className="text-ink-2">{session.data.user.email}</p>
-          )}
+          <p className="text-ink-2">{session.data.user.email}</p>
         </section>
       ) : null}
       <ChangePasswordForm />

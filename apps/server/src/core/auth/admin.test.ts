@@ -17,7 +17,7 @@ describe('the admin account', () => {
 
   /** Signs in as admin with a generated password, and returns the session cookie. */
   async function asAdmin(password: string): Promise<string> {
-    const response = await signIn('admin', password);
+    const response = await signIn(ADMIN_EMAIL, password);
     expect(response.statusCode).toBe(200);
     return cookieFrom(response);
   }
@@ -46,9 +46,9 @@ describe('the admin account', () => {
     expect(stored.length).toBeGreaterThan(40);
   });
 
-  it('signs in with the username, ignoring case and spaces, and is the instance admin', async () => {
+  it('signs in with its email, ignoring case and spaces, and is the instance admin', async () => {
     const password = String(await ensureAdminAccount(h.auth));
-    expect((await signIn(' ADMIN ', password)).statusCode).toBe(200);
+    expect((await signIn(` ${ADMIN_EMAIL.toUpperCase()} `, password)).statusCode).toBe(200);
     const cookie = await asAdmin(password);
     expect((await choosePassword(cookie, password)).statusCode).toBe(200);
     const me = await whoami(await asAdmin(NEW));
@@ -66,7 +66,7 @@ describe('the admin account', () => {
     expect(current.json()).toMatchObject({ user: { mustChangePassword: true } });
 
     expect((await choosePassword(cookie, password)).statusCode).toBe(200);
-    expect((await signIn('admin', password)).statusCode).toBe(401);
+    expect((await signIn(ADMIN_EMAIL, password)).statusCode).toBe(401);
     expect((await whoami(await asAdmin(NEW))).statusCode).toBe(200);
   });
 
@@ -96,12 +96,10 @@ describe('the admin account', () => {
     expect(await options()).toEqual({ adminPasswordInConsole: true });
   });
 
-  it('is not mistaken for someone typing an email that merely contains admin', async () => {
-    await ensureAdminAccount(h.auth);
-    const response = await signIn('admin@example.com', PERSON.password);
-    expect(response.statusCode).toBe(401);
-    const [row] = await h.test.database.orm.select().from(loginThrottle);
-    expect(row?.email).toBe('admin@example.com');
+  it('has no special username', async () => {
+    const password = String(await ensureAdminAccount(h.auth));
+    expect((await signIn('admin', password)).statusCode).not.toBe(200);
+    expect(await h.test.database.orm.select().from(loginThrottle)).toHaveLength(0);
   });
 
   describe('when the password is lost', () => {
@@ -109,15 +107,15 @@ describe('the admin account', () => {
       const lost = String(await ensureAdminAccount(h.auth));
       const fresh = await resetAdminPassword(h.auth, h.test.database.orm);
       expect(fresh).not.toBe(lost);
-      expect((await signIn('admin', lost)).statusCode).toBe(401);
-      expect((await signIn('admin', fresh)).statusCode).toBe(200);
+      expect((await signIn(ADMIN_EMAIL, lost)).statusCode).toBe(401);
+      expect((await signIn(ADMIN_EMAIL, fresh)).statusCode).toBe(200);
     });
 
     it('works after the admin has chosen a password, and asks for a new one again', async () => {
       const first = String(await ensureAdminAccount(h.auth));
       await choosePassword(await asAdmin(first), first);
       const fresh = await resetAdminPassword(h.auth, h.test.database.orm);
-      expect((await signIn('admin', NEW)).statusCode).toBe(401);
+      expect((await signIn(ADMIN_EMAIL, NEW)).statusCode).toBe(401);
       expect((await whoami(await asAdmin(fresh))).statusCode).toBe(403);
     });
 
@@ -132,20 +130,21 @@ describe('the admin account', () => {
 
     it('ends lockouts from every address', async () => {
       const first = String(await ensureAdminAccount(h.auth));
-      for (let i = 0; i < MAX_FAILED_SIGN_INS; i += 1) await signIn('admin', 'wrong password here');
-      expect((await signIn('admin', first)).statusCode).toBe(429);
+      for (let i = 0; i < MAX_FAILED_SIGN_INS; i += 1)
+        await signIn(ADMIN_EMAIL, 'wrong password here');
+      expect((await signIn(ADMIN_EMAIL, first)).statusCode).toBe(429);
       const fresh = await resetAdminPassword(h.auth, h.test.database.orm);
-      expect((await signIn('admin', fresh)).statusCode).toBe(200);
+      expect((await signIn(ADMIN_EMAIL, fresh)).statusCode).toBe(200);
     });
 
     it('creates the account if it was never finished', async () => {
       const fresh = await resetAdminPassword(h.auth, h.test.database.orm);
-      expect((await signIn('admin', fresh)).statusCode).toBe(200);
+      expect((await signIn(ADMIN_EMAIL, fresh)).statusCode).toBe(200);
 
       // The sign-in row exists without its password, as after a crash partway through creation.
       await h.test.database.orm.execute(sql`delete from account`);
       const again = await resetAdminPassword(h.auth, h.test.database.orm);
-      expect((await signIn('admin', again)).statusCode).toBe(200);
+      expect((await signIn(ADMIN_EMAIL, again)).statusCode).toBe(200);
       expect(await h.test.database.orm.select().from(user)).toHaveLength(1);
     });
 
