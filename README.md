@@ -23,7 +23,8 @@ packages, run `docker compose down -v`.
 The first start creates the admin account, `admin@remidy.local`, and prints its password. Find it with
 `docker compose logs server`, sign in at http://localhost:5173, and choose your own password.
 
-If the admin password is ever lost, this prints a new one and signs the admin out everywhere:
+The password is only printed once, and `docker compose down` deletes those logs. If it's ever lost, this
+prints a new one and signs the admin out everywhere:
 
 ```sh
 docker compose exec server pnpm --filter @remidy/server reset-admin-password

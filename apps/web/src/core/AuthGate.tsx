@@ -90,7 +90,7 @@ function SignInPage({
 }) {
   const queryClient = useQueryClient();
   const { busy, failure, run } = useFormAction();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(adminPasswordInConsole ? ADMIN_EMAIL : '');
   const [password, setPassword] = useState('');
 
   function submit(event: SyntheticEvent) {
@@ -107,7 +107,8 @@ function SignInPage({
         {adminPasswordInConsole ? (
           <p className="rounded-xl bg-surface-2 p-3">
             Setting up? Sign in with <strong>{ADMIN_EMAIL}</strong> and the password printed in the
-            server’s console.
+            server’s console. If it’s gone, run <code>reset-admin-password</code> on the server to
+            get a new one.
           </p>
         ) : null}
         <FormError failure={failure} />
