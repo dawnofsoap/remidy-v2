@@ -122,6 +122,22 @@ Most pull requests merge once CI passes. These stay open until the owner has rev
 
 The pull request says why it was flagged and what to look at.
 
+## Pushing directly to `alpha`
+
+Pull requests aren't required, but every commit on `alpha` must have passed CI. GitHub can't run CI during a push, so a commit has to pass first:
+
+```
+git push origin HEAD:wip/my-change
+```
+
+Once CI passes on that branch, push the same commit to `alpha`:
+
+```
+git push origin HEAD:alpha
+```
+
+If you push a commit that has failed or hasn't been checked, GitHub rejects it. If `alpha` has moved on, pull and rebase, which creates a new commit that has to pass again. Delete the `wip` branch afterward.
+
 ## Pull request rules
 
 - One purpose per pull request, under about 400 changed lines where practical (generated files excluded).
