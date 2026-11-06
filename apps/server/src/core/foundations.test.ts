@@ -3,12 +3,48 @@ import { spawnSync } from 'node:child_process';
 import { Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 import { buildApp } from './app.ts';
 import { ConfigError, loadConfig } from './config.ts';
 import { AppError } from './errors.ts';
+import { defineFeature, defineRoute } from './feature.ts';
 import { loggerOptions, requestId } from './logging.ts';
 
 const database = { ping: () => Promise.resolve(true) };
+
+/** A test feature with a route that succeeds, one that throws, and one that accepts a body. */
+function testFeature(error: unknown = new Error('real cause for the logs')) {
+  const response = z.object({ ok: z.boolean() });
+  return defineFeature({
+    name: 'test',
+    routes: () => [
+      defineRoute({
+        method: 'GET',
+        url: '/api/thing',
+        access: 'public',
+        response,
+        handler: () => ({ ok: true }),
+      }),
+      defineRoute({
+        method: 'GET',
+        url: '/api/boom',
+        access: 'public',
+        response,
+        handler: () => {
+          throw error;
+        },
+      }),
+      // Only needs to parse the body. It must never send input back.
+      defineRoute({
+        method: 'POST',
+        url: '/api/echo',
+        access: 'public',
+        response,
+        handler: () => ({ ok: true }),
+      }),
+    ],
+  });
+}
 const STRONG_URL = 'postgresql://remidy:Xk29fj3LmQ81vbZa@db:5432/remidy';
 
 function failure(env: Record<string, string>): string {
@@ -27,6 +63,7 @@ describe('loadConfig', () => {
       NODE_ENV: 'production',
       PORT: 8080,
       LOG_LEVEL: 'info',
+      ENABLED_FEATURES: [],
       DATABASE_URL: STRONG_URL,
     });
   });
@@ -133,13 +170,7 @@ describe('request IDs', () => {
 
 describe('error format', () => {
   function appThatThrows(error: unknown) {
-    const app = buildApp({ database });
-    app.get('/boom', () => {
-      throw error;
-    });
-    // Only needs to parse the body. It must never send input back.
-    app.post('/echo', () => ({ received: true }));
-    return app;
+    return buildApp({ database, features: [testFeature(error)] });
   }
 
   it('answers unknown routes with the standard format', async () => {
@@ -153,7 +184,7 @@ describe('error format', () => {
   it('passes on an expected error, with its fields', async () => {
     const fields = [{ path: 'amount', message: 'Enter an amount.' }];
     const app = appThatThrows(new AppError(422, 'validation_failed', 'Check the form.', fields));
-    const response = await app.inject({ url: '/boom' });
+    const response = await app.inject({ url: '/api/boom' });
     expect(response.statusCode).toBe(422);
     expect(apiErrorResponse.parse(response.json()).error).toMatchObject({
       code: 'validation_failed',
@@ -164,7 +195,7 @@ describe('error format', () => {
 
   it('hides the details of an unexpected error', async () => {
     const app = appThatThrows(new Error('connection to db:5432 failed for secret-user'));
-    const response = await app.inject({ url: '/boom' });
+    const response = await app.inject({ url: '/api/boom' });
     expect(response.statusCode).toBe(500);
     expect(response.body).not.toContain('secret-user');
     expect(apiErrorResponse.parse(response.json()).error.code).toBe('internal_error');
@@ -173,7 +204,7 @@ describe('error format', () => {
   it('does not repeat malformed input', async () => {
     const response = await appThatThrows(null).inject({
       method: 'POST',
-      url: '/echo',
+      url: '/api/echo',
       headers: { 'content-type': 'application/json' },
       payload: '{"oops": secret-input',
     });
@@ -185,7 +216,7 @@ describe('error format', () => {
   it('rejects oversized requests', async () => {
     const response = await appThatThrows(null).inject({
       method: 'POST',
-      url: '/echo',
+      url: '/api/echo',
       headers: { 'content-type': 'application/json' },
       payload: JSON.stringify({ data: 'x'.repeat(300 * 1024) }),
     });
@@ -196,7 +227,7 @@ describe('error format', () => {
   it('rejects unsupported content types', async () => {
     const response = await appThatThrows(null).inject({
       method: 'POST',
-      url: '/echo',
+      url: '/api/echo',
       headers: { 'content-type': 'application/xml' },
       payload: '<a/>',
     });
@@ -216,6 +247,7 @@ describe('logging', () => {
     });
     const app = buildApp({
       database,
+      features: [testFeature()],
       logger: { ...(loggerOptions('info') as object), stream },
     });
     return { app, output: () => lines.join('') };
@@ -223,17 +255,15 @@ describe('logging', () => {
 
   it('writes structured lines with the request ID', async () => {
     const { app, output } = capture();
-    app.get('/thing', () => ({ ok: true }));
-    await app.inject({ url: '/thing', headers: { 'x-request-id': 'trace-me-please' } });
+    await app.inject({ url: '/api/thing', headers: { 'x-request-id': 'trace-me-please' } });
     const first = JSON.parse(output().split('\n')[0] ?? '') as { reqId: string };
     expect(first.reqId).toBe('trace-me-please');
   });
 
   it('leaves out query strings and headers', async () => {
     const { app, output } = capture();
-    app.get('/thing', () => ({ ok: true }));
     await app.inject({
-      url: '/thing?token=query-secret',
+      url: '/api/thing?token=query-secret',
       headers: { authorization: 'Bearer header-secret', cookie: 'session=cookie-secret' },
     });
     expect(output()).toContain('/thing');
@@ -253,10 +283,7 @@ describe('logging', () => {
 
   it('records the details of an unexpected error', async () => {
     const { app, output } = capture();
-    app.get('/boom', () => {
-      throw new Error('real cause for the logs');
-    });
-    await app.inject({ url: '/boom' });
+    await app.inject({ url: '/api/boom' });
     expect(output()).toContain('real cause for the logs');
   });
 

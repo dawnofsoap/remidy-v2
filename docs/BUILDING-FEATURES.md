@@ -60,18 +60,44 @@ apps/web/src/
     └── api.ts
 ```
 
-A feature plugs in at one line:
+A feature plugs in at one line, in `features/index.ts`:
 
 ```ts
-export const features = [categories, bills, payments];
+export const features: Feature[] = [categories, bills, payments];
 ```
+
+On the server, a feature is a list of routes. `defineRoute` is the only way to add one, and the server refuses to start if a route is added any other way:
 
 ```ts
 export const payments = defineFeature({
   name: 'payments',
-  routes,
-  jobs,
-  nav: [{ label: 'Payments', path: '/payments' }],
+  flagged: true, // off until named in ENABLED_FEATURES
+  routes: ({ database }) => [
+    defineRoute({
+      method: 'POST',
+      url: '/api/payments',
+      access: 'signed-in',
+      body: createPaymentRequest, // Zod schemas from @remidy/contracts
+      response: paymentResponse,
+      status: 201,
+      handler: ({ body }) => service.record(database, body),
+    }),
+  ],
+});
+```
+
+- **Access is checked first**, before input is validated, so a caller without access learns nothing from error messages. Anything that isn't public is refused until the access check allows it.
+- **Responses are filtered.** A field missing from the response schema never reaches the client, so adding a column can't leak it.
+- **A public route is a deliberate choice.** A new one fails a test until it's added to the list in `permissions.test.ts`.
+
+A web feature lists its routes and navigation links, and a flagged one stays out of navigation until the server reports it as enabled:
+
+```ts
+export const payments = defineFeature({
+  name: 'payments',
+  flagged: true,
+  routes: [createRoute({ getParentRoute: () => rootRoute, path: '/payments', component: PaymentsPage })],
+  nav: [{ to: '/payments', label: 'Payments', icon: Wallet }],
 });
 ```
 
@@ -94,8 +120,8 @@ features -> core -> packages (domain, contracts, db)
 | Changes reach `alpha` and `main` only through pull requests that pass CI, and history is never rewritten | GitHub rulesets with no bypass; no second approval is required, since this is a solo project |
 | Dependency directions above | dependency-cruiser, failing CI |
 | SQL only in `repo.ts` and `packages/db` | Lint rule |
-| Request and response shapes validated | Routes must declare a contract schema; `defineRoute` won't accept one without |
-| Permissions always checked | Space-scoped routes get the space from middleware; a test walks every registered route and requires a rejection |
+| Request and response shapes validated | `defineRoute` requires a response schema and validates what it's given; the server refuses to start with a route added any other way; server features can't import Fastify |
+| Permissions always checked | Every route must declare its access, and non-public routes are refused by default. A test walks every route: public ones must be on a known list, and the rest must refuse anonymous callers. Space and role checks arrive with spaces |
 | Dates and money go through `domain` | Lint bans `new Date()` and `parseFloat` in feature code, with named exceptions |
 | Modals, forms and buttons come from `ui/` | Lint bans the raw patterns outside `ui/` |
 | Files stay small | Lint `max-lines`: fail above 500 lines |
@@ -145,6 +171,6 @@ asset before bringing it over, because this repo is public; bank and card artwor
 
 The table above is the target. Some rules need code that doesn't exist yet.
 
-- **Active:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning, design token lint and contrast checks, axe and keyboard checks in a real browser, migration checks, GitHub blocking merges on high-severity CodeQL alerts.
-- **Arrive in milestone 1:** contract schemas on routes, the permission test across all routes, domain coverage threshold, generated versions and changelog.
+- **Active:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning, design token lint and contrast checks, axe and keyboard checks in a real browser, migration checks, route schemas and the anonymous access test, GitHub blocking merges on high-severity CodeQL alerts.
+- **Arrive in milestone 1:** space and role checks in the permission test, domain coverage threshold, generated versions and changelog.
 - **Arrive in milestone 4:** the history invariance test.

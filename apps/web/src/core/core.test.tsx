@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
+import { defineFeature, visibleNav } from './feature.ts';
 import { applyTheme, readThemePreference, saveThemePreference } from './theme.ts';
 
 afterEach(() => {
@@ -34,6 +35,24 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>,
     );
     expect(screen.getByText('Working')).toBeInTheDocument();
+  });
+});
+
+describe('navigation', () => {
+  const item = (label: string) => ({ to: `/${label}`, label, icon: (() => null) as never });
+  const features = [
+    defineFeature({ name: 'always', routes: [], nav: [item('always')] }),
+    defineFeature({ name: 'beta', flagged: true, routes: [], nav: [item('beta')] }),
+  ];
+  const labels = (enabled: string[]) => visibleNav(features, enabled).map((nav) => nav.label);
+
+  it('hides a flagged feature until it is enabled', () => {
+    expect(labels([])).toEqual(['always']);
+    expect(labels(['beta'])).toEqual(['always', 'beta']);
+  });
+
+  it('ignores enabled names it does not know', () => {
+    expect(labels(['other'])).toEqual(['always']);
   });
 });
 

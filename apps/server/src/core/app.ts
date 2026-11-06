@@ -1,22 +1,93 @@
-import type { HealthResponse } from '@remidy/contracts';
-import type { Database } from '@remidy/db';
-import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { enabledFeaturesResponse, healthResponse, type HealthResponse } from '@remidy/contracts';
+import Fastify, {
+  type FastifyInstance,
+  type FastifyServerOptions,
+  type RouteOptions,
+} from 'fastify';
 import { registerErrorHandling } from './errors.ts';
+import {
+  defineFeature,
+  defineRoute,
+  denyAll,
+  type Authorize,
+  type Feature,
+  type FeatureDependencies,
+  type Route,
+} from './feature.ts';
 import { requestId } from './logging.ts';
 
 const REQUEST_ID_HEADER = 'x-request-id';
 const MAX_BODY_BYTES = 256 * 1024;
 
-interface AppOptions {
-  database: Pick<Database, 'ping'>;
-  logger?: FastifyServerOptions['logger'];
+declare module 'fastify' {
+  interface FastifyContextConfig {
+    /** Set only by registerRoute, so anything added another way is refused at startup. */
+    declaredRoute?: boolean;
+  }
+  interface FastifyInstance {
+    /** Every route in the app. The permission test walks this list. */
+    declaredRoutes: Route[];
+  }
 }
 
-export function buildApp({ database, logger = false }: AppOptions): FastifyInstance {
+interface AppOptions {
+  database: Pick<FeatureDependencies['database'], 'ping'> &
+    Partial<FeatureDependencies['database']>;
+  logger?: FastifyServerOptions['logger'];
+  features?: Feature[];
+  enabledFeatures?: string[];
+  authorize?: Authorize;
+}
+
+function coreFeature(database: AppOptions['database'], enabledFeatures: string[]): Feature {
+  return defineFeature({
+    name: 'core',
+    routes: () => [
+      defineRoute({
+        method: 'GET',
+        url: '/api/health',
+        access: 'public',
+        response: healthResponse,
+        // Checked every few seconds by Docker, so only problems are worth logging.
+        logLevel: 'warn',
+        handler: async ({ setStatus }): Promise<HealthResponse> => {
+          if (await database.ping()) return { status: 'ok', database: 'up' };
+          setStatus(503);
+          return { status: 'degraded', database: 'down' };
+        },
+      }),
+      defineRoute({
+        method: 'GET',
+        url: '/api/features',
+        access: 'public',
+        response: enabledFeaturesResponse,
+        handler: () => ({ enabled: enabledFeatures }),
+      }),
+    ],
+  });
+}
+
+export function buildApp({
+  database,
+  logger = false,
+  features = [],
+  enabledFeatures = [],
+  authorize = denyAll,
+}: AppOptions): FastifyInstance {
   const app = Fastify({
     logger,
     bodyLimit: MAX_BODY_BYTES,
     genReqId: (request) => requestId(request.headers[REQUEST_ID_HEADER]),
+  });
+
+  app.decorate('declaredRoutes', []);
+
+  app.addHook('onRoute', (route: RouteOptions) => {
+    if (!route.config?.declaredRoute) {
+      throw new Error(
+        `${String(route.method)} ${route.url} must be added through defineRoute, in a feature.`,
+      );
+    }
   });
 
   app.addHook('onRequest', (request, reply, done) => {
@@ -27,14 +98,27 @@ export function buildApp({ database, logger = false }: AppOptions): FastifyInsta
 
   registerErrorHandling(app);
 
-  // Checked every few seconds by Docker, so only problems are worth logging.
-  app.get('/api/health', { logLevel: 'warn' }, async (_request, reply) => {
-    const isUp = await database.ping();
-    const body: HealthResponse = isUp
-      ? { status: 'ok', database: 'up' }
-      : { status: 'degraded', database: 'down' };
-    return reply.code(isUp ? 200 : 503).send(body);
-  });
+  const all = [coreFeature(database, enabledFeatures), ...features];
+  const names = all.map((feature) => feature.name);
+  const duplicate = names.find((name, index) => names.indexOf(name) !== index);
+  if (duplicate) throw new Error(`Two features are named "${duplicate}".`);
+
+  const unknown = enabledFeatures.find((name) => !names.includes(name));
+  if (unknown) throw new Error(`ENABLED_FEATURES names "${unknown}", which doesn't exist.`);
+
+  for (const feature of all) {
+    if (feature.flagged && !enabledFeatures.includes(feature.name)) continue;
+    for (const route of feature.routes({ database } as FeatureDependencies)) {
+      app.declaredRoutes.push(route);
+      app.route({
+        method: route.method,
+        url: route.url,
+        config: { declaredRoute: true },
+        ...(route.logLevel ? { logLevel: route.logLevel } : {}),
+        handler: (request, reply) => route.run(request, reply, authorize),
+      });
+    }
+  }
 
   return app;
 }

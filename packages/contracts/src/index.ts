@@ -7,6 +7,11 @@ export const healthResponse = z.object({
 
 export type HealthResponse = z.infer<typeof healthResponse>;
 
+export const enabledFeaturesResponse = z.object({
+  /** Flagged features that are switched on. */
+  enabled: z.array(z.string()),
+});
+
 /** The shape of every error the API returns. */
 export const apiErrorResponse = z.object({
   error: z.object({
