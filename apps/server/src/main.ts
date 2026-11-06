@@ -26,4 +26,11 @@ async function shutdown(): Promise<void> {
 process.once('SIGTERM', () => void shutdown());
 process.once('SIGINT', () => void shutdown());
 
-await app.listen({ host: '0.0.0.0', port: config.PORT });
+try {
+  await database.migrate();
+  await app.listen({ host: '0.0.0.0', port: config.PORT });
+} catch (error) {
+  app.log.fatal({ err: error }, 'Remidy could not start');
+  await database.close();
+  process.exit(1);
+}

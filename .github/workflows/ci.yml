@@ -25,6 +25,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - name: Database schema and migrations match
+        run: |
+          pnpm db:generate --name=drift-check
+          if [ -n "$(git status --porcelain packages/db/migrations)" ]; then
+            git status --porcelain packages/db/migrations
+            echo "::error::schema.ts has changes with no migration. Run pnpm db:generate and commit the result."
+            exit 1
+          fi
 
   browser:
     runs-on: ubuntu-latest

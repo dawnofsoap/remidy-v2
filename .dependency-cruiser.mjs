@@ -66,6 +66,7 @@ export default {
       severity: 'error',
       from: {
         pathNot: [
+          notATest,
           '(^|/)packages/db/',
           '(^|/)apps/server/src/core/',
           '(^|/)apps/server/src/main\\.ts$',
