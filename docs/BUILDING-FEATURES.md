@@ -91,7 +91,7 @@ features -> core -> packages (domain, contracts, db)
 | Rule | Enforced by |
 |---|---|
 | Types, lint, tests and production build pass before merging | Required CI checks, branch protection |
-| Changes reach `alpha` and `main` through pull requests, and history is never rewritten | GitHub rulesets: pull requests and checks are required (the repo admin can bypass); force-pushes and branch deletion are blocked for everyone |
+| Nothing reaches `alpha` or `main` until it has passed CI, and history is never rewritten | GitHub rulesets with no bypass: required checks on every change; force-pushes and branch deletion blocked |
 | Dependency directions above | dependency-cruiser, failing CI |
 | SQL only in `repo.ts` and `packages/db` | Lint rule |
 | Request and response shapes validated | Routes must declare a contract schema; `defineRoute` won't accept one without |
@@ -121,8 +121,6 @@ Most pull requests merge once CI passes. These stay open until the owner has rev
 - Anything else that surprised the author or was hard to test
 
 The pull request says why it was flagged and what to look at.
-
-The owner can push directly to `alpha`. CI still runs on that push, so a failure shows up afterward. It needs fixing first, because nothing blocks the next change on top of it.
 
 ## Pull request rules
 
