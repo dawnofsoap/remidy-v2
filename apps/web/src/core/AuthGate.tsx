@@ -90,7 +90,7 @@ function SignInPage({
 }) {
   const queryClient = useQueryClient();
   const { busy, failure, run } = useFormAction();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(adminPasswordInConsole ? ADMIN_EMAIL : '');
   const [password, setPassword] = useState('');
 
   function submit(event: SyntheticEvent) {

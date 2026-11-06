@@ -216,6 +216,12 @@ test.describe('signing in', () => {
 });
 
 test.describe('first sign-in', () => {
+  test('leaves the email empty once the admin has chosen a password', async ({ page }) => {
+    await page.route('**/api/auth/get-session', (route) => route.fulfill({ json: null }));
+    await page.goto('/');
+    await expect(page.getByLabel('Email')).toHaveValue('');
+  });
+
   test('says where to find the admin password, with no violations', async ({ page }) => {
     await page.route('**/api/sign-in-options', (route) =>
       route.fulfill({ json: { adminPasswordInConsole: true, passwordReset: true } }),
@@ -224,6 +230,10 @@ test.describe('first sign-in', () => {
     await page.goto('/');
     await expect(page.getByText('printed in the server’s console')).toBeVisible();
     await expect(page.getByText('reset-admin-password')).toBeVisible();
+    const email = page.getByLabel('Email');
+    await expect(email).toHaveValue('admin@remidy.local');
+    await email.fill('someone@example.com');
+    await expect(email).toHaveValue('someone@example.com');
     await expectNoViolations(page);
     await saveScreenshot(page, 'first-sign-in');
   });
