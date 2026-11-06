@@ -79,7 +79,7 @@ beforeAll(async () => {
   });
   app = buildApp({
     database: test.database,
-    features: [signInOptionsFeature({ orm }), ...features],
+    features: [signInOptionsFeature({ orm, passwordReset: true }), ...features],
     authorize: createAuthorize(auth, orm),
     auth: { auth, orm },
     publicUrl: PUBLIC_URL,

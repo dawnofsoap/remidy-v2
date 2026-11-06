@@ -87,13 +87,13 @@ describe('the admin account', () => {
   });
 
   it('tells the sign-in page only while the generated password is in use', async () => {
-    expect(await options()).toEqual({ adminPasswordInConsole: false });
+    expect(await options()).toMatchObject({ adminPasswordInConsole: false });
     const password = String(await ensureAdminAccount(h.auth));
-    expect(await options()).toEqual({ adminPasswordInConsole: true });
+    expect(await options()).toMatchObject({ adminPasswordInConsole: true });
     await choosePassword(await asAdmin(password), password);
-    expect(await options()).toEqual({ adminPasswordInConsole: false });
+    expect(await options()).toMatchObject({ adminPasswordInConsole: false });
     await resetAdminPassword(h.auth, h.test.database.orm);
-    expect(await options()).toEqual({ adminPasswordInConsole: true });
+    expect(await options()).toMatchObject({ adminPasswordInConsole: true });
   });
 
   it('has no special username', async () => {

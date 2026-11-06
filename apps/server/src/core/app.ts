@@ -43,7 +43,7 @@ interface AppOptions {
   enabledFeatures?: string[];
   authorize?: Authorize;
   /** Sign-in, once a real database is available. */
-  auth?: { auth: Auth; orm: Orm };
+  auth?: { auth: Auth; orm: Orm; passwordReset?: boolean };
   /** Where the app is served from. Requests from any other site are refused. */
   publicUrl?: string;
   /** Requests allowed per minute from one address, across all routes. */
@@ -152,7 +152,12 @@ export function buildApp({
   // Routes are added once the rate limit plugin has loaded, so that every one of them gets it.
   app.after(() => {
     if (auth) {
-      registerAuthRoutes(app, { ...auth, publicUrl, requestsPerMinute: authRequestsPerMinute });
+      registerAuthRoutes(app, {
+        passwordReset: false,
+        ...auth,
+        publicUrl,
+        requestsPerMinute: authRequestsPerMinute,
+      });
     }
 
     for (const feature of all) {

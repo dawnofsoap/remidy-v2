@@ -44,6 +44,13 @@ const schema = z
      * Only these may say which client a request came from.
      */
     TRUST_PROXY: z.string().default(''),
+    /** The mail server for password resets, such as smtp://user:password@mail.example.com:587 */
+    SMTP_URL: z
+      .string()
+      .regex(/^smtps?:\/\//, 'must be an smtp:// or smtps:// address')
+      .optional(),
+    /** Who mail comes from, such as Remidy <remidy@example.com>. Needed with SMTP_URL. */
+    EMAIL_FROM: z.string().min(1, 'must not be empty').optional(),
     /** Flagged features to switch on, separated by commas. */
     ENABLED_FEATURES: z
       .string()
@@ -59,6 +66,13 @@ const schema = z
       .regex(/^postgres(ql)?:\/\//, 'must be a postgres:// or postgresql:// connection string'),
   })
   .superRefine((env, context) => {
+    if (env.SMTP_URL && !env.EMAIL_FROM) {
+      context.addIssue({
+        code: 'custom',
+        path: ['EMAIL_FROM'],
+        message: 'is required when SMTP_URL is set',
+      });
+    }
     if (env.NODE_ENV !== 'production') return;
     if (/dev_only|replace-me|changeme/i.test(env.AUTH_SECRET)) {
       context.addIssue({

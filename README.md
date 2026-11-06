@@ -29,6 +29,8 @@ If the admin password is ever lost, this prints a new one and signs the admin ou
 docker compose exec server pnpm --filter @remidy/server reset-admin-password
 ```
 
+In development, password reset emails are printed to the same console instead of being sent.
+
 If new packages were added since you last started it, restart with `docker compose down` and then
 `docker compose up`. Otherwise the running server can't find them.
 

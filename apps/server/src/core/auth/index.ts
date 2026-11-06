@@ -1,4 +1,5 @@
 import {
+  ADMIN_EMAIL,
   MAX_PASSWORD_LENGTH,
   MIN_PASSWORD_LENGTH,
   unmetPasswordRequirements,
@@ -9,9 +10,16 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { AppError } from '../errors.ts';
+import type { Mail, Mailer } from '../mail.ts';
 import type { Authorize, Authorized, Route } from '../feature.ts';
 import { createPersonalSpace, findMembership, roleAtLeast } from '../spaces.ts';
-import { clearFailedSignIns, isLockedOut, normalizeEmail, recordFailedSignIn } from './throttle.ts';
+import {
+  clearAllFailedSignIns,
+  clearFailedSignIns,
+  isLockedOut,
+  normalizeEmail,
+  recordFailedSignIn,
+} from './throttle.ts';
 
 /** A header only this server sets, replacing anything a client sends, so limits can't be dodged. */
 const CLIENT_IP_HEADER = 'x-remidy-client-ip';
@@ -20,7 +28,7 @@ const CLIENT_IP_HEADER = 'x-remidy-client-ip';
  * The only Better Auth endpoints reachable from outside. Anything else, such as public sign-up
  * or account deletion, doesn't exist as far as a client can tell.
  */
-const ALLOWED_ENDPOINTS: Record<string, readonly ('GET' | 'POST')[]> = {
+const ALWAYS_ALLOWED_ENDPOINTS: Record<string, readonly ('GET' | 'POST')[]> = {
   '/sign-in/email': ['POST'],
   '/sign-out': ['POST'],
   '/get-session': ['GET'],
@@ -30,13 +38,24 @@ const ALLOWED_ENDPOINTS: Record<string, readonly ('GET' | 'POST')[]> = {
   '/revoke-other-sessions': ['POST'],
 };
 
+/** These need to send mail, so without a mailer they don't exist either. */
+const RESET_ENDPOINTS: Record<string, readonly ('GET' | 'POST')[]> = {
+  '/request-password-reset': ['POST'],
+  '/reset-password': ['POST'],
+};
+
+const RESET_LINK_MINUTES = 60;
+
 interface AuthOptions {
   orm: Orm;
   secret: string;
   publicUrl: string;
+  /** How to send password reset links. Without one, password reset isn't available. */
+  mailer?: Mailer | null;
+  onMailFailure?: (error: unknown) => void;
 }
 
-export function createAuth({ orm, secret, publicUrl }: AuthOptions) {
+export function createAuth({ orm, secret, publicUrl, mailer, onMailFailure }: AuthOptions) {
   return betterAuth({
     appName: 'Remidy',
     baseURL: publicUrl,
@@ -58,6 +77,34 @@ export function createAuth({ orm, secret, publicUrl }: AuthOptions) {
       disableSignUp: true,
       minPasswordLength: MIN_PASSWORD_LENGTH,
       maxPasswordLength: MAX_PASSWORD_LENGTH,
+      resetPasswordTokenExpiresIn: RESET_LINK_MINUTES * 60,
+      revokeSessionsOnPasswordReset: true,
+      ...(mailer
+        ? {
+            sendResetPassword: ({
+              user: account,
+              token,
+            }: {
+              user: { email: string };
+              token: string;
+            }) => {
+              if (account.email !== ADMIN_EMAIL) {
+                // Not awaited: how long sending takes must not reveal whether an account exists.
+                mailer.send(resetMail(account.email, publicUrl, token)).catch((error: unknown) => {
+                  onMailFailure?.(error);
+                });
+              }
+              return Promise.resolve();
+            },
+            onPasswordReset: async ({ user: account }: { user: { id: string; email: string } }) => {
+              await clearAllFailedSignIns(orm, account.email);
+              await orm
+                .update(user)
+                .set({ mustChangePassword: false })
+                .where(eq(user.id, account.id));
+            },
+          }
+        : {}),
     },
     databaseHooks: {
       user: {
@@ -85,6 +132,8 @@ export function createAuth({ orm, secret, publicUrl }: AuthOptions) {
       customRules: {
         '/sign-in/email': { window: 60, max: 20 },
         '/change-password': { window: 60, max: 10 },
+        '/request-password-reset': { window: 60 * 60, max: 10 },
+        '/reset-password': { window: 60, max: 10 },
       },
     },
     advanced: {
@@ -96,6 +145,22 @@ export function createAuth({ orm, secret, publicUrl }: AuthOptions) {
 }
 
 export type Auth = ReturnType<typeof createAuth>;
+
+/** The token goes after the #, which browsers never send, so it can't reach any server's logs. */
+function resetMail(to: string, publicUrl: string, token: string): Mail {
+  return {
+    to,
+    subject: 'Reset your Remidy password',
+    text: [
+      'Someone asked to reset the password for your Remidy account.',
+      '',
+      `Choose a new password here: ${publicUrl}/reset-password#token=${token}`,
+      '',
+      `The link works once, for the next ${String(RESET_LINK_MINUTES)} minutes.`,
+      'If this wasn’t you, you can ignore this message and nothing will change.',
+    ].join('\n'),
+  };
+}
 
 function toFetchHeaders(request: FastifyRequest): Headers {
   const headers = new Headers();
@@ -170,7 +235,14 @@ export function registerAuthRoutes(
     orm,
     publicUrl,
     requestsPerMinute,
-  }: { auth: Auth; orm: Orm; publicUrl: string; requestsPerMinute: number },
+    passwordReset,
+  }: {
+    auth: Auth;
+    orm: Orm;
+    publicUrl: string;
+    requestsPerMinute: number;
+    passwordReset: boolean;
+  },
 ): void {
   const route: Route = {
     method: 'POST',
@@ -182,7 +254,10 @@ export function registerAuthRoutes(
 
   const handler = async (request: FastifyRequest, reply: FastifyReply) => {
     const path = request.url.split('?', 1)[0]?.replace('/api/auth', '') ?? '';
-    const allowed = Object.hasOwn(ALLOWED_ENDPOINTS, path) ? ALLOWED_ENDPOINTS[path] : undefined;
+    const endpoints = passwordReset
+      ? { ...ALWAYS_ALLOWED_ENDPOINTS, ...RESET_ENDPOINTS }
+      : ALWAYS_ALLOWED_ENDPOINTS;
+    const allowed = Object.hasOwn(endpoints, path) ? endpoints[path] : undefined;
     if (!allowed?.includes(request.method as 'GET' | 'POST')) {
       throw new AppError(404, 'not_found', 'That wasn’t found.');
     }
@@ -198,6 +273,15 @@ export function registerAuthRoutes(
           .where(eq(user.id, current.user.id));
       }
       return sendResponse(response, reply);
+    }
+
+    if (path === '/reset-password') checkNewPassword(request.body);
+
+    if (path === '/request-password-reset') {
+      const body = { ...(request.body as object) };
+      const typed = stringField(body, 'email');
+      if (typed !== null) Object.assign(body, { email: normalizeEmail(typed) });
+      return sendResponse(await callBetterAuth(auth, publicUrl, request, body), reply);
     }
 
     const typed = path === '/sign-in/email' ? stringField(request.body, 'email') : null;

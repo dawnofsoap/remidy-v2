@@ -111,7 +111,7 @@ isn't on this list, it's a feature and waits its turn.
 
 | Area | Included |
 |---|---|
-| **Sign-in** | Admin account created on first start, sign in and out, password change, revocable sessions, rate limits and lockout |
+| **Sign-in** | Admin account created on first start, sign in and out, password change and reset, revocable sessions, rate limits and lockout |
 | **Spaces and roles** | Personal space per user, memberships, one permission check, enforced on every route |
 | **API conventions** | `defineRoute` with required schemas, one error format, request IDs, pagination |
 | **Database** | Migrations, connection handling, test database setup, seed data |

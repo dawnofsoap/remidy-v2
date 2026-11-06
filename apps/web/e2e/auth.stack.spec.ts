@@ -208,3 +208,38 @@ test('a lost admin password can always be replaced from the server', async ({ pa
   await replacePassword(page, fresh, CHOSEN_PASSWORD);
   await expect(appHeading(page, 'Home')).toBeVisible();
 });
+
+test('someone with an email address can reset a forgotten password', async ({ page, context }) => {
+  // Added directly, because invitations don't exist yet. Mail goes to the console in development.
+  const email = 'alex@example.com';
+  compose(
+    `exec -T db psql -U remidy -d remidy -c "insert into \\"user\\" (id, name, email) values ('reset-test', 'Alex', '${email}')"`,
+  );
+
+  await context.clearCookies();
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Forgot your password?' }).click();
+  await page.getByLabel('Email').fill(email);
+  await page.getByRole('button', { name: 'Email me a link' }).click();
+  await expect(page.getByRole('status')).toContainText(email);
+
+  const findLink = () =>
+    /https?:\S+reset-password#token=\S+/.exec(compose('logs --no-color server'))?.[0];
+  await expect.poll(findLink).toBeTruthy();
+  const link = String(findLink());
+  await page.goto(link);
+  await page.getByLabel('New password').fill(SECOND_PASSWORD);
+  await page.getByRole('button', { name: 'Save password' }).click();
+  await expect(appHeading(page, 'Sign in')).toBeVisible();
+
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password', { exact: true }).fill(SECOND_PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(appHeading(page, 'Home')).toBeVisible();
+
+  // The link has been used.
+  await page.goto(link);
+  await page.getByLabel('New password').fill(CHOSEN_PASSWORD);
+  await page.getByRole('button', { name: 'Save password' }).click();
+  await expect(page.getByRole('alert')).toContainText('expired or was already used');
+});
