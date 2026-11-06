@@ -4,11 +4,15 @@ import {
   addDays,
   addMonthsFromAnchor,
   compareDates,
+  dateFromParts,
+  dateInputValue,
+  datePartsOf,
   daysBetween,
   formatDate,
   formatInstant,
   isValidTimeZone,
   parseCalendarDate,
+  parseTypedDate,
   today,
   type CalendarDate,
 } from './dates.ts';
@@ -225,5 +229,72 @@ describe('formatInstant', () => {
     ['UTC', 'Jan 5, 2026, 8:30 PM'],
   ])('shows the local time in %s', (timeZone, expected) => {
     expect(formatInstant('2026-01-05T20:30:00.000Z', timeZone).replace(/\s/g, ' ')).toBe(expected);
+  });
+});
+
+describe('parseTypedDate', () => {
+  it.each([
+    ['3/8/2026', '2026-03-08'],
+    ['03/08/2026', '2026-03-08'],
+    ['3/8/26', '2026-03-08'],
+    ['12/31/99', '2099-12-31'],
+    ['1/1/00', '2000-01-01'],
+    ['3-8-2026', '2026-03-08'],
+    ['3.8.2026', '2026-03-08'],
+    ['2026-03-08', '2026-03-08'],
+    ['  3/8/2026  ', '2026-03-08'],
+    ['3/8', '2030-03-08'],
+    ['2/29/2028', '2028-02-29'],
+  ])('reads %s', (typed, expected) => {
+    expect(parseTypedDate(typed, 2030)).toBe(expected);
+  });
+
+  it.each([
+    [''],
+    ['   '],
+    ['abc'],
+    ['3'],
+    ['3/'],
+    ['3/8/'],
+    ['3/8/2'],
+    ['3/8/202'],
+    ['3/8/20266'],
+    ['13/1/2026'],
+    ['0/1/2026'],
+    ['2/30/2026'],
+    ['2/29/2026'],
+    ['2026-3-8'],
+    ['2026-02-30'],
+    ['3/8/2026 5pm'],
+    ['-3/8/2026'],
+  ])('refuses %j', (typed) => {
+    expect(parseTypedDate(typed, 2026)).toBeNull();
+  });
+
+  it('refuses a day that does not exist in this year', () => {
+    expect(parseTypedDate('2/29', 2026)).toBeNull();
+    expect(parseTypedDate('2/29', 2028)).toBe('2028-02-29');
+  });
+});
+
+describe('dateInputValue', () => {
+  it('has no leading zeros, and reads back as the same date', () => {
+    const date = dateFromParts(2026, 3, 8);
+    if (!date) throw new Error('Not a date.');
+    expect(dateInputValue(date)).toBe('3/8/2026');
+    expect(parseTypedDate(dateInputValue(date), 1999)).toBe(date);
+  });
+});
+
+describe('date parts', () => {
+  it('go both ways', () => {
+    const date = dateFromParts(2026, 12, 1);
+    expect(date).toBe('2026-12-01');
+    if (!date) throw new Error('Not a date.');
+    expect(datePartsOf(date)).toEqual({ year: 2026, month: 12, day: 1 });
+  });
+
+  it('refuse a day that does not exist', () => {
+    expect(dateFromParts(2026, 2, 30)).toBeNull();
   });
 });

@@ -108,41 +108,135 @@ test('the page never scrolls sideways', async ({ page }) => {
 });
 
 test.describe('date field, in a real browser', () => {
-  const dueDate = (page: Page) => page.getByLabel('Due date');
-  const paidOn = (page: Page) => page.getByLabel('Paid on');
+  const dueDate = (page: Page) => page.getByRole('textbox', { name: 'Due date' });
+  const paidOn = (page: Page) => page.getByRole('textbox', { name: 'Paid on' });
+  const openCalendar = (page: Page, label: string) =>
+    page.getByRole('button', { name: `Choose ${label} from a calendar` }).click();
+  const calendar = (page: Page, label: string) =>
+    page.getByRole('dialog', { name: `Choose ${label}` });
+  const dayButton = (page: Page, label: string, name: RegExp) =>
+    calendar(page, label).getByRole('button', { name });
   const tapElsewhere = (page: Page) => page.getByRole('heading', { name: 'UI kit' }).click();
 
-  test('asks for the rest of a partly typed date', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name === 'phone', 'Touch screens use a picker, not typed parts.');
+  for (const theme of ['light', 'dark'] as const) {
+    test(`the calendar has no violations in the ${theme} theme`, async ({ page }) => {
+      await page.goto(`/gallery.html?theme=${theme}`);
+      await dueDate(page).fill('3/8/2026');
+      await openCalendar(page, 'Due date');
+      await expect(calendar(page, 'Due date')).toBeVisible();
+      await expectNoViolations(page);
+      await saveScreenshot(page, `calendar-${theme}`, false);
+    });
+  }
+
+  test('asks again for a date it can’t read', async ({ page }) => {
     await page.goto('/gallery.html');
-    await dueDate(page).click();
-    await page.keyboard.type('03');
+    await dueDate(page).fill('3/8/2');
     await tapElsewhere(page);
     await expect(dueDate(page)).toHaveAttribute('aria-invalid', 'true');
-    await expect(dueDate(page)).toHaveAccessibleDescription(/Enter the full date/);
+    await expect(dueDate(page)).toHaveAccessibleDescription(/such as 3\/8\/2026/);
   });
 
-  test('takes a date and keeps it exactly, in any time zone', async ({ browser }) => {
-    for (const timezoneId of ['Pacific/Kiritimati', 'Pacific/Pago_Pago', 'America/Chicago']) {
-      const context = await browser.newContext({ timezoneId });
+  test('picks a date, and returns focus to the button', async ({ page }) => {
+    await page.goto('/gallery.html');
+    await dueDate(page).fill('3/8/2026');
+    await openCalendar(page, 'Due date');
+    await expect(calendar(page, 'Due date').getByText('March 2026')).toBeVisible();
+    await dayButton(page, 'Due date', /March 20, 2026/).click();
+
+    await expect(calendar(page, 'Due date')).toHaveCount(0);
+    await expect(dueDate(page)).toHaveValue('3/20/2026');
+    await expect(
+      page.getByRole('button', { name: 'Choose Due date from a calendar' }),
+    ).toBeFocused();
+  });
+
+  test('works by keyboard, starting on the selected day', async ({ page }) => {
+    await page.goto('/gallery.html');
+    await dueDate(page).fill('3/8/2026');
+    await page.getByRole('button', { name: 'Choose Due date from a calendar' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(dayButton(page, 'Due date', /March 8, 2026/)).toBeFocused();
+
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await expect(dueDate(page)).toHaveValue('3/16/2026');
+  });
+
+  test('closes on Escape, changing nothing', async ({ page }) => {
+    await page.goto('/gallery.html');
+    await dueDate(page).fill('3/8/2026');
+    await page.getByRole('button', { name: 'Choose Due date from a calendar' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(calendar(page, 'Due date')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(calendar(page, 'Due date')).toHaveCount(0);
+    await expect(dueDate(page)).toHaveValue('3/8/2026');
+    await expect(
+      page.getByRole('button', { name: 'Choose Due date from a calendar' }),
+    ).toBeFocused();
+  });
+
+  test('can’t pick outside the limits', async ({ page }) => {
+    await page.goto('/gallery.html');
+    await paidOn(page).fill('12/10/2026');
+    await openCalendar(page, 'Paid on');
+    await expect(dayButton(page, 'Paid on', /December 15, 2026/)).toBeEnabled();
+    await expect(dayButton(page, 'Paid on', /December 16, 2026/)).toBeDisabled();
+    await expect(
+      calendar(page, 'Paid on').getByRole('button', { name: /next month/i }),
+    ).toBeDisabled();
+  });
+
+  test('names each day with the number it shows, and marks the selected one', async ({ page }) => {
+    await page.goto('/gallery.html');
+    await dueDate(page).fill('3/8/2026');
+    await openCalendar(page, 'Due date');
+    await expect(
+      calendar(page, 'Due date').getByRole('button', {
+        name: 'Sunday, March 8, 2026, selected',
+        exact: true,
+      }),
+    ).toHaveText('8');
+  });
+
+  test('refuses a typed date outside the limits', async ({ page }) => {
+    await page.goto('/gallery.html');
+    await paidOn(page).fill('1/1/2027');
+    await tapElsewhere(page);
+    await expect(paidOn(page)).toHaveAttribute('aria-invalid', 'true');
+    await expect(paidOn(page)).toHaveAccessibleDescription(/2026 or earlier/);
+  });
+
+  test('picks the same date in any time zone', async ({ browser, baseURL }) => {
+    for (const timezoneId of [
+      'Pacific/Kiritimati',
+      'Pacific/Pago_Pago',
+      'America/Chicago',
+      // Midnight doesn't exist here on the day clocks change.
+      'America/Havana',
+    ]) {
+      const context = await browser.newContext({ timezoneId, baseURL: String(baseURL) });
       const page = await context.newPage();
       await page.goto('/gallery.html');
-      await dueDate(page).fill('2026-03-08');
-      await tapElsewhere(page);
-      await expect(dueDate(page)).toHaveValue('2026-03-08');
-      await expect(dueDate(page)).not.toHaveAttribute('aria-invalid');
+      await dueDate(page).fill('3/1/2026');
+      await openCalendar(page, 'Due date');
+      await dayButton(page, 'Due date', /March 8, 2026/).click();
+      await expect(dueDate(page), timezoneId).toHaveValue('3/8/2026');
       await context.close();
     }
   });
 
-  test('tells the browser its limits, and refuses a date outside them', async ({ page }) => {
+  test('works inside a modal', async ({ page }) => {
     await page.goto('/gallery.html');
-    await expect(paidOn(page)).toHaveAttribute('min', '2026-01-01');
-    await expect(paidOn(page)).toHaveAttribute('max', '2026-12-31');
-    await paidOn(page).fill('2027-01-01');
-    await tapElsewhere(page);
-    await expect(paidOn(page)).toHaveAttribute('aria-invalid', 'true');
-    await expect(paidOn(page)).toHaveAccessibleDescription(/2026 or earlier/);
+    await page.getByRole('button', { name: 'Open modal' }).click();
+    const field = page.getByRole('textbox', { name: 'Date paid' });
+    await field.fill('3/8/2026');
+    await openCalendar(page, 'Date paid');
+    await dayButton(page, 'Date paid', /March 20, 2026/).click();
+    await expect(field).toHaveValue('3/20/2026');
+    await expect(page.getByRole('dialog').first()).toBeVisible();
     await expectNoViolations(page);
   });
 });

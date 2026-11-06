@@ -68,12 +68,12 @@ function Gallery() {
         <TextField label="Amount" defaultValue="abc" error="Enter an amount, such as 42.50." />
         <MoneyField label="Amount due" hint="Type 5 and leave the field." />
         <PasswordExample />
-        <DateField label="Due date" hint="Choose or type a date." />
+        <DateField label="Due date" hint="Type 3/8/26 and leave the field, or use the calendar." />
         <DateField
           label="Paid on"
-          hint="Only during 2026."
-          min={parseCalendarDate('2026-01-01') ?? undefined}
-          max={parseCalendarDate('2026-12-31') ?? undefined}
+          hint="Jan 15 to Dec 15, 2026."
+          min={parseCalendarDate('2026-01-15') ?? undefined}
+          max={parseCalendarDate('2026-12-15') ?? undefined}
         />
         <SelectField label="Paid from">
           <option>Everyday Checking</option>
@@ -140,6 +140,7 @@ function Gallery() {
         description="This settles the bill due Monday."
       >
         <TextField label="Amount paid" defaultValue="142.50" />
+        <DateField label="Date paid" />
         <div className="flex flex-wrap justify-end gap-2">
           <Button
             variant="secondary"

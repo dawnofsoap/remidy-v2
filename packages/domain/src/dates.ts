@@ -32,6 +32,44 @@ export function isValidTimeZone(timeZone: string): boolean {
   }
 }
 
+export function datePartsOf(date: CalendarDate): { year: number; month: number; day: number } {
+  const { year, month, day } = plain(date);
+  return { year, month, day };
+}
+
+/** Builds a date from its parts. Returns null for days that don't exist. */
+export function dateFromParts(year: number, month: number, day: number): CalendarDate | null {
+  const pad = (value: number, length: number) => String(value).padStart(length, '0');
+  return parseCalendarDate(`${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}`);
+}
+
+// Month, day and an optional year, separated by /, - or a dot.
+const TYPED_DATE = /^(?<month>\d{1,2})[/.-](?<day>\d{1,2})(?:[/.-](?<year>\d{4}|\d{2}))?$/;
+
+/**
+ * Reads a date a person typed, US style, filling in what's obvious: `3/8/26` is in 2026 and `3/8`
+ * is in `thisYear`. It also takes `2026-03-08`. Returns null for anything else, including days that
+ * don't exist, rather than guessing.
+ */
+export function parseTypedDate(text: string, thisYear: number): CalendarDate | null {
+  const trimmed = text.trim();
+  const exact = parseCalendarDate(trimmed);
+  if (exact) return exact;
+
+  const groups = TYPED_DATE.exec(trimmed)?.groups;
+  if (!groups) return null;
+  const typedYear = groups.year;
+  let year = thisYear;
+  if (typedYear) year = typedYear.length === 2 ? 2000 + Number(typedYear) : Number(typedYear);
+  return dateFromParts(year, Number(groups.month), Number(groups.day));
+}
+
+/** For a form field, such as `3/8/2026`. `parseTypedDate` reads it back. */
+export function dateInputValue(date: CalendarDate): string {
+  const { year, month, day } = datePartsOf(date);
+  return `${String(month)}/${String(day)}/${String(year)}`;
+}
+
 /** What today's date is in a time zone. `at` lets tests choose the moment. */
 export function today(
   timeZone: string,
