@@ -183,7 +183,9 @@ test.describe('signing in', () => {
     await page.getByLabel('Email or username').fill('alex@example.com');
     await page.getByLabel('Password').fill('wrong password');
     await page.getByRole('button', { name: 'Sign in' }).click();
-    await expect(page.getByRole('alert')).toHaveText('That username, email or password isn’t right.');
+    await expect(page.getByRole('alert')).toHaveText(
+      'That username, email or password isn’t right.',
+    );
     await expectNoViolations(page);
   });
 
