@@ -99,3 +99,33 @@ test('Bills is a table on wider screens and a list on a phone', async ({ page },
   await expectNoViolations(page);
   await saveScreenshot(page, 'bills-table');
 });
+
+test('the calendar shows the month as a grid, or as a list of days on a phone', async ({
+  page,
+}, info) => {
+  await withBills(page);
+  await page.route('**/api/v1/totals?**', (route) =>
+    route.fulfill({ json: { dueCents: 0, unknownCount: 0, paidCents: 0 } }),
+  );
+  await page.goto('/calendar');
+  await expect(page.getByRole('heading', { name: 'Calendar', level: 1 })).toBeVisible();
+  const water = page
+    .getByRole('main')
+    .getByRole('button', { name: /Water/ })
+    .filter({ visible: true });
+  await expect(water).toBeVisible();
+  if (info.project.name !== 'phone') {
+    // Every day of the grid is listed, each with its full date for screen readers.
+    const days = page.getByRole('list', { name: /d{4}$/ }).getByRole('listitem');
+    expect(await days.count()).toBeGreaterThanOrEqual(28);
+  }
+  await expectNoViolations(page);
+  await saveScreenshot(page, 'calendar');
+
+  // Opening a bill offers to pay what's left.
+  await water.click();
+  const dialog = page.getByRole('dialog', { name: 'Pay Water' });
+  await expect(dialog.getByLabel('Amount paid')).toHaveValue('45.00');
+  await expect(dialog.getByRole('button', { name: 'Skip this one' })).toBeVisible();
+  await expectNoViolations(page);
+});
