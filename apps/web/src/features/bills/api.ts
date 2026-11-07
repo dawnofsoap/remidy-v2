@@ -1,6 +1,9 @@
 import {
   agendaResponse,
   billResponse,
+  historyResponse,
+  paymentResponse,
+  totalsResponse,
   type BillResponse,
   type BillScheduleInput,
 } from '@remidy/contracts';
@@ -51,3 +54,40 @@ export const moveBill = (spaceId: string, id: string, toSpaceId: string) =>
 
 export const deleteBill = (spaceId: string, id: string) =>
   apiRequest('DELETE', `${spaceBills(spaceId)}/${id}`);
+
+export const HISTORY_KEY = (billId: string) => ['bill-history', billId];
+export const TOTALS_KEY = ['totals'];
+
+export const fetchTotals = (from: string, to: string, signal: AbortSignal) =>
+  apiRequest('GET', `/api/v1/totals?from=${from}&to=${to}`, { schema: totalsResponse, signal });
+
+export const fetchHistory = (spaceId: string, billId: string, signal: AbortSignal) =>
+  apiRequest('GET', `/api/v1/spaces/${spaceId}/bills/${billId}/history`, {
+    schema: historyResponse,
+    signal,
+  });
+
+export interface PaymentInput {
+  paidOn: string;
+  amountCents: number;
+  confirmation: string | null;
+  notes: string | null;
+}
+
+export const recordPayment = (spaceId: string, occurrenceId: string, input: PaymentInput) =>
+  apiRequest('POST', `/api/v1/spaces/${spaceId}/occurrences/${occurrenceId}/payments`, {
+    body: input,
+    schema: paymentResponse,
+  });
+
+export const voidPayment = (spaceId: string, paymentId: string, reason: string) =>
+  apiRequest('POST', `/api/v1/spaces/${spaceId}/payments/${paymentId}/void`, {
+    body: { reason },
+    schema: paymentResponse,
+  });
+
+export const setSkipped = (spaceId: string, occurrenceId: string, skipped: boolean) =>
+  apiRequest(
+    'POST',
+    `/api/v1/spaces/${spaceId}/occurrences/${occurrenceId}/${skipped ? 'skip' : 'unskip'}`,
+  );

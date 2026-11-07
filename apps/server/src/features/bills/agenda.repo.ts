@@ -26,6 +26,7 @@ export async function agenda(
       .select({
         id: billOccurrence.id,
         billId: billOccurrence.billId,
+        spaceId: billOccurrence.spaceId,
         shared: sql<boolean>`${space.kind} = 'shared'`.mapWith(Boolean),
         name: billOccurrence.billName,
         dueOn: billOccurrence.dueOn,

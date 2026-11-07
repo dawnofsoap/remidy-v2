@@ -11,6 +11,7 @@ const iso = (offsetDays: number) => {
 const entry = (id: string, name: string, dueOn: string, expectedCents: number | null) => ({
   id,
   billId: id,
+  spaceId: 'sp1',
   shared: false,
   name,
   dueOn,

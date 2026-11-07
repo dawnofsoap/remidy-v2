@@ -177,6 +177,19 @@ describe('skipping', () => {
     expect((await dueOf(bill.id)).state).toBe('open');
   });
 
+  it('gives the period’s totals over the API, for the person’s spaces only', async () => {
+    const { due } = await newDue();
+    await pay('alice', ids.alicePersonal, due.id, 1500);
+    const totals: unknown = (
+      await call('alice', 'GET', `/api/v1/totals?from=${now()}&to=${now()}`)
+    ).json();
+    expect(totals).toMatchObject({ paidCents: 1500 });
+    const bobs: unknown = (
+      await call('bob', 'GET', `/api/v1/totals?from=${now()}&to=${now()}`)
+    ).json();
+    expect(bobs).toMatchObject({ paidCents: 0, dueCents: 0 });
+  });
+
   it('leaves a skipped due date out of what’s due in its period', async () => {
     const { due } = await newDue();
     const before = await periodTotals(test.database.orm, 'alice', now(), now());
