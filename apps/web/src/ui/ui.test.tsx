@@ -162,6 +162,21 @@ describe('state panels', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading bills');
   });
 
+  it('still offers the next step when filling the page', async () => {
+    const onClick = vi.fn();
+    render(
+      <EmptyState
+        title="Nothing due"
+        description="Add a bill."
+        action={<Button onClick={onClick}>Add bill</Button>}
+        fillPage
+      />,
+    );
+    expect(screen.getByRole('heading', { name: 'Nothing due' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Add bill' }));
+    expect(onClick).toHaveBeenCalled();
+  });
+
   it('offers the next step when empty', () => {
     render(
       <EmptyState
