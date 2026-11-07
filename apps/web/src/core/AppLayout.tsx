@@ -3,7 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { createContext, useContext, useEffect, useRef } from 'react';
 import { cn, focusRing, Toaster } from '../ui/index.ts';
-import { visibleNav, type NavItem, type WebFeature } from './feature.ts';
+import {
+  visibleNav,
+  visibleSettings,
+  type NavItem,
+  type SettingsSection,
+  type WebFeature,
+} from './feature.ts';
 import { ServerStatus } from './ServerStatus.tsx';
 
 // The router marks the current page's link with data-status="active".
@@ -18,16 +24,21 @@ async function fetchEnabledFeatures({ signal }: { signal: AbortSignal }): Promis
   return enabledFeaturesResponse.parse(await response.json()).enabled;
 }
 
-function useNavItems(): NavItem[] {
+/** The features to show. Flagged ones stay hidden until the server confirms they're on. */
+function useVisible<T>(pick: (features: WebFeature[], enabled: readonly string[]) => T): T {
   const features = useContext(FeaturesContext);
-  // Flagged features stay hidden until the server confirms they're on.
   const { data: enabled = [] } = useQuery({
     queryKey: ['enabled-features'],
     queryFn: fetchEnabledFeatures,
     retry: false,
   });
-  return visibleNav(features, enabled);
+  return pick(features, enabled);
 }
+
+const useNavItems = (): NavItem[] => useVisible(visibleNav);
+
+/** The sections other features add to the Settings page. */
+export const useSettingsSections = (): SettingsSection[] => useVisible(visibleSettings);
 
 function Sidebar({ items }: { items: NavItem[] }) {
   return (
