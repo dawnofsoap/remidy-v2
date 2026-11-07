@@ -43,8 +43,8 @@ function firstCountNear(schedule: Extract<Schedule, { kind: 'repeat' }>, from: C
   const start = datePartsOf(firstDue);
   const end = datePartsOf(from);
   const months = (end.year - start.year) * 12 + (end.month - start.month);
-  // One less than the estimate, since a day of the month later in the month can push it over.
-  return Math.max(0, Math.floor(months / ((unit === 'year' ? 12 : 1) * every)) - 1);
+  // That many steps lands in the same month as `from` or earlier, so no date on or after it is skipped.
+  return Math.floor(months / ((unit === 'year' ? 12 : 1) * every));
 }
 
 /** Every due date from `from` to `to`, both included, in order. */

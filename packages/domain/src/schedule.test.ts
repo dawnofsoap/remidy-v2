@@ -254,6 +254,8 @@ describe('a schedule in words', () => {
     [repeat('month', 1, '2026-01-22'), 'Monthly on the 22nd'],
     [repeat('month', 1, '2026-01-31'), 'Monthly on the last day'],
     [repeat('month', 1, '2026-01-30'), 'Monthly on the 30th, or the last day of shorter months'],
+    [repeat('month', 1, '2026-01-29'), 'Monthly on the 29th, or the last day of shorter months'],
+    [repeat('month', 1, '2026-01-28'), 'Monthly on the 28th'],
     [repeat('month', 3, '2026-01-15'), 'Every 3 months on the 15th'],
     [repeat('week', 1, '2026-11-09'), 'Weekly on Monday'],
     [repeat('week', 2, '2026-11-13'), 'Every 2 weeks on Friday'],
