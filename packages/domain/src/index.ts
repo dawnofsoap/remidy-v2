@@ -31,3 +31,13 @@ export {
   type RepeatUnit,
   type Schedule,
 } from './schedule.ts';
+export {
+  dueTotal,
+  paidTotal,
+  settle,
+  suggestedAmount,
+  type DueRecord,
+  type DueState,
+  type PaymentRecord,
+  type Settlement,
+} from './settlement.ts';
