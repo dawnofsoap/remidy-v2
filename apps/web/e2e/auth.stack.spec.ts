@@ -250,9 +250,11 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
   await next();
   await dialog.getByRole('button', { name: 'Add bill' }).click();
 
+  // A table on desktop, and a list on a phone.
+  const table = page.getByRole('table', { name: 'Bills' });
   const bills = page.getByRole('list', { name: 'Bills', exact: true });
-  await expect(bills.getByRole('button', { name: /Water/ })).toContainText('$45.00');
-  await expect(bills.getByRole('button', { name: /Water/ })).toContainText('Utilities');
+  await expect(table.getByRole('row', { name: /Water/ })).toContainText('$45.00');
+  await expect(table.getByRole('row', { name: /Water/ })).toContainText('Utilities');
 
   // One due in a few days shows on Home. The space's time zone was changed earlier, so its
   // "today" may not be the browser's, and a date a few days out is upcoming either way.
@@ -268,7 +270,7 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
   await dialog.getByRole('textbox', { name: 'Due date' }).fill(soon);
   await next();
   await dialog.getByRole('button', { name: 'Add bill' }).click();
-  await expect(bills.getByRole('button', { name: /Phone/ })).toContainText('Varies');
+  await expect(table.getByRole('row', { name: /Phone/ })).toContainText('Varies');
 
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home' }).click();
   await expect(page.getByRole('main')).toContainText('Phone');

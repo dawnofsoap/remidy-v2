@@ -16,23 +16,14 @@ interface TableProps<Row> {
   rows: readonly Row[];
   rowKey: (row: Row) => string;
   /**
-   * Makes each row open something. The first column becomes a button, so keyboards and screen
-   * readers reach it, and a click anywhere on the row does the same.
+   * Makes each row open something. The first column becomes a button, named by what it shows so
+   * speech control can find it, and a click anywhere on the row does the same.
    */
   onRowClick?: (row: Row) => void;
-  /** The button's name for a row, such as "Edit Rent". */
-  rowLabel?: (row: Row) => string;
 }
 
 /** Rows and columns for comparing many items at once, on screens wide enough to show them. */
-export function Table<Row>({
-  label,
-  columns,
-  rows,
-  rowKey,
-  onRowClick,
-  rowLabel,
-}: TableProps<Row>) {
+export function Table<Row>({ label, columns, rows, rowKey, onRowClick }: TableProps<Row>) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
       <table aria-label={label} className="w-full border-collapse text-left">
@@ -73,7 +64,6 @@ export function Table<Row>({
                   {index === 0 && onRowClick ? (
                     <button
                       type="button"
-                      aria-label={rowLabel?.(row)}
                       onClick={(event) => {
                         // The row's own click does the work, once.
                         event.stopPropagation();

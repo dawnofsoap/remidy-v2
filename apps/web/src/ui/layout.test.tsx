@@ -44,10 +44,9 @@ describe('Table', () => {
         rows={rows}
         rowKey={(row) => row.id}
         onRowClick={onRowClick}
-        rowLabel={(row) => `Edit ${row.name}`}
       />,
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Edit Water' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Water' }));
     expect(onRowClick).toHaveBeenCalledTimes(1);
     expect(onRowClick).toHaveBeenLastCalledWith(rows[1]);
     await userEvent.click(screen.getByText('$1,450.00'));

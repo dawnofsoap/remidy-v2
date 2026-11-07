@@ -137,7 +137,6 @@ function Gallery() {
           ]}
           rowKey={(row) => row.name}
           onRowClick={() => undefined}
-          rowLabel={(row) => `Edit ${row.name}`}
         />
       </Section>
       <Section title="Steps">
