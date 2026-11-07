@@ -52,10 +52,10 @@ All under `/api/v1/spaces/:spaceId/categories`.
 | `DELETE /:categoryId` | manager | 404, 409 has history |
 
 ## Screens
-A **Categories** section in Settings, under "Your space", since it's set up once and rarely changed. A list with Add,
-Rename and a menu with Archive and Delete. Members without the manager role see the list without the controls.
-States: loading, an empty list with an Add button, an error with Try again, and a collapsed "Archived" section. Add
-and Rename use a modal, which is a bottom sheet on phones.
+A **Categories** section in Space settings, since a space's members share its categories. A list with Add, and
+each category opens one modal with Rename, Archive or Restore, and Delete, which asks first. Members without the
+manager role see the list without the controls. States: loading, an empty list with an Add button, an error with
+Try again, and a collapsed "Archived" section. The modal is a bottom sheet on phones.
 
 ## Depends on
 Spaces (`space` and membership roles), the activity log, and the UI kit's List, Modal, Field, Button and Toast.

@@ -254,6 +254,27 @@ The layout is settled: a sidebar on desktop, bottom navigation on phones, and an
 - **Every state is designed:** loading, empty and error, not only the populated screen.
 - **Motion and detail:** subtle, and only where it explains a change.
 
+### Where things live
+
+Everything belongs to a space, so the space comes first and the rest follows it.
+
+- **The space switcher** sits at the top of the sidebar, and at the top of the screen on phones. Pages about a
+  space, such as bills and Space settings, follow it. Until sharing arrives it lists only the personal space.
+- **Main pages** such as Home and Bills are in the sidebar on desktop, and in the tab bar on phones.
+- **Three settings areas**, each with its own address and sections:
+
+| Area | Address | For | Holds |
+|---|---|---|---|
+| Settings | `/settings` | Only the person signed in | Profile, appearance, security, and later notifications |
+| Space settings | `/spaces/:spaceId/settings` | Everyone in the space. Managers and owners can change things, and members see them read-only | General (time zone), categories, and later members and history |
+| Administration | `/admin` | Instance admins only, and hidden from everyone else | Background jobs, and later users and defaults for new spaces |
+
+- **On desktop** the areas are at the bottom of the sidebar, and each shows its sections beside the chosen one.
+- **On phones** they're behind the More tab, because the tab bar only has room for main pages. Each section opens
+  as its own page with a way back.
+- **A feature adds to Space settings** through `spaceSettings` in its definition, so the area never needs to know
+  about each feature. Personal settings and Administration belong to the base, and features don't add to them.
+
 ## 9. Moving from v1
 
 v1's payment history isn't reliable enough to treat as fact, so v2 **starts its history fresh**.

@@ -31,8 +31,8 @@ export function JobStatus() {
   });
 
   return (
-    <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">Background jobs</h2>
+    <div className="flex flex-col gap-3">
+      <p className="text-ink-2">Scheduled work the server runs, such as reminders.</p>
       {jobs.isPending ? <LoadingState label="Loading background jobs" /> : null}
       {jobs.isError ? (
         <ErrorState
@@ -62,6 +62,6 @@ export function JobStatus() {
           ))}
         </List>
       ) : null}
-    </section>
+    </div>
   );
 }

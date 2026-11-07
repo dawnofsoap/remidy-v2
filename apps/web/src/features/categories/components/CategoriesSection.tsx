@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { fetchSpaces } from '../../../core/session.ts';
+import { canManage, useSpaceFromAddress } from '../../../core/space.tsx';
 import { Button, EmptyState, ErrorState, List, ListRow, LoadingState } from '../../../ui/index.ts';
 import { categoriesKey, fetchCategories, type Category } from '../api.ts';
 import { CategoryModal } from './CategoryModal.tsx';
@@ -8,16 +8,11 @@ import { CategoryModal } from './CategoryModal.tsx';
 /** What the modal is showing: a new category, one being edited, or nothing. */
 type Editing = { category: Category | null } | null;
 
-/** The Categories section of Settings, for the person's own space. */
+/** The Categories section of Space settings, for the space in the address. */
 export function CategoriesSection() {
-  const spaces = useQuery({ queryKey: ['spaces'], queryFn: fetchSpaces });
-  const space = spaces.data?.find((candidate) => candidate.kind === 'personal');
-
-  if (spaces.isError) {
-    return <ErrorState message="Categories couldn’t load." onRetry={() => void spaces.refetch()} />;
-  }
-  if (!space) return <LoadingState label="Loading categories" />;
-  return <SpaceCategories spaceId={space.id} canEdit={space.role !== 'member'} />;
+  const { space } = useSpaceFromAddress();
+  if (!space) return null;
+  return <SpaceCategories spaceId={space.id} canEdit={canManage(space)} />;
 }
 
 function SpaceCategories({ spaceId, canEdit }: { spaceId: string; canEdit: boolean }) {

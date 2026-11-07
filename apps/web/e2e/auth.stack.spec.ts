@@ -35,6 +35,17 @@ async function replacePassword(page: Page, temporary: string, chosen: string) {
 
 const appHeading = (page: Page, name: string) => page.getByRole('heading', { name, level: 1 });
 
+/** Goes to a section of Space settings the way a person would, from the sidebar. */
+async function openSpaceSettings(page: Page, section: string) {
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Space' }).click();
+  await expect(appHeading(page, 'Space settings')).toBeVisible();
+  await page
+    .getByRole('navigation', { name: 'Space settings sections' })
+    .getByRole('link', { name: section })
+    .click();
+  await expect(page.getByRole('heading', { name: section, level: 2 })).toBeVisible();
+}
+
 test('the first start prints the admin password, which must then be replaced', async ({
   page,
   request,
@@ -101,8 +112,8 @@ test('a session survives a reload, and shows the account in settings', async ({ 
   await page.reload();
   await expect(appHeading(page, 'Home')).toBeVisible();
 
-  await page.goto('/settings');
-  await expect(page.getByRole('heading', { name: 'Account' })).toBeVisible();
+  await page.goto('/settings/profile');
+  await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible();
   await expect(page.getByText(ADMIN_EMAIL)).toBeVisible();
 });
 
@@ -112,7 +123,7 @@ test('a personal space exists, using the browser time zone, and its time zone ca
   await page.goto('/');
   await signInWith(page, CHOSEN_PASSWORD);
   await expect(appHeading(page, 'Home')).toBeVisible();
-  await page.goto('/settings');
+  await openSpaceSettings(page, 'General');
 
   const browserZone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
   const field = page.getByLabel('Time zone');
@@ -130,7 +141,7 @@ test('the real job runner reports its heartbeat to the admin', async ({ page }) 
   await page.goto('/');
   await signInWith(page, CHOSEN_PASSWORD);
   await expect(appHeading(page, 'Home')).toBeVisible();
-  await page.goto('/settings');
+  await page.goto('/admin/jobs');
   const row = page
     .getByRole('listitem')
     .filter({ hasText: 'Shows that background jobs are running.' });
@@ -144,7 +155,7 @@ test('categories can be added, renamed, archived and deleted, at desktop and pho
   await page.goto('/');
   await signInWith(page, CHOSEN_PASSWORD);
   await expect(appHeading(page, 'Home')).toBeVisible();
-  await page.goto('/settings');
+  await openSpaceSettings(page, 'Categories');
 
   const list = page.getByRole('list', { name: 'Categories', exact: true });
   const dialog = page.getByRole('dialog');
@@ -205,18 +216,19 @@ test('a wrong password is refused with a clear message', async ({ page }) => {
 test('changing the password replaces the old one and signs out other devices', async ({
   page,
   browser,
+  baseURL,
 }) => {
   await page.goto('/');
   await signInWith(page, CHOSEN_PASSWORD);
   await expect(appHeading(page, 'Home')).toBeVisible();
 
-  const otherDevice = await browser.newContext({ baseURL: 'http://localhost:5173' });
+  const otherDevice = await browser.newContext(baseURL ? { baseURL } : {});
   const otherPage = await otherDevice.newPage();
   await otherPage.goto('/');
   await signInWith(otherPage, CHOSEN_PASSWORD);
   await expect(appHeading(otherPage, 'Home')).toBeVisible();
 
-  await page.goto('/settings');
+  await page.goto('/settings/security');
   const newPassword = page.getByLabel('New password');
   await page.getByLabel('Current password').fill('not my password at all');
   await newPassword.fill('too short');
@@ -243,7 +255,7 @@ test('signing out ends the session, and the old password no longer works', async
   await signInWith(page, SECOND_PASSWORD);
   await expect(appHeading(page, 'Home')).toBeVisible();
 
-  await page.goto('/settings');
+  await page.goto('/settings/security');
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(appHeading(page, 'Sign in')).toBeVisible();
 
