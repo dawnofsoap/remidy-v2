@@ -21,7 +21,7 @@ followed when you're busy.
 | 2. Rules | Write domain logic and its tests, with no UI or database | Tests pass |
 | 3. Data and API | Migration, contracts, repo, routes, permission tests | Integration tests pass, and breaking each rule on purpose fails a test |
 | 4. UI | Screens built from the shared UI kit, behind a feature flag, and turned on in `compose.yaml` for development | Loading, empty, error and mobile states all work |
-| 5. End to end | One test covers the main journey | Passes in CI |
+| 5. End to end | One test covers the main journey, and `sampleData` adds fictional examples of the feature | Passes in CI |
 | 6. Stabilize | Turn the flag on and use the feature for real | The period in the roadmap ends with no open P0 or P1 |
 | 7. Release | Tag a version, update the changelog, and remove the flag | Published |
 
@@ -106,6 +106,13 @@ export const payments = defineFeature({
 A feature that has a shared list, such as categories, adds a section through `spaceSettings` instead of a page. It
 appears in Household, or in Settings for someone without a household, and the section calls `useSettingsSpace()` to
 know which space it's about. See "Where things live" in `DESIGN.md` for which area holds what.
+
+### Sample data
+
+Each feature adds its own fictional data through `sampleData` in its definition, using its own repo functions so the
+data follows the same rules as real data. It must be safe to run again, and only replace its own samples when asked.
+Show what the screens need to handle, such as empty fields, long names and every state. Never use real data: the repo is
+public.
 
 ### Migrations
 
