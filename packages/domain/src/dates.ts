@@ -108,6 +108,10 @@ const FORMATS = {
   short: { weekday: 'short', month: 'short', day: 'numeric' },
   /** Monday, November 9 */
   long: { weekday: 'long', month: 'long', day: 'numeric' },
+  /** Monday */
+  weekday: { weekday: 'long' },
+  /** March 4 */
+  monthDay: { month: 'long', day: 'numeric' },
 } as const;
 
 export function formatDate(date: CalendarDate, style: keyof typeof FORMATS = 'medium'): string {
