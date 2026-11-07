@@ -14,6 +14,7 @@ function HomePage() {
         <EmptyState
           title="Nothing to show yet"
           description="Your bills will appear here once bill tracking is built."
+          fillPage
         />
       ) : (
         sections.map((Section, index) => <Section key={index} />)

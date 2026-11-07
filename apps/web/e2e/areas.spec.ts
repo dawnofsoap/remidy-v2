@@ -101,3 +101,14 @@ test('going straight to a page works, and back returns', async ({ page }) => {
   await page.goBack();
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
 });
+
+test('a page with nothing on it centers its message in the content area', async ({ page }) => {
+  await page.goto('/');
+  const message = await page.getByRole('heading', { name: 'Nothing to show yet' }).boundingBox();
+  const main = await page.getByRole('main').boundingBox();
+  const middle = (box: { x: number; width: number } | null) =>
+    (box?.x ?? 0) + (box?.width ?? 0) / 2;
+  expect(Math.abs(middle(message) - middle(main))).toBeLessThan(2);
+  // Well below the heading, not tucked under it.
+  expect(message?.y ?? 0).toBeGreaterThan(200);
+});
