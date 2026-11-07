@@ -219,7 +219,7 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
   await expect(appHeading(page, 'Bills')).toBeVisible();
 
   const dialog = page.getByRole('dialog');
-  const next = () => dialog.getByRole('button', { name: 'Next' }).click();
+  const next = () => dialog.getByRole('button', { name: 'Next', exact: true }).click();
   const step = (text: string) =>
     expect(dialog.getByRole('navigation', { name: 'Steps' })).toContainText(text);
 
