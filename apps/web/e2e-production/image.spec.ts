@@ -1,17 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ADMIN_EMAIL } from '@remidy/contracts';
-import { execSync } from 'node:child_process';
+import { compose } from './stack.ts';
 
 // Runs against the built image behind TLS, with a new database. See playwright.production.config.ts.
 const CHOSEN_PASSWORD = 'a passphrase of my own';
 
 test.describe.configure({ mode: 'serial' });
 
-const compose = (args: string) =>
-  execSync(
-    `docker compose -p remidy-prodcheck -f deploy/compose.yaml -f deploy/check/compose.yaml --env-file deploy/check/check.env ${args}`,
-    { encoding: 'utf8', cwd: '../..' },
-  );
 const inServer = (command: string) => compose(`exec -T server sh -c "${command}"`);
 
 function printedPassword(): string {
