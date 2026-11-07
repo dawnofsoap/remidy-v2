@@ -237,6 +237,23 @@ describe('a space’s activity', () => {
     expect(seen).toEqual(['Name 5', 'Name 4', 'Name 3', 'Name 2', 'Name 1']);
   });
 
+  it('says when there’s another page, and only when there is', async () => {
+    const { manager: person } = people;
+    const id = person.personalSpaceId;
+    await change('Another name', id, person, {});
+    await change('One more name', id, person, {});
+    const total = (await activity(id, person, '?limit=100')).json<Page>().entries.length;
+    expect(total).toBeGreaterThanOrEqual(2);
+
+    const full = (await activity(id, person, `?limit=${String(total)}`)).json<Page>();
+    expect(full.entries).toHaveLength(total);
+    expect(full.nextBefore).toBeNull();
+
+    const short = (await activity(id, person, `?limit=${String(total - 1)}`)).json<Page>();
+    expect(short.entries).toHaveLength(total - 1);
+    expect(short.nextBefore).toBe(short.entries.at(-1)?.id);
+  });
+
   it.each([
     ['a limit of zero', '?limit=0', 'query.limit'],
     ['a limit too large', '?limit=101', 'query.limit'],
