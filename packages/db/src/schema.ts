@@ -143,6 +143,30 @@ export const membership = pgTable(
 );
 
 /**
+ * A space's bill categories. New spaces get a starter set from a database trigger, so it can't be
+ * missed by any way a space is created.
+ */
+export const category = pgTable(
+  'category',
+  {
+    id: uuid('id')
+      .primaryKey()
+      .default(sql`uuidv7()`),
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => space.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    /** Set when archived: hidden from choices for new bills, but kept for history. */
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt: timestamps.createdAt,
+  },
+  // One name per space, whatever its case.
+  (table) => [
+    uniqueIndex('category_space_id_name_unique').on(table.spaceId, sql`lower(${table.name})`),
+  ],
+);
+
+/**
  * Every change to something with history, written in the same transaction as the change. The
  * database refuses to update or delete a row here, so what happened can't be rewritten later.
  */
