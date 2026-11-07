@@ -2,13 +2,16 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
+import { apiRequest, RequestFailure } from './session.ts';
 import { defineFeature, visibleNav, visibleSettings } from './feature.ts';
 import { applyTheme, readThemePreference, saveThemePreference } from './theme.ts';
 
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('ErrorBoundary', () => {
@@ -119,5 +122,54 @@ describe('theme preference', () => {
       saveThemePreference('dark');
     }).not.toThrow();
     expect(document.documentElement.dataset.theme).toBe('dark');
+  });
+});
+
+describe('apiRequest', () => {
+  const reply = (status: number, body: unknown) =>
+    vi.fn(() => Promise.resolve(new Response(JSON.stringify(body), { status })));
+
+  it('sends JSON and returns the parsed response', async () => {
+    const fetch = reply(200, { id: '1', extra: 'dropped' });
+    vi.stubGlobal('fetch', fetch);
+    const result = await apiRequest('POST', '/api/v1/things', {
+      body: { name: 'A' },
+      schema: z.object({ id: z.string() }),
+    });
+    expect(result).toEqual({ id: '1' });
+    expect(fetch).toHaveBeenCalledWith('/api/v1/things', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{"name":"A"}',
+    });
+  });
+
+  it('turns an API error into a safe message and field problems', async () => {
+    vi.stubGlobal(
+      'fetch',
+      reply(409, {
+        error: {
+          code: 'duplicate',
+          message: 'Already exists.',
+          requestId: 'r',
+          fields: [{ path: 'body.name', message: 'Taken.' }],
+        },
+      }),
+    );
+    const failure = await apiRequest('POST', '/x', { body: {} }).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(RequestFailure);
+    expect(failure).toMatchObject({
+      status: 409,
+      message: 'Already exists.',
+      fields: { name: 'Taken.' },
+    });
+  });
+
+  it('gives a general message when the response isn’t an API error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response('<html>', { status: 502 }))),
+    );
+    await expect(apiRequest('DELETE', '/x')).rejects.toThrow(/Check your connection/);
   });
 });
