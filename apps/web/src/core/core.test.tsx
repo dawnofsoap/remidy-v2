@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
 import { apiRequest, RequestFailure } from './session.ts';
-import { defineFeature, visibleNav, visibleSpaceSettings } from './feature.ts';
+import { defineFeature, visibleHome, visibleNav, visibleSpaceSettings } from './feature.ts';
 import { applyTheme, readThemePreference, saveThemePreference } from './theme.ts';
 
 afterEach(() => {
@@ -56,6 +56,16 @@ describe('navigation', () => {
 
   it('ignores enabled names it does not know', () => {
     expect(labels(['other'])).toEqual(['always']);
+  });
+
+  it('shows a flagged feature’s Home content only once it is enabled', () => {
+    const Agenda = () => null;
+    const withHome = [
+      defineFeature({ name: 'beta', flagged: true, routes: [], nav: [], home: [Agenda] }),
+      defineFeature({ name: 'plain', routes: [], nav: [] }),
+    ];
+    expect(visibleHome(withHome, [])).toEqual([]);
+    expect(visibleHome(withHome, ['beta'])).toEqual([Agenda]);
   });
 
   it('shows a flagged feature’s settings only once it is enabled', () => {

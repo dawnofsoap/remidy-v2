@@ -4,7 +4,13 @@ import { Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { Ellipsis } from 'lucide-react';
 import { createContext, useContext, useEffect, useRef } from 'react';
 import { cn, focusRing, Toaster } from '../ui/index.ts';
-import { visibleNav, visibleSpaceSettings, type NavItem, type WebFeature } from './feature.ts';
+import {
+  visibleHome,
+  visibleNav,
+  visibleSpaceSettings,
+  type NavItem,
+  type WebFeature,
+} from './feature.ts';
 import { useAreaLinks } from './areas.ts';
 import { activeLink, listLink } from './navStyles.ts';
 import { ServerStatus } from './ServerStatus.tsx';
@@ -28,6 +34,9 @@ function useVisible<T>(pick: (features: WebFeature[], enabled: readonly string[]
   });
   return pick(features, enabled);
 }
+
+/** What features show on Home. */
+export const useHomeSections = () => useVisible(visibleHome);
 
 /** The sections features add about shared lists, such as categories. */
 export const useSpaceSettingsSections = (): SettingsSection[] => useVisible(visibleSpaceSettings);
