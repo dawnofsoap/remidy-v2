@@ -234,6 +234,17 @@ describe('who can pay', () => {
 });
 
 describe('a bill with payments', () => {
+  it('can be edited and archived when a coming due date has a payment, keeping that payment', async () => {
+    const { bill, due } = await newDue(once(addDays(now(), 3)));
+    const paid = (await pay('alice', ids.alicePersonal, due.id, 100)).json<Payment>();
+    await voidIt('alice', ids.alicePersonal, paid.id);
+    const url = `/api/v1/spaces/${ids.alicePersonal}/bills/${bill.id}`;
+    expect((await call('alice', 'PATCH', url, { name: 'Renamed' })).statusCode).toBe(200);
+    expect((await call('alice', 'PATCH', url, { archived: true })).statusCode).toBe(200);
+    const [entry] = await history('alice', ids.alicePersonal, bill.id);
+    expect(entry?.payments.map((row) => row.id)).toEqual([paid.id]);
+  });
+
   it('can’t be deleted, only archived', async () => {
     const { bill, due } = await newDue();
     await pay('alice', ids.alicePersonal, due.id, 4500);

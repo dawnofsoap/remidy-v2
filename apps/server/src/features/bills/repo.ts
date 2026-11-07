@@ -4,6 +4,7 @@ import {
   billOccurrence,
   category,
   membership,
+  payment,
   space,
   type Orm,
   type Transaction,
@@ -64,15 +65,15 @@ async function replaceFutureDueDates(
   timeZone: string,
   archived: boolean,
 ) {
-  await transaction
-    .delete(billOccurrence)
-    .where(
-      and(
-        eq(billOccurrence.billId, copy.id),
-        eq(billOccurrence.state, 'open'),
-        gte(billOccurrence.dueOn, today(timeZone)),
-      ),
-    );
+  await transaction.delete(billOccurrence).where(
+    and(
+      eq(billOccurrence.billId, copy.id),
+      eq(billOccurrence.state, 'open'),
+      gte(billOccurrence.dueOn, today(timeZone)),
+      // A due date with any payment, even a voided one, is part of the history, so it stays.
+      sql`not exists (select 1 from ${payment} where ${payment.occurrenceId} = ${billOccurrence.id})`,
+    ),
+  );
   if (!archived) await addDueDates(transaction, copy, futureDueDates(schedule, timeZone));
 }
 
