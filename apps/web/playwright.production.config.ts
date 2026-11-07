@@ -15,5 +15,7 @@ export default defineConfig({
     baseURL: 'https://localhost:8443',
     // The test proxy signs its own certificate.
     ignoreHTTPSErrors: true,
+    // Shows every request and the page at each step, for failures that don't happen locally.
+    trace: 'retain-on-failure',
   },
 });
