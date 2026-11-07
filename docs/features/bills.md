@@ -42,6 +42,10 @@ places that disagreed, so Remidy needs one tested rule that every screen uses.
 - Given someone in a household, when they add a bill, then they choose personal or shared, and personal is the
   default. Without a household there's no choice.
 - Given a personal bill, then nobody else ever sees it, including other members of the same household.
+- Given a bill in the wrong place, or one made before joining a household, when a manager moves it between their
+  personal space and their household, then its past and future due dates go with it, so the household gains or loses
+  sight of its history. A category the new place can't use becomes the household's one with the same name, or none.
+  The move is recorded in both spaces.
 - Given a bill's category, then it comes from the household's list if the person has a household, or their own if
   not. That holds for personal bills too, so one filter covers everything they see.
 - Given someone who leaves a household (with Sharing), then household categories their personal bills use are

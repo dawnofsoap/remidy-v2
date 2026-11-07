@@ -86,6 +86,19 @@ describe('moving a bill', () => {
     expect(moved.categoryId).toBeNull();
   });
 
+  it('doesn’t swap in an archived category', async () => {
+    const created = await create('alice', ids.alicePersonal);
+    const own = await categoryIn(ids.alicePersonal, 'Loans');
+    await test.database.orm.update(bill).set({ categoryId: own }).where(eq(bill.id, created.id));
+    await test.database.orm
+      .update(category)
+      .set({ archivedAt: sql`now()` })
+      .where(and(eq(category.spaceId, ids.household), eq(category.name, 'Loans')));
+
+    const moved = (await move('alice', ids.alicePersonal, created.id, ids.household)).json<Bill>();
+    expect(moved.categoryId).toBeNull();
+  });
+
   it('records the move in both spaces', async () => {
     const created = await create('alice', ids.alicePersonal);
     await move('alice', ids.alicePersonal, created.id, ids.household);
