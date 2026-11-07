@@ -109,7 +109,7 @@ export function Agenda() {
   const thisMonth = from.slice(0, 7);
   const showOwner = Boolean(household);
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {overdue.length > 0 ? (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold text-danger">Overdue</h2>

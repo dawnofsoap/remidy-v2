@@ -209,7 +209,7 @@ test('categories can be added, renamed, archived and deleted, at desktop and pho
   await expect(row('Animals')).toHaveCount(0);
 });
 
-test('a bill can be added, shows on Home, and can be edited, at desktop and phone sizes', async ({
+test('a bill is added in steps, shows on Home, and can be edited, at desktop and phone sizes', async ({
   page,
 }) => {
   await page.goto('/');
@@ -218,15 +218,36 @@ test('a bill can be added, shows on Home, and can be edited, at desktop and phon
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Bills' }).click();
   await expect(appHeading(page, 'Bills')).toBeVisible();
 
-  // Due on the 31st, so the next due date falls on a short month's last day at some point.
   const dialog = page.getByRole('dialog');
+  const next = () => dialog.getByRole('button', { name: 'Next' }).click();
+  const step = (text: string) =>
+    expect(dialog.getByRole('navigation', { name: 'Steps' })).toContainText(text);
+
+  // Each step checks its own fields before moving on.
   await page.getByRole('button', { name: 'Add bill' }).click();
+  await step('Step 1 of 3');
+  await next();
+  await expect(dialog.getByText('Enter a name.')).toBeVisible();
   await dialog.getByLabel('Name').fill('Water');
   await dialog.getByLabel('Amount due').fill('45');
+  await next();
+
+  // Due on the 31st, so later dates land on shorter months' last days.
+  await step('Step 2 of 3');
   await dialog.getByRole('combobox', { name: 'Repeats' }).selectOption('monthly');
   await dialog.getByRole('textbox', { name: 'Next due date' }).fill('1/31/2030');
   await expect(dialog.getByText(/Monthly on the last day/)).toBeVisible();
-  await dialog.getByRole('combobox', { name: 'Category' }).selectOption({ label: 'Utilities' });
+  await next();
+
+  await step('Step 3 of 3');
+  await dialog
+    .getByRole('combobox', { name: 'Category (optional)' })
+    .selectOption({ label: 'Utilities' });
+  await expect(dialog.getByRole('region', { name: 'Summary' })).toContainText('$45.00');
+  // Back keeps what was entered.
+  await dialog.getByRole('button', { name: 'Back' }).click();
+  await expect(dialog.getByRole('textbox', { name: 'Next due date' })).toHaveValue('1/31/2030');
+  await next();
   await dialog.getByRole('button', { name: 'Add bill' }).click();
 
   const bills = page.getByRole('list', { name: 'Bills', exact: true });
@@ -238,12 +259,14 @@ test('a bill can be added, shows on Home, and can be edited, at desktop and phon
   await page.getByRole('button', { name: 'Add bill' }).click();
   await dialog.getByLabel('Name').fill('Phone');
   await dialog.getByRole('group', { name: 'Amount' }).getByText('Varies').click();
+  await next();
   await dialog.getByRole('combobox', { name: 'Repeats' }).selectOption('once');
-  const todayText = await page.evaluate(() => {
-    const now = new Date(Date.now() + 3 * 86_400_000);
-    return `${String(now.getMonth() + 1)}/${String(now.getDate())}/${String(now.getFullYear())}`;
+  const soon = await page.evaluate(() => {
+    const date = new Date(Date.now() + 3 * 86_400_000);
+    return `${String(date.getMonth() + 1)}/${String(date.getDate())}/${String(date.getFullYear())}`;
   });
-  await dialog.getByRole('textbox', { name: 'Due date' }).fill(todayText);
+  await dialog.getByRole('textbox', { name: 'Due date' }).fill(soon);
+  await next();
   await dialog.getByRole('button', { name: 'Add bill' }).click();
   await expect(bills.getByRole('button', { name: /Phone/ })).toContainText('Varies');
 
@@ -251,7 +274,7 @@ test('a bill can be added, shows on Home, and can be edited, at desktop and phon
   await expect(page.getByRole('main')).toContainText('Phone');
   await expect(page.getByRole('list', { name: 'Overdue' })).toHaveCount(0);
 
-  // On a phone, editing is a bottom sheet, and a rename shows straight away.
+  // On a phone, editing is a bottom sheet with the steps as tabs, and saves from any of them.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/bills');
   await bills.getByRole('button', { name: /Water/ }).click();
@@ -262,6 +285,7 @@ test('a bill can be added, shows on Home, and can be edited, at desktop and phon
   await expect(bills.getByRole('button', { name: /Water and sewer/ })).toBeVisible();
 
   await bills.getByRole('button', { name: /Phone/ }).click();
+  await dialog.getByRole('button', { name: 'Go to Details' }).click();
   await dialog.getByRole('button', { name: 'Delete…' }).click();
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(bills.getByRole('button', { name: /Phone/ })).toHaveCount(0);

@@ -1,33 +1,21 @@
-import { BILL_NAME_MAX, BILL_NOTES_MAX } from '@remidy/contracts';
-import {
-  addDays,
-  describeSchedule,
-  dueDates,
-  formatDate,
-  MAX_EVERY,
-  today,
-  type CalendarDate,
-  type Cents,
-  type RepeatUnit,
-  type Schedule,
-} from '@remidy/domain';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type SyntheticEvent } from 'react';
 import { RequestFailure } from '../../../core/session.ts';
 import { useHousehold, useListsSpace, usePersonalSpace } from '../../../core/space.tsx';
-import {
-  Button,
-  DateField,
-  Modal,
-  MoneyField,
-  RadioField,
-  SelectField,
-  TextField,
-} from '../../../ui/index.ts';
+import { Button, Modal, Steps } from '../../../ui/index.ts';
 import { categoriesKey, fetchCategories } from '../../categories/index.ts';
-import { createBill, updateBill, type Bill, type BillInput } from '../api.ts';
-import { choiceOf, REPEATS, scheduleOf, type Repeat } from '../repeats.ts';
+import { createBill, updateBill, type Bill } from '../api.ts';
 import { BillDangerZone } from './BillDangerZone.tsx';
+import {
+  draftOf,
+  errorKeyOf,
+  inputOf,
+  problemsOnStep,
+  STEPS,
+  stepOf,
+  type BillDraft,
+} from './billDraft.ts';
+import { DetailsStep, WhatStep, WhenStep } from './BillSteps.tsx';
 
 interface BillFormProps {
   /** The bill to edit, or null to add one. */
@@ -36,25 +24,14 @@ interface BillFormProps {
   onChanged: (message: string) => Promise<void>;
 }
 
-const browserToday = () => today(Intl.DateTimeFormat().resolvedOptions().timeZone);
-const UNITS = [
-  { value: 'week', label: 'weeks' },
-  { value: 'month', label: 'months' },
-  { value: 'year', label: 'years' },
-] as const;
+const LAST = STEPS.length - 1;
 
-/** The next few due dates, so the person can see the schedule means what they think. */
-function preview(schedule: Schedule): string {
-  const from = browserToday();
-  const next = dueDates(schedule, from, addDays(from, 800)).slice(0, 3);
-  const upcoming = next.length
-    ? `Next: ${next.map((date) => formatDate(date, 'short')).join(', ')}`
-    : 'No dates from today on';
-  return `${describeSchedule(schedule)}. ${upcoming}.`;
-}
-
-/** Adds a bill, or edits one, including archiving and deleting it. */
+/**
+ * Adds a bill in three short steps, checking each before moving on. Editing shows the same steps,
+ * which can be visited in any order and saved from any of them.
+ */
 export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
+  const isNew = bill === null;
   const personal = usePersonalSpace();
   const household = useHousehold();
   const listsSpace = useListsSpace();
@@ -64,62 +41,51 @@ export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
     enabled: Boolean(listsSpace),
   });
 
-  const initialChoice = bill
-    ? choiceOf(bill.schedule)
-    : { repeat: 'monthly' as Repeat, every: 1, unit: 'month' as RepeatUnit };
-  const [name, setName] = useState(bill?.name ?? '');
-  const [cents, setCents] = useState<Cents | null>((bill?.expectedCents ?? null) as Cents | null);
-  const [varies, setVaries] = useState<'fixed' | 'varies'>(bill?.isVariable ? 'varies' : 'fixed');
-  const [repeat, setRepeat] = useState<Repeat>(initialChoice.repeat);
-  const [every, setEvery] = useState(String(initialChoice.every));
-  const [unit, setUnit] = useState<RepeatUnit>(initialChoice.unit);
-  const [firstDue, setFirstDue] = useState<CalendarDate | null>(
-    (bill?.schedule.firstDue ?? null) as CalendarDate | null,
-  );
-  const [lastDue, setLastDue] = useState<CalendarDate | null>(
-    (bill?.schedule.kind === 'repeat' ? bill.schedule.lastDue : null) as CalendarDate | null,
-  );
-  const [categoryId, setCategoryId] = useState(bill?.categoryId ?? '');
-  const [owner, setOwner] = useState<'personal' | 'shared'>(bill?.shared ? 'shared' : 'personal');
-  const [autopay, setAutopay] = useState<'no' | 'yes'>(bill?.autopay ? 'yes' : 'no');
-  const [url, setUrl] = useState(bill?.url ?? '');
-  const [notes, setNotes] = useState(bill?.notes ?? '');
-  const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState<BillDraft>(() => draftOf(bill));
+  const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [failure, setFailure] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const everyNumber = Number(every);
-  const schedule =
-    firstDue &&
-    (repeat !== 'custom' ||
-      (Number.isInteger(everyNumber) && everyNumber >= 1 && everyNumber <= MAX_EVERY))
-      ? (scheduleOf({ repeat, every: everyNumber, unit }, firstDue, lastDue) as Schedule)
-      : null;
-  const spaceId = bill?.spaceId ?? (owner === 'shared' ? household?.id : personal?.id) ?? '';
+  function change(changes: Partial<BillDraft>) {
+    setDraft((current) => ({ ...current, ...changes }));
+    // A field's message goes once it's edited, so it doesn't linger after the fix.
+    const cleared = new Set(Object.keys(changes).map((key) => errorKeyOf(key as keyof BillDraft)));
+    setErrors((current) =>
+      Object.fromEntries(Object.entries(current).filter(([key]) => !cleared.has(key))),
+    );
+  }
 
-  async function save(event: SyntheticEvent) {
-    event.preventDefault();
-    const problems: Record<string, string> = {};
-    if (!name.trim()) problems.name = 'Enter a name.';
-    if (varies === 'fixed' && cents === null)
-      problems.expectedCents = 'Enter an amount, or choose Varies.';
-    if (!firstDue) problems['schedule.firstDue'] = 'Enter the date it’s next due.';
-    if (repeat === 'custom' && !schedule && firstDue)
-      problems['schedule.every'] = `Choose a number from 1 to ${String(MAX_EVERY)}.`;
+  function goTo(index: number) {
+    setErrors({});
+    setStep(index);
+  }
+
+  /** Goes to the first step with a problem and says false, or says true when every step is fine. */
+  function checkAll(): boolean {
+    for (let index = 0; index <= LAST; index += 1) {
+      const problems = problemsOnStep(draft, index);
+      if (Object.keys(problems).length > 0) {
+        setErrors(problems);
+        setStep(index);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function next() {
+    const problems = problemsOnStep(draft, step);
     setErrors(problems);
-    setFailure(null);
-    if (Object.keys(problems).length > 0 || !firstDue) return;
+    if (Object.keys(problems).length === 0) setStep(step + 1);
+  }
 
-    const input: BillInput = {
-      name: name.trim(),
-      expectedCents: cents,
-      isVariable: varies === 'varies',
-      schedule: scheduleOf({ repeat, every: everyNumber, unit }, firstDue, lastDue),
-      categoryId: categoryId || null,
-      autopay: autopay === 'yes',
-      url: url.trim() || null,
-      notes: notes.trim() || null,
-    };
+  async function save() {
+    setFailure(null);
+    if (!checkAll()) return;
+    const input = inputOf(draft);
+    const spaceId = bill?.spaceId ?? (draft.owner === 'shared' ? household?.id : personal?.id);
+    if (!input || !spaceId) return;
     setBusy(true);
     try {
       if (bill) await updateBill(spaceId, bill.id, input);
@@ -127,188 +93,85 @@ export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
       await onChanged(bill ? 'Bill saved.' : `Added ${input.name}.`);
       onClose();
     } catch (error) {
-      if (error instanceof RequestFailure && Object.keys(error.fields).length > 0)
-        setErrors(error.fields);
-      else
+      const fields = error instanceof RequestFailure ? error.fields : {};
+      const first = Object.keys(fields)[0];
+      if (first) {
+        setErrors(fields);
+        setStep(stepOf(first));
+      } else {
         setFailure(
           error instanceof RequestFailure ? error.message : 'That didn’t work. Try again.',
         );
+      }
     } finally {
       setBusy(false);
     }
   }
 
-  const err = (key: string) => (errors[key] ? { error: errors[key] } : {});
+  function submit(event: SyntheticEvent) {
+    event.preventDefault();
+    if (isNew && step < LAST) next();
+    else void save();
+  }
 
+  const stepProps = { draft, change, errors, isNew };
   return (
     <Modal
       open
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={bill ? 'Edit bill' : 'Add bill'}
+      title={isNew ? 'Add bill' : `Edit ${bill.name}`}
       description={
-        bill ? 'Changes apply to due dates from today on.' : 'A bill you pay on a schedule.'
+        isNew ? 'A bill you pay on a schedule.' : 'Changes apply to due dates from today on.'
       }
+      hideDescription={isNew}
     >
-      <form onSubmit={(event) => void save(event)} className="flex flex-col gap-4" noValidate>
-        <TextField
-          label="Name"
-          value={name}
-          maxLength={BILL_NAME_MAX}
-          autoComplete="off"
-          onChange={(event) => {
-            setName(event.target.value);
-          }}
-          {...err('name')}
-        />
-        {household && !bill ? (
-          <RadioField
-            label="Whose bill"
-            value={owner}
-            options={[
-              { value: 'personal', label: 'Just mine' },
-              { value: 'shared', label: `Shared with ${household.name}` },
-            ]}
-            onChange={setOwner}
-          />
-        ) : null}
-        <RadioField
-          label="Amount"
-          value={varies}
-          options={[
-            { value: 'fixed', label: 'Same each time' },
-            { value: 'varies', label: 'Varies' },
-          ]}
-          onChange={setVaries}
-        />
-        <MoneyField
-          label={varies === 'varies' ? 'Usual amount (optional)' : 'Amount due'}
-          cents={cents}
-          onCentsChange={setCents}
-          {...err('expectedCents')}
-        />
-        <SelectField
-          label="Repeats"
-          value={repeat}
-          onChange={(event) => {
-            setRepeat(event.target.value as Repeat);
-          }}
-        >
-          {REPEATS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </SelectField>
-        {repeat === 'custom' ? (
-          <div className="grid grid-cols-2 gap-3">
-            <TextField
-              label="Every"
-              inputMode="numeric"
-              value={every}
-              onChange={(event) => {
-                setEvery(event.target.value);
-              }}
-              {...err('schedule.every')}
-            />
-            <SelectField
-              label="Unit"
-              value={unit}
-              onChange={(event) => {
-                setUnit(event.target.value as RepeatUnit);
-              }}
-            >
-              {UNITS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </SelectField>
-          </div>
-        ) : null}
-        <DateField
-          label={repeat === 'once' ? 'Due date' : bill ? 'First due date' : 'Next due date'}
-          {...(bill && repeat !== 'once' ? { hint: 'Later due dates count from this one.' } : {})}
-          date={firstDue}
-          onDateChange={setFirstDue}
-          {...err('schedule.firstDue')}
-        />
-        {repeat !== 'once' ? (
-          <DateField
-            label="Last due date (optional)"
-            hint="Leave empty if it doesn’t end."
-            date={lastDue}
-            onDateChange={setLastDue}
-            {...err('schedule.lastDue')}
-          />
-        ) : null}
-        {schedule ? (
-          <p className="rounded-xl bg-surface-2 p-3 text-sm text-ink-2" aria-live="polite">
-            {preview(schedule)}
-          </p>
-        ) : null}
-        <SelectField
-          label="Category"
-          value={categoryId}
-          onChange={(event) => {
-            setCategoryId(event.target.value);
-          }}
-          {...err('categoryId')}
-        >
-          <option value="">None</option>
-          {(categories.data ?? [])
-            .filter((category) => !category.archived || category.id === categoryId)
-            .map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-        </SelectField>
-        <RadioField
-          label="Paid automatically"
-          value={autopay}
-          options={[
-            { value: 'no', label: 'No' },
-            { value: 'yes', label: 'Yes, auto-pay' },
-          ]}
-          onChange={setAutopay}
-        />
-        <TextField
-          label="Website (optional)"
-          type="url"
-          inputMode="url"
-          placeholder="https://"
-          value={url}
-          onChange={(event) => {
-            setUrl(event.target.value);
-          }}
-          {...err('url')}
-        />
-        <TextField
-          label="Notes (optional)"
-          maxLength={BILL_NOTES_MAX}
-          value={notes}
-          onChange={(event) => {
-            setNotes(event.target.value);
-          }}
-          {...err('notes')}
-        />
+      <Steps steps={STEPS} current={step} {...(isNew ? {} : { onSelect: goTo })} />
+      <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+        {step === 0 ? <WhatStep {...stepProps} /> : null}
+        {step === 1 ? <WhenStep {...stepProps} /> : null}
+        {step === 2 ? <DetailsStep {...stepProps} categories={categories.data ?? []} /> : null}
         {failure ? (
           <p role="alert" className="text-danger">
             {failure}
           </p>
         ) : null}
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" busy={busy}>
-            {bill ? 'Save' : 'Add bill'}
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {step > 0 ? (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                goTo(step - 1);
+              }}
+            >
+              Back
+            </Button>
+          ) : (
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {!isNew && step < LAST ? (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  goTo(step + 1);
+                }}
+              >
+                Next
+              </Button>
+            ) : null}
+            <Button type="submit" busy={busy}>
+              {isNew ? (step < LAST ? 'Next' : 'Add bill') : 'Save'}
+            </Button>
+          </div>
         </div>
       </form>
-      {bill ? <BillDangerZone bill={bill} onClose={onClose} onChanged={onChanged} /> : null}
+      {!isNew && step === LAST ? (
+        <BillDangerZone bill={bill} onClose={onClose} onChanged={onChanged} />
+      ) : null}
     </Modal>
   );
 }

@@ -73,7 +73,7 @@ export function BillsPage() {
     const active = bills.data.filter((bill) => !bill.archived);
     const archived = bills.data.filter((bill) => bill.archived);
     body = (
-      <div className="flex max-w-3xl flex-col gap-4">
+      <div className="flex flex-col gap-4">
         {active.length === 0 ? (
           <EmptyState
             title="No bills yet"
