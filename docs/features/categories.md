@@ -46,9 +46,9 @@ All under `/api/v1/spaces/:spaceId/categories`.
 
 | Route | Access | Errors |
 |---|---|---|
-| `GET` list, `?archived=true` for archived | member | |
-| `POST` create | manager | 400 invalid name, 409 duplicate |
-| `PATCH /:categoryId` rename, archive or restore | manager | 400, 404, 409 |
+| `GET` list, archived ones included and marked | member | |
+| `POST` create | manager | 422 invalid name, 409 duplicate |
+| `PATCH /:categoryId` rename, archive or restore | manager | 422, 404, 409 |
 | `DELETE /:categoryId` | manager | 404, 409 has history |
 
 ## Screens

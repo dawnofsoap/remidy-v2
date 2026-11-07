@@ -85,6 +85,8 @@ beforeAll(async () => {
       jobStatusFeature({ orm, jobs: [heartbeatJob] }),
       ...features,
     ],
+    // Flagged features too, so their routes are checked before anyone turns them on.
+    enabledFeatures: features.filter((feature) => feature.flagged).map((feature) => feature.name),
     authorize: createAuthorize(auth, orm),
     auth: { auth, orm },
     publicUrl: PUBLIC_URL,

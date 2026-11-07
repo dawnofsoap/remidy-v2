@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+export * from './categories.ts';
 export * from './password.ts';
 
 export const healthResponse = z.object({
