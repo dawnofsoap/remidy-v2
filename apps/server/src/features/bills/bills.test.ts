@@ -117,6 +117,19 @@ const occurrencesOf = (billId: string) =>
     .where(eq(billOccurrence.billId, billId))
     .orderBy(asc(billOccurrence.dueOn));
 
+/** A due date from before today, added directly, so these tests don't depend on today's date. */
+async function addPastDueDate(created: Bill, dueOn: string, state: 'open' | 'settled' = 'open') {
+  await test.database.orm.insert(billOccurrence).values({
+    billId: created.id,
+    spaceId: ids.alicePersonal,
+    dueOn,
+    billName: created.name,
+    expectedCents: 4500,
+    isVariable: false,
+    state,
+  });
+}
+
 const agendaFor = async (who: string, from: string, to: string) =>
   (await call(who, 'GET', `/api/v1/agenda?from=${from}&to=${to}`)).json<{
     overdue: Entry[];
@@ -301,6 +314,21 @@ describe('who sees which bills', () => {
     expect(await agendaNames('carol')).toEqual([]);
   });
 
+  it('can’t reach a bill through another of the person’s spaces', async () => {
+    const alices = await create('alice', ids.alicePersonal);
+    const viaHousehold = `/api/v1/spaces/${ids.household}/bills/${alices.id}`;
+    expect((await call('alice', 'PATCH', viaHousehold, { name: 'Moved' })).statusCode).toBe(404);
+    expect((await call('alice', 'DELETE', viaHousehold)).statusCode).toBe(404);
+
+    const bills = (await call('alice', 'GET', '/api/v1/bills')).json<Bill[]>();
+    expect(bills.map((item) => item.name)).toEqual(['Water']);
+    const logged = await test.database.orm
+      .select({ action: activityLog.action })
+      .from(activityLog)
+      .where(eq(activityLog.entityId, alices.id));
+    expect(logged.map((row) => row.action)).toEqual(['created']);
+  });
+
   it('can’t change or delete another person’s personal bill, even by its id', async () => {
     const alices = await create('alice', ids.alicePersonal);
     const bobsUrl = `/api/v1/spaces/${ids.bobPersonal}/bills/${alices.id}`;
@@ -314,14 +342,15 @@ describe('who sees which bills', () => {
 
 describe('the agenda', () => {
   it('lists open due dates before today as overdue, whatever range is asked for', async () => {
-    const start = monthStart(now());
-    if (start === now()) return; // Nothing earlier this month can be overdue on the 1st.
-    await create('alice', ids.alicePersonal, {
+    const created = await create('alice', ids.alicePersonal, {
       name: 'Late',
-      schedule: { kind: 'once', firstDue: start },
+      schedule: { kind: 'once', firstDue: addDays(now(), 365) },
     });
+    await addPastDueDate(created, '2020-01-15');
+    await addPastDueDate(created, '2020-02-15', 'settled');
     const { overdue, upcoming } = await agendaFor('alice', addDays(now(), 30), addDays(now(), 60));
-    expect(overdue.map((entry) => entry.name)).toEqual(['Late']);
+    // The settled one isn't overdue: only open ones are.
+    expect(overdue.map((entry) => entry.dueOn)).toEqual(['2020-01-15']);
     expect(upcoming).toEqual([]);
   });
 
@@ -340,6 +369,8 @@ describe('editing a bill', () => {
   it('changes only due dates from today on, keeping the past as it was', async () => {
     const start = monthStart(now());
     const created = await create('alice', ids.alicePersonal, { schedule: monthly(start) });
+    await addPastDueDate(created, '2020-01-15');
+    const pastBefore = (await occurrencesOf(created.id)).filter((row) => row.dueOn < now());
     const response = await call(
       'alice',
       'PATCH',
@@ -352,6 +383,8 @@ describe('editing a bill', () => {
     for (const row of rows) {
       expect(row.name).toBe(row.dueOn < now() ? 'Water' : 'Water and sewer');
     }
+    // Still there, not deleted and replaced.
+    expect(rows.filter((row) => row.dueOn < now())).toEqual(pastBefore);
   });
 
   it('records only what changed, and nothing when nothing did', async () => {
