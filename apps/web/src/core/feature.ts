@@ -27,6 +27,8 @@ export interface WebFeature {
    * someone without a household, and use `useSettingsSpace` to know which space they're about.
    */
   spaceSettings?: SettingsSection[];
+  /** What this feature shows on Home, such as the agenda. Home shows a welcome when nothing does. */
+  home?: ComponentType[];
 }
 
 export function defineFeature(feature: WebFeature): WebFeature {
@@ -38,6 +40,10 @@ const visible = (features: WebFeature[], enabled: readonly string[]) =>
 
 export function visibleNav(features: WebFeature[], enabled: readonly string[]): NavItem[] {
   return visible(features, enabled).flatMap((feature) => feature.nav);
+}
+
+export function visibleHome(features: WebFeature[], enabled: readonly string[]): ComponentType[] {
+  return visible(features, enabled).flatMap((feature) => feature.home ?? []);
 }
 
 export function visibleSpaceSettings(
