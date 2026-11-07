@@ -209,6 +209,88 @@ test('categories can be added, renamed, archived and deleted, at desktop and pho
   await expect(row('Animals')).toHaveCount(0);
 });
 
+test('a bill is added in steps, shows on Home, and can be edited, at desktop and phone sizes', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await signInWith(page, CHOSEN_PASSWORD);
+  await expect(appHeading(page, 'Home')).toBeVisible();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Bills' }).click();
+  await expect(appHeading(page, 'Bills')).toBeVisible();
+
+  const dialog = page.getByRole('dialog');
+  const next = () => dialog.getByRole('button', { name: 'Next', exact: true }).click();
+  const step = (text: string) =>
+    expect(dialog.getByRole('navigation', { name: 'Steps' })).toContainText(text);
+
+  // Each step checks its own fields before moving on.
+  await page.getByRole('button', { name: 'Add bill' }).click();
+  await step('Step 1 of 3');
+  await next();
+  await expect(dialog.getByText('Enter a name.')).toBeVisible();
+  await dialog.getByLabel('Name').fill('Water');
+  await dialog.getByLabel('Amount due').fill('45');
+  await next();
+
+  // Due on the 31st, so later dates land on shorter months' last days.
+  await step('Step 2 of 3');
+  await dialog.getByRole('combobox', { name: 'Repeats' }).selectOption('monthly');
+  await dialog.getByRole('textbox', { name: 'Next due date' }).fill('1/31/2030');
+  await expect(dialog.getByText(/Monthly on the last day/)).toBeVisible();
+  await next();
+
+  await step('Step 3 of 3');
+  await dialog
+    .getByRole('combobox', { name: 'Category (optional)' })
+    .selectOption({ label: 'Utilities' });
+  await expect(dialog.getByRole('region', { name: 'Summary' })).toContainText('$45.00');
+  // Back keeps what was entered.
+  await dialog.getByRole('button', { name: 'Back' }).click();
+  await expect(dialog.getByRole('textbox', { name: 'Next due date' })).toHaveValue('1/31/2030');
+  await next();
+  await dialog.getByRole('button', { name: 'Add bill' }).click();
+
+  const bills = page.getByRole('list', { name: 'Bills', exact: true });
+  await expect(bills.getByRole('button', { name: /Water/ })).toContainText('$45.00');
+  await expect(bills.getByRole('button', { name: /Water/ })).toContainText('Utilities');
+
+  // One due in a few days shows on Home. The space's time zone was changed earlier, so its
+  // "today" may not be the browser's, and a date a few days out is upcoming either way.
+  await page.getByRole('button', { name: 'Add bill' }).click();
+  await dialog.getByLabel('Name').fill('Phone');
+  await dialog.getByRole('group', { name: 'Amount' }).getByText('Varies').click();
+  await next();
+  await dialog.getByRole('combobox', { name: 'Repeats' }).selectOption('once');
+  const soon = await page.evaluate(() => {
+    const date = new Date(Date.now() + 3 * 86_400_000);
+    return `${String(date.getMonth() + 1)}/${String(date.getDate())}/${String(date.getFullYear())}`;
+  });
+  await dialog.getByRole('textbox', { name: 'Due date' }).fill(soon);
+  await next();
+  await dialog.getByRole('button', { name: 'Add bill' }).click();
+  await expect(bills.getByRole('button', { name: /Phone/ })).toContainText('Varies');
+
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home' }).click();
+  await expect(page.getByRole('main')).toContainText('Phone');
+  await expect(page.getByRole('list', { name: 'Overdue' })).toHaveCount(0);
+
+  // On a phone, editing is a bottom sheet with the steps as tabs, and saves from any of them.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/bills');
+  await bills.getByRole('button', { name: /Water/ }).click();
+  const sheet = await dialog.boundingBox();
+  expect((sheet?.y ?? 0) + (sheet?.height ?? 0)).toBeCloseTo(844, 0);
+  await dialog.getByLabel('Name').fill('Water and sewer');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(bills.getByRole('button', { name: /Water and sewer/ })).toBeVisible();
+
+  await bills.getByRole('button', { name: /Phone/ }).click();
+  await dialog.getByRole('button', { name: 'Go to Details' }).click();
+  await dialog.getByRole('button', { name: 'Delete…' }).click();
+  await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(bills.getByRole('button', { name: /Phone/ })).toHaveCount(0);
+});
+
 test('a wrong password is refused with a clear message', async ({ page }) => {
   await page.goto('/');
   await signInWith(page, 'not the right password');
@@ -301,6 +383,8 @@ test('someone with an email address can reset a forgotten password', async ({ pa
     `exec -T db psql -U remidy -d remidy -c "insert into \\"user\\" (id, name, email) values ('reset-test', 'Alex', '${email}')"`,
   );
 
+  // This file signs in more than 20 times a minute from one address, which the real limit refuses.
+  compose('exec -T db psql -U remidy -d remidy -c "delete from rate_limit"');
   await context.clearCookies();
   await page.goto('/');
   await page.getByRole('button', { name: 'Forgot your password?' }).click();

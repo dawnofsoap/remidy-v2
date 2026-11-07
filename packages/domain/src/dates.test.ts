@@ -208,6 +208,9 @@ describe('formatDate', () => {
     ['medium', 'Nov 9, 2026'],
     ['short', 'Mon, Nov 9'],
     ['long', 'Monday, November 9'],
+    ['weekday', 'Monday'],
+    ['monthDay', 'November 9'],
+    ['monthYear', 'November 2026'],
   ] as const)('%s style', (style, expected) => {
     expect(formatDate(date('2026-11-09'), style)).toBe(expected);
   });

@@ -8,3 +8,6 @@ export const categories = defineFeature({
   nav: [],
   spaceSettings: [{ slug: 'categories', title: 'Categories', component: CategoriesSection }],
 });
+
+// For other features, such as Bills, to offer categories to choose from.
+export { categoriesKey, fetchCategories, type Category } from './api.ts';
