@@ -21,6 +21,7 @@ import {
 import { and, asc, eq, gte, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import { recordActivity } from '../../core/activity.ts';
 import { AppError } from '../../core/errors.ts';
+import { roleAtLeast } from '../../core/spaces.ts';
 import { firstDueDates, futureDueDates } from './occurrences.ts';
 
 const NOT_FOUND = new AppError(404, 'not_found', 'That bill wasn’t found.');
@@ -398,4 +399,95 @@ export function checkRange(fromText: string, toText: string, maxDays: number) {
   if (daysBetween(from, to) > maxDays)
     throw invalid('to', `Ask for ${String(maxDays)} days or fewer.`);
   return { from, to };
+}
+
+/**
+ * Moves a bill between the person's personal space and their household, with all its due dates, so
+ * its history goes with it. A category the new space can't use is swapped for the household's one
+ * with the same name, or cleared.
+ */
+export function moveBill(
+  orm: Orm,
+  fromSpaceId: string,
+  billId: string,
+  userId: string,
+  toSpaceId: string,
+): Promise<BillResponse> {
+  return orm.transaction(async (transaction) => {
+    const before = await readBill(transaction, userId, billId);
+    if (before.spaceId !== fromSpaceId) throw NOT_FOUND;
+    if (toSpaceId === fromSpaceId) throw invalid('toSpaceId', 'It’s already there.');
+    // Only somewhere the person could add a bill themselves.
+    const [target] = await transaction
+      .select({ role: membership.role })
+      .from(membership)
+      .where(and(eq(membership.userId, userId), eq(membership.spaceId, toSpaceId)));
+    if (!target || !roleAtLeast(target.role, 'manager')) {
+      throw invalid('toSpaceId', 'You can’t add bills there.');
+    }
+
+    let categoryId = before.categoryId;
+    if (categoryId && categoryId !== (await categoryFor(transaction, userId, categoryId))) {
+      categoryId = null;
+    }
+    if (before.categoryId && !categoryId && before.categoryName) {
+      const listsSpace = await listsSpaceOf(transaction, userId);
+      const [same] = await transaction
+        .select({ id: category.id })
+        .from(category)
+        .where(
+          and(
+            eq(category.spaceId, listsSpace ?? ''),
+            sql`lower(${category.name}) = lower(${before.categoryName})`,
+            isNull(category.archivedAt),
+          ),
+        );
+      categoryId = same?.id ?? null;
+    }
+
+    await transaction
+      .update(bill)
+      .set({ spaceId: toSpaceId, categoryId, updatedAt: sql`now()` })
+      .where(and(eq(bill.id, billId), eq(bill.spaceId, fromSpaceId)));
+    await transaction
+      .update(billOccurrence)
+      .set({ spaceId: toSpaceId })
+      .where(eq(billOccurrence.billId, billId));
+    const after = await readBill(transaction, userId, billId);
+    // Future due dates pick up the new category. Past ones keep what they were.
+    await replaceFutureDueDates(
+      transaction,
+      copyOf(after),
+      after.schedule as Schedule,
+      await timeZoneOf(transaction, toSpaceId),
+      after.archived,
+    );
+
+    const where = (shared: boolean) => (shared ? 'shared' : 'personal');
+    for (const [spaceId, action] of [
+      [fromSpaceId, 'moved out'],
+      [toSpaceId, 'moved in'],
+    ] as const) {
+      await recordActivity(transaction, {
+        spaceId,
+        actorId: userId,
+        entity: 'bill',
+        entityId: billId,
+        action,
+        before: { where: where(before.shared), categoryId: before.categoryId },
+        after: { where: where(after.shared), categoryId: after.categoryId },
+      });
+    }
+    return after;
+  });
+}
+
+/** The category's id if the person's bills can use it, which is a category in their lists space. */
+async function categoryFor(transaction: Transaction, userId: string, categoryId: string) {
+  const listsSpace = await listsSpaceOf(transaction, userId);
+  const [found] = await transaction
+    .select({ id: category.id })
+    .from(category)
+    .where(and(eq(category.id, categoryId), eq(category.spaceId, listsSpace ?? '')));
+  return found?.id ?? null;
 }

@@ -42,5 +42,12 @@ export const updateBill = (
   changes: Partial<BillInput> & { archived?: boolean },
 ) => apiRequest('PATCH', `${spaceBills(spaceId)}/${id}`, { body: changes, schema: billResponse });
 
+/** Moves a bill between the person's personal space and their household, with its history. */
+export const moveBill = (spaceId: string, id: string, toSpaceId: string) =>
+  apiRequest('POST', `${spaceBills(spaceId)}/${id}/move`, {
+    body: { toSpaceId },
+    schema: billResponse,
+  });
+
 export const deleteBill = (spaceId: string, id: string) =>
   apiRequest('DELETE', `${spaceBills(spaceId)}/${id}`);

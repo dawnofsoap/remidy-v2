@@ -5,11 +5,20 @@ import {
   billParams,
   billResponse,
   createBillRequest,
+  moveBillRequest,
   updateBillRequest,
 } from '@remidy/contracts';
 import { z } from 'zod';
 import { defineRoute, type FeatureDependencies } from '../../core/feature.ts';
-import { agenda, checkRange, createBill, deleteBill, listBills, updateBill } from './repo.ts';
+import {
+  agenda,
+  checkRange,
+  createBill,
+  deleteBill,
+  listBills,
+  moveBill,
+  updateBill,
+} from './repo.ts';
 
 const SPACE_BILLS = '/api/v1/spaces/:spaceId/bills';
 
@@ -52,6 +61,16 @@ export const billRoutes = ({ database: { orm } }: FeatureDependencies) => [
     response: billResponse,
     handler: ({ space, user, params, body }) =>
       updateBill(orm, space.id, params.billId, user.userId, body),
+  }),
+  defineRoute({
+    method: 'POST',
+    url: `${SPACE_BILLS}/:billId/move`,
+    access: { space: 'manager' },
+    params: billParams,
+    body: moveBillRequest,
+    response: billResponse,
+    handler: ({ space, user, params, body }) =>
+      moveBill(orm, space.id, params.billId, user.userId, body.toSpaceId),
   }),
   defineRoute({
     method: 'DELETE',

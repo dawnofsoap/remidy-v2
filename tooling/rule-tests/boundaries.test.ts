@@ -56,6 +56,7 @@ describe('boundary rules', () => {
   it.each([
     ['importing a feature through index.ts', 'apps/server/src/features/billing/good-import.ts'],
     ['a repo using the database', 'apps/server/src/features/billing/repo.ts'],
+    ['a test helper using the database and Fastify', 'apps/server/src/features/billing/testing.ts'],
     ['the db package using the driver', 'packages/db/src/index.ts'],
     ['importing within a feature', 'apps/server/src/features/other/index.ts'],
   ])('allows %s', (_name, fromFile) => {

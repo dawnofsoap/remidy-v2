@@ -23,8 +23,15 @@ const UNITS = [
 const errorOf = (errors: Record<string, string>, key: string) =>
   errors[key] ? { error: errors[key] } : {};
 
-export function WhatStep({ draft, change, errors, isNew }: StepProps) {
+export function WhatStep({
+  draft,
+  change,
+  errors,
+  isNew,
+  wasShared,
+}: StepProps & { wasShared?: boolean }) {
   const household = useHousehold();
+  const moving = !isNew && wasShared !== undefined && (draft.owner === 'shared') !== wasShared;
   return (
     <>
       <TextField
@@ -38,18 +45,27 @@ export function WhatStep({ draft, change, errors, isNew }: StepProps) {
         }}
         {...errorOf(errors, 'name')}
       />
-      {household && isNew ? (
-        <RadioField
-          label="Whose bill"
-          value={draft.owner}
-          options={[
-            { value: 'personal', label: 'Just mine' },
-            { value: 'shared', label: `Shared with ${household.name}` },
-          ]}
-          onChange={(owner) => {
-            change({ owner });
-          }}
-        />
+      {household ? (
+        <div className="flex flex-col gap-1.5">
+          <RadioField
+            label="Whose bill"
+            value={draft.owner}
+            options={[
+              { value: 'personal', label: 'Just mine' },
+              { value: 'shared', label: `Shared with ${household.name}` },
+            ]}
+            onChange={(owner) => {
+              change({ owner });
+            }}
+          />
+          {moving ? (
+            <p className="rounded-xl bg-surface-2 p-3 text-sm" role="status">
+              {draft.owner === 'shared'
+                ? `Everyone in ${household.name} will see this bill and its past due dates.`
+                : `Others in ${household.name} will no longer see this bill or its past due dates.`}
+            </p>
+          ) : null}
+        </div>
       ) : null}
       <RadioField
         label="Amount"
