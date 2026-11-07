@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 
 export const STACK =
-  'docker compose -p remidy-prodcheck -f deploy/compose.yaml -f deploy/check/compose.yaml --env-file deploy/check/check.env';
+  'docker compose -p remidy-prodcheck -f deploy/compose.yaml -f deploy/compose.build.yaml -f deploy/check/compose.yaml --env-file deploy/check/check.env';
 
 export const REPO_ROOT = '../..';
 

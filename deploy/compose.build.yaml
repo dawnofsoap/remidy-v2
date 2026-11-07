@@ -1,0 +1,9 @@
+# Builds the server image from this checkout instead of pulling the published one. Use with
+# deploy/compose.yaml:
+#   docker compose -f deploy/compose.yaml -f deploy/compose.build.yaml --env-file .env up --detach --build
+services:
+  server:
+    image: remidy:local
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
