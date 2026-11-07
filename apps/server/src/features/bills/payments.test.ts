@@ -277,6 +277,19 @@ describe('auto-pay', () => {
     expect(await autopayFor(bill.id)).toEqual([]);
   });
 
+  it('is limited to one per due date by the database too, whatever code runs', async () => {
+    const { due } = await newDue();
+    const row = {
+      occurrenceId: due.id,
+      spaceId: ids.alicePersonal,
+      paidOn: now(),
+      amountCents: 4500,
+      source: 'autopay' as const,
+    };
+    await test.database.orm.insert(payment).values(row);
+    await expect(test.database.orm.insert(payment).values(row)).rejects.toThrow();
+  });
+
   it('leaves an archived bill alone', async () => {
     const { bill } = await newDue({ autopay: true, ...once(addDays(now(), -1)) });
     await call('alice', 'PATCH', `/api/v1/spaces/${ids.alicePersonal}/bills/${bill.id}`, {
