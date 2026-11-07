@@ -312,4 +312,4 @@ payments use `source = 'v1_archive'`, have no occurrence, and appear only on a d
 | # | Decision | Default until decided |
 |---|---|---|
 | 1 | Is this always self-hosted, or a possible public service later? | Self-hosted, with spaces ready for more |
-| 2 | How a personal bill uses its household's category, which lives in another space, and what happens to it when someone leaves the household | Decided in the Bills spec, before Sharing |
+| 2 | ~~How a personal bill uses its household's category~~ | Decided in [the Bills spec](docs/features/bills.md): it points at the household's category, and leaving copies it into your own list |
