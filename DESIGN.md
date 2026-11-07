@@ -114,7 +114,7 @@ isn't on this list, it's a feature and waits its turn.
 | **Sign-in** | Admin account created on first start, sign in and out, password change and reset, revocable sessions, rate limits and lockout |
 | **Spaces and roles** | Personal space per user, memberships, one permission check, enforced on every route |
 | **API conventions** | `defineRoute` with required schemas, one error format, request IDs, pagination |
-| **Database** | Migrations, connection handling, test database setup, seed data |
+| **Database** | Migrations, connection handling, test database setup |
 | **Foundations** | Validated config that refuses to start on missing secrets, structured logs, health checks, encryption helper for stored secrets, activity log |
 | **Jobs** | Job runner with retries and a visible status, running a heartbeat job |
 | **Dates and money** | `domain` types for calendar dates, time zones and integer cents |
@@ -122,13 +122,13 @@ isn't on this list, it's a feature and waits its turn.
 | **Web shell** | Navigation, routing, auth handling, responsive layout, error boundary |
 | **UI kit** | Button, inputs, select, date picker, money input, modal, list, toast, and loading, empty and error states |
 | **Feature system** | `defineFeature`, feature flags, the registration list |
-| **Delivery** | CI, branch rules, Docker image published on tag, generated changelog, tested backup and restore |
+| **Delivery** | CI, branch rules, a production image tested in CI, tested backup and restore |
 
 ### Base exit test
 
 The base is finished when all of these are true:
 
-- A fresh clone runs with one command, and a clean machine can deploy from the published image.
+- A fresh clone runs with one command, and the production image runs behind TLS in CI.
 - Someone can sign in as admin, choose a password, and see an empty app shell on phone and desktop.
 - The app refuses to start on missing or default secrets.
 - Repeated failed logins are throttled.
@@ -137,6 +137,14 @@ The base is finished when all of these are true:
 - A backup restores to a working app.
 - A job that fails is retried and its failure is visible.
 - Automated accessibility checks pass on every shell and UI kit screen.
+
+### Moved out of the base
+
+These were planned for the base, but have nothing to work with until there are real features.
+
+- **Publishing the image on tags, and a generated changelog,** arrive with Alpha 1 (milestone 4), the first
+  version anyone runs for real.
+- **Seed data** grows with the features that need it, starting with Categories. It stays fictional.
 
 ## 6. Data model
 

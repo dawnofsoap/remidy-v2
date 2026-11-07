@@ -183,6 +183,5 @@ asset before bringing it over, because this repo is public; bank and card artwor
 
 The table above is the target. Some rules need code that doesn't exist yet.
 
-- **Active:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning, design token lint and contrast checks, axe and keyboard checks in a real browser, migration checks, route schemas and the anonymous access test, GitHub blocking merges on high-severity CodeQL alerts.
-- **Arrive in milestone 1:** domain coverage threshold, generated versions and changelog.
-- **Arrive in milestone 4:** the history invariance test.
+- **Active:** CI checks, Conventional Commit titles, dependency directions, date, money and raw-control bans, file size, accessibility lint, frozen lockfile, Dependabot, secret scanning, design token lint and contrast checks, axe and keyboard checks in a real browser, migration checks, route schemas and the anonymous access test, GitHub blocking merges on high-severity CodeQL alerts, the domain coverage threshold, the production image test.
+- **Arrive in milestone 4:** the history invariance test, generated versions and changelog.
