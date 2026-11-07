@@ -7,6 +7,8 @@ export default defineConfig({
   testDir: './e2e-production',
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
+  // The tests share one stack, and restore.spec.ts replaces its database.
+  workers: 1,
   reporter: 'list',
   use: {
     ...devices['Desktop Chrome'],

@@ -50,6 +50,30 @@ If that password is ever lost:
 docker compose -f deploy/compose.yaml --env-file .env exec server node apps/server/src/core/auth/reset-admin-password.ts
 ```
 
+### Backups
+
+```sh
+sh deploy/backup.sh
+```
+
+This saves everything in Remidy to a file in `backups/`, readable only by you. Run it on a schedule with cron, and
+copy the files to another machine, because a backup on the same disk won't survive losing that disk. Nothing deletes
+old backups for you.
+
+**Keep your `.env` safe separately.** Backups don't include it, and stored secrets can't be read without
+`ENCRYPTION_KEY`.
+
+To restore one, with the app running:
+
+```sh
+sh deploy/restore.sh backups/remidy-2026-01-31T03-00-00Z.dump
+```
+
+A damaged file changes nothing, because the backup loads into a separate database first. The app restarts on the
+restored data, which logs everyone out only if `AUTH_SECRET` has changed. What it replaced stays in a database named
+`remidy_before_restore` until the next restore, so it's still on disk: to remove it, run
+`docker compose -f deploy/compose.yaml --env-file .env exec db dropdb -U remidy remidy_before_restore`.
+
 ## Contributing checks
 
 To run the checks on your own machine, install Node 26, pnpm and Docker, then:
