@@ -20,10 +20,12 @@ FROM tools AS server
 COPY apps/server/package.json apps/server/
 COPY packages/contracts/package.json packages/contracts/
 COPY packages/db/package.json packages/db/
+COPY packages/domain/package.json packages/domain/
 RUN pnpm install --prod --frozen-lockfile --filter @remidy/server...
 COPY apps/server/src apps/server/src
 COPY packages/contracts/src packages/contracts/src
 COPY packages/db/src packages/db/src
+COPY packages/domain/src packages/domain/src
 COPY packages/db/migrations packages/db/migrations
 # Tests and their helpers need packages that aren't installed here.
 RUN find apps packages -path '*/node_modules' -prune -o \

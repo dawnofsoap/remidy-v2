@@ -116,6 +116,11 @@ know which space it's about. See "Where things live" in `DESIGN.md` for which ar
 - **Data every space needs comes from the database.** The starter categories are added by a trigger when a space is
   created, so no way of creating a space can miss them.
 
+### Packages
+
+- **A new workspace package for the server also goes in `deploy/Dockerfile`**, which copies only what it names. The
+  `production-image` check fails if one is missing, because the server can't start.
+
 ### Tests in a real browser
 
 - **Mocked tests** go in their own file and use `mockSignedIn` from `e2e/support.ts`. They run at desktop and phone
