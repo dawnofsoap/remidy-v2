@@ -144,8 +144,9 @@ export function AppLayout() {
           tabIndex={-1}
           className="relative min-w-0 flex-auto p-4 pb-24 outline-none md:p-8"
         >
-          {/* One column beside the sidebar, the same width on every page, so pages line up. */}
-          <div className="max-w-3xl">
+          {/* Pages start beside the sidebar and can use most of a wide screen. Forms inside keep
+              their own readable width. */}
+          <div className="max-w-[100rem]">
             <ServerStatus />
             <Outlet />
           </div>

@@ -21,6 +21,7 @@ import {
 } from '../../../ui/index.ts';
 import { AGENDA_KEY, fetchAgenda } from '../api.ts';
 import { amountText } from './BillsPage.tsx';
+import { MonthSummary } from './MonthSummary.tsx';
 
 const MONTHS_SHOWN = 3;
 
@@ -110,25 +111,31 @@ export function Agenda() {
   const thisMonth = from.slice(0, 7);
   const showOwner = Boolean(household);
   return (
-    <div className="flex flex-col gap-6">
-      {overdue.length > 0 ? (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-lg font-semibold text-danger">Overdue</h2>
-          <AgendaList label="Overdue" entries={overdue} showOwner={showOwner} />
-        </section>
-      ) : null}
-      {byMonth(shown).map(([month, entries]) => {
-        const title =
-          month === thisMonth
-            ? 'Rest of this month'
-            : formatDate(`${month}-01` as CalendarDate, 'monthYear');
-        return (
-          <section key={month} className="flex flex-col gap-3">
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <AgendaList label={title} entries={entries} showOwner={showOwner} />
+    // The summary sits beside the list on wide screens, and above it on smaller ones.
+    <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-8">
+      <div className="xl:order-2 xl:sticky xl:top-8">
+        <MonthSummary overdue={overdue} upcoming={shown} today={from} />
+      </div>
+      <div className="flex flex-col gap-6 xl:order-1">
+        {overdue.length > 0 ? (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold text-danger">Overdue</h2>
+            <AgendaList label="Overdue" entries={overdue} showOwner={showOwner} />
           </section>
-        );
-      })}
+        ) : null}
+        {byMonth(shown).map(([month, entries]) => {
+          const title =
+            month === thisMonth
+              ? 'Rest of this month'
+              : formatDate(`${month}-01` as CalendarDate, 'monthYear');
+          return (
+            <section key={month} className="flex flex-col gap-3">
+              <h2 className="text-lg font-semibold">{title}</h2>
+              <AgendaList label={title} entries={entries} showOwner={showOwner} />
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
