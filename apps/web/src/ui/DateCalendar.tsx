@@ -234,7 +234,8 @@ export function DateCalendar({
         'flex flex-col gap-1',
         fill
           ? 'w-full [--row:clamp(2.25rem,calc((90dvh-14.5rem)/7),2.75rem)]'
-          : 'w-77 [--row:2.75rem]',
+          : // The popup's rows fit the room it has. 4.25rem is its header, gap, padding and border.
+            'w-77 [--row:clamp(2rem,calc((var(--radix-popover-content-available-height,100dvh)-4.25rem)/7),2.75rem)]',
       )}
     >
       <div className="flex items-center justify-between">

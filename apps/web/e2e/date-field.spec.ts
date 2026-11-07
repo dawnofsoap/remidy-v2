@@ -420,6 +420,75 @@ test.describe('date field, in a real browser', () => {
     ).toBeDisabled();
   });
 
+  test.describe('fitting in the window', () => {
+    test.skip(({ viewport }) => (viewport?.width ?? 0) < 640, 'Phones use the bottom sheet.');
+
+    const staysOnScreen = async (page: Page, label: string) => {
+      const popup = calendar(page, label);
+      await expect(popup).toBeVisible();
+      const screen = page.viewportSize();
+      if (!screen) throw new Error('No window.');
+      await expect
+        .poll(async () => {
+          const box = await popup.boundingBox();
+          return box && box.y >= 0 && box.y + box.height <= screen.height;
+        })
+        .toBe(true);
+
+      // It has settled there, rather than jumping between positions.
+      const first = await popup.boundingBox();
+      await page.waitForTimeout(300);
+      expect(await popup.boundingBox()).toEqual(first);
+    };
+
+    for (const [name, width, height] of [
+      ['the window in the report', 650, 672],
+      ['a short window', 900, 560],
+      ['a very short window', 900, 420],
+    ] as const) {
+      test(`stays on screen in ${name}, in every view, from a modal`, async ({ page }) => {
+        await page.setViewportSize({ width, height });
+        await page.goto('/gallery.html');
+        await page.getByRole('button', { name: 'Open modal' }).click();
+        await page.getByRole('textbox', { name: 'Date paid' }).click();
+        await staysOnScreen(page, 'Date paid');
+
+        const popup = calendar(page, 'Date paid');
+        await popup.getByRole('button', { name: /choose a month/ }).click();
+        await staysOnScreen(page, 'Date paid');
+        await popup.getByRole('button', { name: /choose a year/ }).click();
+        await staysOnScreen(page, 'Date paid');
+      });
+    }
+
+    test('keeps its full size when there is room', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 1200 });
+      await page.goto('/gallery.html');
+      await page.getByRole('button', { name: 'Open modal' }).click();
+      await page.getByRole('textbox', { name: 'Date paid' }).click();
+      const day = await dayButton(page, 'Date paid', /, 20\d\d/)
+        .first()
+        .boundingBox();
+      expect(day?.height).toBe(44);
+    });
+
+    test('shrinks its rows to fit, without going below a usable size', async ({ page }) => {
+      await page.setViewportSize({ width: 650, height: 672 });
+      await page.goto('/gallery.html');
+      await page.getByRole('button', { name: 'Open modal' }).click();
+      await page.getByRole('textbox', { name: 'Date paid' }).click();
+      await staysOnScreen(page, 'Date paid');
+      const day = await dayButton(page, 'Date paid', /, 20\d\d/)
+        .first()
+        .boundingBox();
+      expect(day?.height).toBeGreaterThanOrEqual(32);
+      const fits = await calendar(page, 'Date paid').evaluate(
+        (element) => element.scrollHeight <= element.clientHeight,
+      );
+      expect(fits).toBe(true);
+    });
+  });
+
   test('names each day with the number it shows, and marks the selected one', async ({ page }) => {
     await page.goto('/gallery.html');
     await dueDate(page).fill('3/8/2026');

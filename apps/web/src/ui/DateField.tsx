@@ -196,7 +196,8 @@ export function DateField({
                 sideOffset={6}
                 collisionPadding={8}
                 aria-label={`Choose ${label}`}
-                className="rounded-2xl border border-line bg-surface p-2 text-ink shadow-lg"
+                // In a window too short even for the smallest rows, it scrolls rather than being cut off.
+                className="max-h-(--radix-popover-content-available-height) overflow-y-auto rounded-2xl border border-line bg-surface p-2 text-ink shadow-lg"
                 // The calendar puts focus on the selected day or today, rather than the first button.
                 onOpenAutoFocus={(event) => {
                   event.preventDefault();
