@@ -23,3 +23,11 @@ export {
   toCents,
   type Cents,
 } from './money.ts';
+export {
+  describeSchedule,
+  dueDates,
+  MAX_EVERY,
+  scheduleProblem,
+  type RepeatUnit,
+  type Schedule,
+} from './schedule.ts';
