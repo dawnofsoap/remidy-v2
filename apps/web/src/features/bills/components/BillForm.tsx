@@ -4,7 +4,7 @@ import { RequestFailure } from '../../../core/session.ts';
 import { useHousehold, useListsSpace, usePersonalSpace } from '../../../core/space.tsx';
 import { Button, Modal, Steps } from '../../../ui/index.ts';
 import { categoriesKey, fetchCategories } from '../../categories/index.ts';
-import { createBill, updateBill, type Bill } from '../api.ts';
+import { createBill, moveBill, updateBill, type Bill } from '../api.ts';
 import { BillDangerZone } from './BillDangerZone.tsx';
 import {
   draftOf,
@@ -84,12 +84,17 @@ export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
     setFailure(null);
     if (!checkAll()) return;
     const input = inputOf(draft);
-    const spaceId = bill?.spaceId ?? (draft.owner === 'shared' ? household?.id : personal?.id);
+    const spaceId = draft.owner === 'shared' ? household?.id : personal?.id;
     if (!input || !spaceId) return;
     setBusy(true);
     try {
-      if (bill) await updateBill(spaceId, bill.id, input);
-      else await createBill(spaceId, input);
+      if (!bill) {
+        await createBill(spaceId, input);
+      } else {
+        await updateBill(bill.spaceId, bill.id, input);
+        // Moved after the other changes, so a category the new space can't use is swapped there.
+        if (spaceId !== bill.spaceId) await moveBill(bill.spaceId, bill.id, spaceId);
+      }
       await onChanged(bill ? 'Bill saved.' : `Added ${input.name}.`);
       onClose();
     } catch (error) {
@@ -129,7 +134,9 @@ export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
     >
       <Steps steps={STEPS} current={step} {...(isNew ? {} : { onSelect: goTo })} />
       <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
-        {step === 0 ? <WhatStep {...stepProps} /> : null}
+        {step === 0 ? (
+          <WhatStep {...stepProps} {...(bill ? { wasShared: bill.shared } : {})} />
+        ) : null}
         {step === 1 ? <WhenStep {...stepProps} /> : null}
         {step === 2 ? <DetailsStep {...stepProps} categories={categories.data ?? []} /> : null}
         {failure ? (

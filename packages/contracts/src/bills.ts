@@ -76,6 +76,9 @@ export const updateBillRequest = z
 
 export const billParams = z.object({ billId: z.uuid('That isn’t a valid bill.') });
 
+/** Moves a bill between the person's personal space and their household. */
+export const moveBillRequest = z.object({ toSpaceId: z.uuid('Choose where it goes.') });
+
 export const billResponse = z.object({
   id: z.string(),
   spaceId: z.string(),

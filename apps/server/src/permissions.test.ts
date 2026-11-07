@@ -44,6 +44,7 @@ const ROUTE_ACCESS: Record<string, string> = {
   'POST /api/v1/spaces/:spaceId/bills': 'space manager',
   'PATCH /api/v1/spaces/:spaceId/bills/:billId': 'space manager',
   'DELETE /api/v1/spaces/:spaceId/bills/:billId': 'space manager',
+  'POST /api/v1/spaces/:spaceId/bills/:billId/move': 'space manager',
 };
 
 let test: TestDatabase;

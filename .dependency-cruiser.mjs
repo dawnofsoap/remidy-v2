@@ -1,7 +1,8 @@
 // Enforces the dependency directions in docs/BUILDING-FEATURES.md.
 // tooling/rule-tests proves each rule fires, so edit both together.
 
-const notATest = '\\.test\\.tsx?$';
+// Tests, and the helpers named testing.ts that set them up.
+const notATest = '(\\.test\\.tsx?|/testing\\.ts)$';
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 export default {
