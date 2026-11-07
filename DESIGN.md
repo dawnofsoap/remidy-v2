@@ -276,7 +276,8 @@ each marked as personal or shared. Hiding bills behind a choice is how they get 
 | Household | `/household` | Members of the household, and hidden from everyone else. Managers and owners can change things, and members see them read-only | Time zone for shared bills, shared lists such as categories, and later members and history |
 | Administration | `/admin` | Instance admins only, and hidden from everyone else | Background jobs, and later users and defaults for new spaces |
 
-- **On desktop** the areas are at the bottom of the sidebar, and each shows its sections beside the chosen one.
+- **On desktop** the areas are at the bottom of the sidebar, in the order Household, Settings, Administration: from
+  the group, to the person, to the whole app. Each only shows for people it applies to, and each shows its sections beside the chosen one.
 - **On phones** they're behind the More tab, because the tab bar only has room for main pages. Each section opens
   as its own page with a way back.
 - **A feature adds a shared list** through `spaceSettings` in its definition. It appears in Household, or in
