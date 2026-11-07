@@ -7,11 +7,20 @@ interface ModalProps {
   title: string;
   /** Says what the modal is for. Read out when it opens. */
   description: string;
+  /** Keeps it for screen readers only, when what's on screen already makes it clear. */
+  hideDescription?: boolean;
   children: ReactNode;
 }
 
 /** A centered dialog on larger screens and a bottom sheet on phones. Focus stays inside it. */
-export function Modal({ open, onOpenChange, title, description, children }: ModalProps) {
+export function Modal({
+  open,
+  onOpenChange,
+  title,
+  description,
+  hideDescription = false,
+  children,
+}: ModalProps) {
   // Radix only returns focus to its own Trigger, and this modal is opened from anywhere.
   const returnFocusTo = useRef<HTMLElement | null>(null);
 
@@ -32,7 +41,9 @@ export function Modal({ open, onOpenChange, title, description, children }: Moda
         >
           <div className="flex flex-col gap-1">
             <Dialog.Title className="text-xl font-bold tracking-tight">{title}</Dialog.Title>
-            <Dialog.Description className="text-ink-2">{description}</Dialog.Description>
+            <Dialog.Description className={hideDescription ? 'sr-only' : 'text-ink-2'}>
+              {description}
+            </Dialog.Description>
           </div>
           {children}
         </Dialog.Content>

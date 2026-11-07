@@ -1,5 +1,6 @@
 export { Button } from './Button.tsx';
 export { cn, focusRing } from './cn.ts';
+export { DateField } from './DateField.tsx';
 export { SelectField, TextField } from './Field.tsx';
 export { List, ListRow } from './List.tsx';
 export { MoneyField } from './MoneyField.tsx';

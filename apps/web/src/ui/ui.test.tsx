@@ -3,11 +3,12 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { toCents, type Cents } from '@remidy/domain';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { parseCalendarDate, toCents, type CalendarDate, type Cents } from '@remidy/domain';
 import { cn } from './cn.ts';
 import {
   Button,
+  DateField,
   EmptyState,
   ErrorState,
   List,
@@ -351,5 +352,165 @@ describe('MoneyField', () => {
     render(<MoneyField label="Amount" cents={null} onCentsChange={vi.fn()} error="Too large." />);
     expect(field()).toBeInvalid();
     expect(screen.getByText('Too large.')).toBeVisible();
+  });
+});
+
+describe('DateField', () => {
+  // Clicking the field opens the calendar, whose positioning needs this, and jsdom doesn't have it.
+  beforeAll(() => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      },
+    );
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const on = (text: string) => {
+    const date = parseCalendarDate(text);
+    if (!date) throw new Error('Not a date.');
+    return date;
+  };
+
+  function Due({
+    start = null,
+    min,
+    max,
+  }: {
+    start?: CalendarDate | null;
+    min?: CalendarDate;
+    max?: CalendarDate;
+  }) {
+    const [date, setDate] = useState<CalendarDate | null>(start);
+    return (
+      <>
+        <DateField label="Due" date={date} onDateChange={setDate} min={min} max={max} />
+        <output>{String(date)}</output>
+        <button
+          onClick={() => {
+            setDate(null);
+          }}
+        >
+          Clear
+        </button>
+      </>
+    );
+  }
+  const field = () => screen.getByRole('textbox', { name: 'Due' });
+  const stored = () => screen.getByRole('status');
+
+  it.each([
+    ['3/8/2026', '3/8/2026', '2026-03-08'],
+    ['3/8/26', '3/8/2026', '2026-03-08'],
+    ['03/08/2026', '3/8/2026', '2026-03-08'],
+    ['2026-03-08', '3/8/2026', '2026-03-08'],
+  ])('reads %s and tidies it to %s on leaving', async (typed, tidied, value) => {
+    render(<Due />);
+    await userEvent.type(field(), typed);
+    expect(stored()).toHaveTextContent(value);
+    expect(field()).toHaveValue(typed);
+
+    await userEvent.tab();
+    expect(field()).toHaveValue(tidied);
+    expect(stored()).toHaveTextContent(value);
+    expect(field()).not.toHaveAttribute('aria-invalid');
+  });
+
+  it('shows what it holds', () => {
+    render(<Due start={on('2026-12-31')} />);
+    expect(field()).toHaveValue('12/31/2026');
+  });
+
+  it('accepts being left empty', async () => {
+    render(<Due />);
+    await userEvent.click(field());
+    await userEvent.tab();
+    expect(stored()).toHaveTextContent('null');
+    expect(field()).not.toHaveAttribute('aria-invalid');
+  });
+
+  it.each(['abc', '3/8/2', '2/30/2026', '13/1/2026'])(
+    'asks again for %s, keeping the text',
+    async (typed) => {
+      render(<Due />);
+      await userEvent.type(field(), typed);
+      expect(field()).not.toHaveAttribute('aria-invalid');
+      await userEvent.tab();
+      expect(stored()).toHaveTextContent('null');
+      expect(field()).toHaveValue(typed);
+      expect(field()).toBeInvalid();
+      expect(field()).toHaveAccessibleDescription(/such as 3\/8\/2026/);
+    },
+  );
+
+  it.each([
+    ['before', '1/31/2026', /Feb 1, 2026 or later/],
+    ['after', '3/1/2026', /Feb 28, 2026 or earlier/],
+  ])('refuses a date %s the limit, and says which', async (_name, typed, message) => {
+    render(<Due min={on('2026-02-01')} max={on('2026-02-28')} />);
+    await userEvent.type(field(), typed);
+    expect(stored()).toHaveTextContent('null');
+    expect(field()).not.toHaveAttribute('aria-invalid');
+
+    await userEvent.tab();
+    expect(field()).toHaveValue(typed);
+    expect(field()).toBeInvalid();
+    expect(field()).toHaveAccessibleDescription(message);
+  });
+
+  it.each([
+    ['2/1/2026', '2026-02-01'],
+    ['2/28/2026', '2026-02-28'],
+  ])('allows the limit itself, %s', async (typed, value) => {
+    render(<Due min={on('2026-02-01')} max={on('2026-02-28')} />);
+    await userEvent.type(field(), typed);
+    await userEvent.tab();
+    expect(stored()).toHaveTextContent(value);
+    expect(field()).not.toHaveAttribute('aria-invalid');
+  });
+
+  it.each([
+    ['a year long ago', '3/8/0026'],
+    ['a year far in the future', '1/1/2100'],
+  ])('refuses %s, even with no limits set', async (_name, typed) => {
+    render(<Due />);
+    await userEvent.type(field(), typed);
+    await userEvent.tab();
+    expect(stored()).toHaveTextContent('null');
+    expect(field()).toBeInvalid();
+  });
+
+  it('clears the problem as soon as the date is changed', async () => {
+    render(<Due />);
+    await userEvent.type(field(), 'abc');
+    await userEvent.tab();
+    expect(field()).toBeInvalid();
+    await userEvent.clear(field());
+    await userEvent.type(field(), '2/15/2026');
+    expect(field()).not.toHaveAttribute('aria-invalid');
+    expect(stored()).toHaveTextContent('2026-02-15');
+  });
+
+  it('follows the value when the form resets it', async () => {
+    render(<Due start={on('2026-02-15')} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(field()).toHaveValue('');
+  });
+
+  it('shows an error from the form', () => {
+    render(<DateField label="Due" error="This bill already has that date." />);
+    expect(field()).toBeInvalid();
+    expect(screen.getByText('This bill already has that date.')).toBeVisible();
+  });
+
+  it('has a named button for the calendar', () => {
+    render(<Due />);
+    expect(screen.getByRole('button', { name: 'Choose Due from a calendar' })).toBeVisible();
   });
 });
