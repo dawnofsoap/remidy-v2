@@ -19,8 +19,8 @@ followed when you're busy.
 |---|---|---|
 | 1. Spec | Fill in the template, keeping it to one page | Scope and edge cases are written down |
 | 2. Rules | Write domain logic and its tests, with no UI or database | Tests pass |
-| 3. Data and API | Migration, contracts, service, routes, permission tests | Integration tests pass |
-| 4. UI | Screens built from the shared UI kit, behind a feature flag | Loading, empty, error and mobile states all work |
+| 3. Data and API | Migration, contracts, repo, routes, permission tests | Integration tests pass, and breaking each rule on purpose fails a test |
+| 4. UI | Screens built from the shared UI kit, behind a feature flag, and turned on in `compose.yaml` for development | Loading, empty, error and mobile states all work |
 | 5. End to end | One test covers the main journey | Passes in CI |
 | 6. Stabilize | Turn the flag on and use the feature for real | The period in the roadmap ends with no open P0 or P1 |
 | 7. Release | Tag a version, update the changelog, and remove the flag | Published |
@@ -45,9 +45,9 @@ apps/server/src/
 ├── core/                 base only; never imports from features/
 └── features/payments/
     ├── index.ts          public interface: the only file other features may import
-    ├── routes.ts         HTTP only: validate, call the service, respond
-    ├── service.ts        workflows and permission checks
-    ├── repo.ts           the only file with queries for this feature's tables
+    ├── routes.ts         HTTP only: validate, call the repo or service, respond
+    ├── service.ts        only when there's a workflow beyond the queries, such as several steps
+    ├── repo.ts           the only file with queries for this feature's tables, and their transactions
     ├── jobs.ts           background jobs, if any; add them through `jobs` in defineFeature
     └── payments.test.ts
 
@@ -55,9 +55,9 @@ apps/web/src/
 ├── ui/                   shared UI kit; knows nothing about bills
 └── features/payments/
     ├── index.ts
-    ├── pages/            thin: layout and data loading
+    ├── pages/            thin: layout and data loading, if the feature has its own pages
     ├── components/
-    └── api.ts
+    └── api.ts            calls the API through `apiRequest` in core/session.ts
 ```
 
 A feature plugs in at one line, in `features/index.ts`:
@@ -89,7 +89,8 @@ export const payments = defineFeature({
 - **Space routes say the role they need**, such as `access: { space: 'manager' }`, with `:spaceId` in the URL. The handler gets the checked space as `space`, and every query must be scoped to `space.id`. Someone who isn't a member gets "not found", so they can't tell the space exists.
 - **Access is checked first**, before input is validated, so a caller without access learns nothing from error messages. Anything that isn't public is refused until the access check allows it.
 - **Responses are filtered.** A field missing from the response schema never reaches the client, so adding a column can't leak it.
-- **A public route is a deliberate choice.** A new one fails a test until it's added to the list in `permissions.test.ts`.
+- **Every route's access is listed** in `ROUTE_ACCESS` in `permissions.test.ts`. A new route, or a change to what one needs, fails a test until the list matches. The other permission tests check each route against what it declares, so without this list a route that asks for too little would pass them. A public route must also be added to `PUBLIC_ROUTES`.
+- **The permission test turns on every flagged feature**, so a route is checked before anyone enables it.
 
 A web feature lists its routes and navigation links, and a flagged one stays out of navigation until the server reports it as enabled:
 
@@ -101,6 +102,27 @@ export const payments = defineFeature({
   nav: [{ to: '/payments', label: 'Payments', icon: Wallet }],
 });
 ```
+
+A feature that has a shared list, such as categories, adds a section through `spaceSettings` instead of a page. It
+appears in Household, or in Settings for someone without a household, and the section calls `useSettingsSpace()` to
+know which space it's about. See "Where things live" in `DESIGN.md` for which area holds what.
+
+### Migrations
+
+- **Generate, then finish it in one go.** `pnpm db:generate` writes the migration from `schema.ts`. Add any SQL it
+  can't write, such as triggers or filling in existing rows, to the same file before the dev server restarts. The
+  server applies migrations when it starts, and never applies the same file twice, so a half-written one stays half
+  applied. Restart it with `docker compose restart server` once the file is complete.
+- **Data every space needs comes from the database.** The starter categories are added by a trigger when a space is
+  created, so no way of creating a space can miss them.
+
+### Tests in a real browser
+
+- **Mocked tests** go in their own file and use `mockSignedIn` from `e2e/support.ts`. They run at desktop and phone
+  sizes.
+- **The main journey on the real stack** goes in `auth.stack.spec.ts`, which runs once against a new database, in
+  order. Add the feature's journey before the tests that change the password. It can switch to a phone size itself.
+- **Never hard-code an address.** Use the configured `baseURL`, so the tests can run against a copy of the stack.
 
 ### Dependency direction
 
