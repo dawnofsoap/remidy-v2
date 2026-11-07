@@ -8,10 +8,10 @@ stability decides when a milestone is finished.
 | # | Milestone | Contains | Exit test | Stabilize |
 |---|---|---|---|---|
 | **0** | Repo and tooling | Workspace, CI, branch rules, lint and boundary rules, Docker dev setup | A fresh clone runs with one command; a rule-breaking pull request is blocked | None |
-| **1** | The base | Starts with the design pass in [DESIGN.md section 8](../DESIGN.md#8-visual-design), then everything in [section 5](../DESIGN.md#5-the-base), no bill features | Layout approved; meets the base exit test. The final color and style can change later through the design tokens | 1 week |
+| **1** | The base | Starts with the design pass in [DESIGN.md section 8](../DESIGN.md#8-visual-design), then everything in [section 5](../DESIGN.md#5-the-base), no bill features | Layout approved; meets the base exit test. The final color and style can change later through the design tokens | None, because nobody uses it yet |
 | **2** | Reference feature: Categories | Create, edit, delete, list | Built entirely by following `BUILDING-FEATURES.md`; the guide and base are corrected wherever it was awkward | A few days |
 | **3** | Bills and occurrences | Recurrence rules, bills, agenda view | Property tests pass; your real bills show correct due dates | 1 week |
-| **4** | Payments: **Alpha 1** | Mark paid, voiding, history, partial payments, auto-pay recording, calendar view | History invariance test passes; **you run your real bills on it for a full billing month** with no status errors | 1 month |
+| **4** | Payments: **Alpha 1** | Mark paid, voiding, history, partial payments, auto-pay recording, calendar view, the image published on tags, a generated changelog | History invariance test passes; **you run your real bills on it for a full billing month** with no status errors | 1 month |
 | **5** | Accounts and bill import | Payment accounts, CSV import, importing bills from v1 | Your v1 bills import correctly, ready to review | 1 week |
 | **6** | Sharing | Shared spaces, invites, roles | Two-person household tested for real; private bills stay private | 2 weeks |
 | **7** | Reminders | Notifications, push, PWA install | Reminders arrive on the correct local day across time zones | 2 weeks |
