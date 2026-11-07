@@ -71,6 +71,8 @@ describe('settling a due date', () => {
     expect(settle(varies, [])).toMatchObject({ state: 'open', remainingCents: 4000 });
     expect(settle(varies, [pay(100)])).toMatchObject({ state: 'settled', remainingCents: 0 });
     expect(settle({ ...varies, expectedCents: null }, [])).toMatchObject({ remainingCents: null });
+    // A voided payment doesn't count, so it's still open.
+    expect(settle(varies, [pay(100, { voided: true })])).toMatchObject({ state: 'open' });
   });
 
   it('treats a skipped due date as owing nothing, while still showing anything paid', () => {
