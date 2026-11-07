@@ -79,6 +79,7 @@ export function BillsPage() {
             title="No bills yet"
             description="Add the bills you pay, and Home will show what’s due."
             action={add}
+            fillPage={archived.length === 0}
           />
         ) : (
           <>

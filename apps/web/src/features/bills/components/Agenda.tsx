@@ -91,6 +91,7 @@ export function Agenda() {
       <EmptyState
         title="Nothing due"
         description="Add the bills you pay, and what’s due will show here."
+        fillPage
         action={
           <Link
             to="/bills"
