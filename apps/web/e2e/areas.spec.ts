@@ -4,6 +4,7 @@ import {
   mockSignedIn,
   personal,
   saveScreenshot,
+  signedIn,
   visibleNav,
 } from './support.ts';
 
@@ -111,4 +112,19 @@ test('a page with nothing on it centers its message in the content area', async 
   expect(Math.abs(middle(message) - middle(main))).toBeLessThan(2);
   // Well below the heading, not tucked under it.
   expect(message?.y ?? 0).toBeGreaterThan(200);
+});
+
+test('the settings areas run from the household, to the person, to the whole app', async ({
+  page,
+}) => {
+  await page.route('**/api/v1/auth/get-session', (route) =>
+    route.fulfill({ json: { ...signedIn, user: { ...signedIn.user, isInstanceAdmin: true } } }),
+  );
+  await page.route('**/api/v1/spaces', (route) => route.fulfill({ json: [personal, household] }));
+  await page.goto('/more');
+  await expect(page.getByRole('list', { name: 'More' }).getByRole('button')).toHaveText([
+    'Household',
+    'Settings',
+    'Administration',
+  ]);
 });

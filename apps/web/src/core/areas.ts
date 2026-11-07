@@ -10,15 +10,15 @@ export function useIsInstanceAdmin(): boolean {
 }
 
 /**
- * The settings areas, in the order they're listed. Household only for its members, and
- * Administration only for instance admins.
+ * The settings areas, from the group to the person to the whole app: Household for its members,
+ * then Settings, then Administration for instance admins only.
  */
 export function useAreaLinks(): NavItem[] {
   const household = useHousehold();
   const isAdmin = useIsInstanceAdmin();
   return [
     ...(household ? [{ to: '/household', label: 'Household', icon: House }] : []),
-    ...(isAdmin ? [{ to: '/admin', label: 'Administration', icon: Shield }] : []),
     { to: '/settings', label: 'Settings', icon: Settings },
+    ...(isAdmin ? [{ to: '/admin', label: 'Administration', icon: Shield }] : []),
   ];
 }
