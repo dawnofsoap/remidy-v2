@@ -35,6 +35,21 @@ In development, password reset emails are printed to the same console instead of
 If new packages were added since you last started it, restart with `docker compose down` and then
 `docker compose up`. Otherwise the running server can't find them.
 
+## Running it for real
+
+Remidy runs as one image plus Postgres, behind a reverse proxy of your choice that handles TLS.
+
+1. Copy `.env.example` to `.env` and fill it in. Back up `ENCRYPTION_KEY` somewhere other than the database.
+2. Run `docker compose -f deploy/compose.yaml --env-file .env up --detach --build`.
+3. Point your proxy at `127.0.0.1:3000`, and set `TRUST_PROXY` to the proxy's address.
+4. Read the first admin password with `docker compose -f deploy/compose.yaml --env-file .env logs server`.
+
+If that password is ever lost:
+
+```sh
+docker compose -f deploy/compose.yaml --env-file .env exec server node apps/server/src/core/auth/reset-admin-password.ts
+```
+
 ## Contributing checks
 
 To run the checks on your own machine, install Node 26, pnpm and Docker, then:

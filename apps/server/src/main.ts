@@ -57,6 +57,7 @@ const app = buildApp({
   auth: { auth, orm: database.orm, passwordReset: mailer !== null },
   publicUrl: config.PUBLIC_URL,
   trustProxy: config.TRUST_PROXY,
+  webRoot: config.WEB_ROOT,
 });
 
 const jobRunner = createJobRunner({

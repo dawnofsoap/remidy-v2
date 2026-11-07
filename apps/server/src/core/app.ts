@@ -17,6 +17,8 @@ import {
   type Route,
 } from './feature.ts';
 import { requestId } from './logging.ts';
+import { registerSecurityHeaders } from './security-headers.ts';
+import { loadWebFiles, registerWebFiles } from './web-files.ts';
 import type { Orm } from '@remidy/db';
 
 const REQUEST_ID_HEADER = 'x-request-id';
@@ -52,6 +54,8 @@ interface AppOptions {
   authRequestsPerMinute?: number;
   /** Addresses of reverse proxies in front of the app, separated by commas. */
   trustProxy?: string;
+  /** The built web app, in production. In development, Vite serves it instead. */
+  webRoot?: string | undefined;
 }
 
 function coreFeature(database: AppOptions['database'], enabledFeatures: string[]): Feature {
@@ -93,7 +97,9 @@ export function buildApp({
   requestsPerMinute = 600,
   authRequestsPerMinute = 120,
   trustProxy = '',
+  webRoot,
 }: AppOptions): FastifyInstance {
+  const webFiles = webRoot ? loadWebFiles(webRoot) : undefined;
   const app = Fastify({
     logger,
     bodyLimit: MAX_BODY_BYTES,
@@ -116,6 +122,8 @@ export function buildApp({
     void reply.header(REQUEST_ID_HEADER, request.id);
     done();
   });
+
+  registerSecurityHeaders(app, publicUrl);
 
   // Browsers send Origin on requests that change things, so another site can't act as you.
   const expectedOrigin = new URL(publicUrl).origin;
@@ -173,6 +181,8 @@ export function buildApp({
         });
       }
     }
+
+    if (webFiles) registerWebFiles(app, webFiles, requestsPerMinute);
   });
 
   return app;

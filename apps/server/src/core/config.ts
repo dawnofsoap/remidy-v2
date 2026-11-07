@@ -60,6 +60,8 @@ const schema = z
      * Only these may say which client a request came from.
      */
     TRUST_PROXY: z.string().default(''),
+    /** The built web app. The production image sets this. */
+    WEB_ROOT: z.string().min(1, 'must not be empty').optional(),
     /** The mail server for password resets, such as smtp://user:password@mail.example.com:587 */
     SMTP_URL: z
       .string()
