@@ -35,12 +35,15 @@ async function replacePassword(page: Page, temporary: string, chosen: string) {
 
 const appHeading = (page: Page, name: string) => page.getByRole('heading', { name, level: 1 });
 
-/** Goes to a section of Space settings the way a person would, from the sidebar. */
-async function openSpaceSettings(page: Page, section: string) {
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Space' }).click();
-  await expect(appHeading(page, 'Space settings')).toBeVisible();
+/** Goes to a section of Settings the way a person would, from the sidebar. */
+async function openSettings(page: Page, section: string) {
   await page
-    .getByRole('navigation', { name: 'Space settings sections' })
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Settings' })
+    .click();
+  await expect(appHeading(page, 'Settings')).toBeVisible();
+  await page
+    .getByRole('navigation', { name: 'Settings sections' })
     .getByRole('link', { name: section })
     .click();
   await expect(page.getByRole('heading', { name: section, level: 2 })).toBeVisible();
@@ -123,10 +126,10 @@ test('a personal space exists, using the browser time zone, and its time zone ca
   await page.goto('/');
   await signInWith(page, CHOSEN_PASSWORD);
   await expect(appHeading(page, 'Home')).toBeVisible();
-  await openSpaceSettings(page, 'General');
+  await openSettings(page, 'Time zone');
 
   const browserZone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const field = page.getByLabel('Time zone');
+  const field = page.getByRole('combobox', { name: 'Time zone' });
   await expect(field).toHaveValue(browserZone);
 
   const next = browserZone === 'Asia/Tokyo' ? 'Europe/Paris' : 'Asia/Tokyo';
@@ -134,7 +137,7 @@ test('a personal space exists, using the browser time zone, and its time zone ca
   await expect(page.getByText('Time zone saved.')).toBeVisible();
 
   await page.reload();
-  await expect(page.getByLabel('Time zone')).toHaveValue(next);
+  await expect(page.getByRole('combobox', { name: 'Time zone' })).toHaveValue(next);
 });
 
 test('the real job runner reports its heartbeat to the admin', async ({ page }) => {
@@ -155,7 +158,7 @@ test('categories can be added, renamed, archived and deleted, at desktop and pho
   await page.goto('/');
   await signInWith(page, CHOSEN_PASSWORD);
   await expect(appHeading(page, 'Home')).toBeVisible();
-  await openSpaceSettings(page, 'Categories');
+  await openSettings(page, 'Categories');
 
   const list = page.getByRole('list', { name: 'Categories', exact: true });
   const dialog = page.getByRole('dialog');

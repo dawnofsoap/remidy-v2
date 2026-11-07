@@ -1,20 +1,26 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { RequestFailure, updateSpace } from '../../core/session.ts';
-import { canManage, SPACES_QUERY_KEY, useSpaceFromAddress } from '../../core/space.tsx';
-import { SelectField, toast } from '../../ui/index.ts';
+import { RequestFailure, updateSpace } from './session.ts';
+import { canManage, SPACES_QUERY_KEY, useSettingsSpace } from './space.tsx';
+import { SelectField, toast } from '../ui/index.ts';
 
-/** The space's own details. Its name can change once there are shared spaces to name. */
-export function GeneralSection() {
+/**
+ * The time zone of the space the area is about. It decides when that space's bills count as due
+ * today, so a household's applies to everyone in it.
+ */
+export function TimeZoneSection() {
   const queryClient = useQueryClient();
-  const { space } = useSpaceFromAddress();
-  if (!space) return null;
+  const space = useSettingsSpace();
 
   const zones = Intl.supportedValuesOf('timeZone');
   const options = zones.includes(space.timeZone) ? zones : [space.timeZone, ...zones];
+  const hint =
+    space.kind === 'shared'
+      ? 'Decides when a shared bill counts as due today, for everyone in the household.'
+      : 'Decides when your personal bills count as due today.';
 
-  async function save(timeZone: string, spaceId: string) {
+  async function save(timeZone: string) {
     try {
-      await updateSpace(spaceId, { timeZone });
+      await updateSpace(space.id, { timeZone });
       toast('Time zone saved.');
       await queryClient.invalidateQueries({ queryKey: SPACES_QUERY_KEY });
     } catch (failure) {
@@ -26,10 +32,10 @@ export function GeneralSection() {
     <div className="flex max-w-md flex-col gap-3">
       <SelectField
         label="Time zone"
-        hint="Decides when a bill counts as due today, for everyone in this space."
+        hint={hint}
         value={space.timeZone}
         disabled={!canManage(space)}
-        onChange={(event) => void save(event.target.value, space.id)}
+        onChange={(event) => void save(event.target.value)}
       >
         {options.map((zone) => (
           <option key={zone}>{zone}</option>

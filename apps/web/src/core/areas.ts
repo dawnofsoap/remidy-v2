@@ -1,20 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
-import { Settings, Shield, Users } from 'lucide-react';
+import { House, Settings, Shield } from 'lucide-react';
 import type { NavItem } from './feature.ts';
 import { fetchSession, SESSION_QUERY_KEY } from './session.ts';
-import { useCurrentSpace } from './space.tsx';
+import { useHousehold } from './space.tsx';
 
 export function useIsInstanceAdmin(): boolean {
   const session = useQuery({ queryKey: SESSION_QUERY_KEY, queryFn: fetchSession });
   return session.data?.user.isInstanceAdmin === true;
 }
 
-/** The settings areas, in the order they're listed. Administration only for instance admins. */
+/**
+ * The settings areas, in the order they're listed. Household only for its members, and
+ * Administration only for instance admins.
+ */
 export function useAreaLinks(): NavItem[] {
-  const space = useCurrentSpace();
+  const household = useHousehold();
   const isAdmin = useIsInstanceAdmin();
   return [
-    ...(space ? [{ to: `/spaces/${space.id}/settings`, label: 'Space', icon: Users }] : []),
+    ...(household ? [{ to: '/household', label: 'Household', icon: House }] : []),
     ...(isAdmin ? [{ to: '/admin', label: 'Administration', icon: Shield }] : []),
     { to: '/settings', label: 'Settings', icon: Settings },
   ];

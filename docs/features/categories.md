@@ -18,7 +18,8 @@ needs its own list that its people can shape, before bills exist to use it.
   existing names.
 - Subcategories, budgets and statistics by category
 - Assigning a category to a bill, which arrives with Bills (milestone 3)
-- Sharing categories between spaces, or global defaults that can't be edited
+- Global defaults that can't be edited
+- How a personal bill uses its household's category, which is decided in the Bills spec
 
 ## Behavior
 - Given a new space, when it's created, then it has the starter set: Housing, Utilities, Phone and internet,
@@ -52,7 +53,8 @@ All under `/api/v1/spaces/:spaceId/categories`.
 | `DELETE /:categoryId` | manager | 404, 409 has history |
 
 ## Screens
-A **Categories** section in Space settings, since a space's members share its categories. A list with Add, and
+A **Categories** section in Household, since a household's categories are used for every bill its members see, or
+in Settings for someone without a household. A list with Add, and
 each category opens one modal with Rename, Archive or Restore, and Delete, which asks first. Members without the
 manager role see the list without the controls. States: loading, an empty list with an Add button, an error with
 Try again, and a collapsed "Archived" section. The modal is a bottom sheet on phones.

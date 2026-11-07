@@ -9,7 +9,6 @@ import { useAreaLinks } from './areas.ts';
 import { activeLink, listLink } from './navStyles.ts';
 import { ServerStatus } from './ServerStatus.tsx';
 import type { SettingsSection } from './feature.ts';
-import { SpaceSwitcher } from './SpaceSwitcher.tsx';
 
 const FeaturesContext = createContext<WebFeature[]>([]);
 export const FeaturesProvider = FeaturesContext.Provider;
@@ -30,7 +29,7 @@ function useVisible<T>(pick: (features: WebFeature[], enabled: readonly string[]
   return pick(features, enabled);
 }
 
-/** The sections features add to Space settings. */
+/** The sections features add about shared lists, such as categories. */
 export const useSpaceSettingsSections = (): SettingsSection[] => useVisible(visibleSpaceSettings);
 
 function NavList({ items }: { items: NavItem[] }) {
@@ -55,7 +54,6 @@ function Sidebar({ items }: { items: NavItem[] }) {
       className="sticky top-0 hidden h-dvh w-58 flex-none flex-col gap-4 overflow-y-auto border-r border-line bg-surface p-4 md:flex"
     >
       <p className="px-3 text-xl font-bold tracking-tight">Remidy</p>
-      <SpaceSwitcher />
       <NavList items={items} />
       <div className="mt-auto border-t border-line pt-4">
         <NavList items={useAreaLinks()} />
@@ -64,7 +62,7 @@ function Sidebar({ items }: { items: NavItem[] }) {
   );
 }
 
-const AREA_PATHS = /^\/(settings|admin|more|spaces\/[^/]+\/settings)(\/|$)/;
+const AREA_PATHS = /^\/(settings|admin|household|more)(\/|$)/;
 
 function BottomNav({ items }: { items: NavItem[] }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -104,18 +102,6 @@ function BottomNav({ items }: { items: NavItem[] }) {
   );
 }
 
-/** On phones, the name of the app and the space switcher, above each page. */
-function PhoneHeader() {
-  return (
-    <header className="flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2 md:hidden">
-      <p className="text-lg font-bold tracking-tight">Remidy</p>
-      <div className="max-w-[60%]">
-        <SpaceSwitcher />
-      </div>
-    </header>
-  );
-}
-
 export function AppLayout() {
   const items = useVisible(visibleNav);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -143,7 +129,6 @@ export function AppLayout() {
       </a>
       <Sidebar items={items} />
       <div className="flex min-w-0 flex-auto flex-col">
-        <PhoneHeader />
         <main
           id="main"
           ref={mainRef}

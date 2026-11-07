@@ -22,7 +22,7 @@ for (const theme of ['light', 'dark'] as const) {
     for (const [name, path, heading] of [
       ['home', '/', 'Home'],
       ['settings', '/settings/appearance', 'Settings'],
-      ['space settings', '/spaces/sp1/settings/general', 'Space settings'],
+      ['time zone', '/settings/time-zone', 'Settings'],
       ['more', '/more', 'More'],
       ['not found', '/does-not-exist', 'Page not found'],
     ] as const) {
@@ -474,8 +474,8 @@ test.describe('server status', () => {
 test('controls and links are large enough to tap', async ({ page }) => {
   await page.goto('/settings/appearance');
   const nav = visibleNav(page).getByRole('link');
-  // Home and More on phones. Home, Space and Settings in the sidebar.
-  await expect(nav).toHaveCount(test.info().project.name === 'phone' ? 2 : 3);
+  // Home and More on phones. Home and Settings in the sidebar, with no household or admin.
+  await expect(nav).toHaveCount(2);
   for (let i = 0; i < (await nav.count()); i += 1) {
     expect((await nav.nth(i).boundingBox())?.height).toBeGreaterThanOrEqual(44);
   }
@@ -488,7 +488,7 @@ test('no page scrolls sideways', async ({ page }) => {
     '/',
     '/settings',
     '/settings/security',
-    '/spaces/sp1/settings/general',
+    '/settings/time-zone',
     '/more',
     '/does-not-exist',
   ]) {

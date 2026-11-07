@@ -28,6 +28,14 @@ export const signedIn = {
   session: { id: 's1' },
 };
 
+export const personal = {
+  id: 'sp1',
+  name: 'Personal',
+  kind: 'personal',
+  timeZone: 'America/Chicago',
+  role: 'owner',
+};
+
 /** A signed-in person with a personal space, and the server answering as it would. */
 export async function mockSignedIn(page: Page) {
   await page.route('**/api/health', (route) => route.fulfill({ json: healthy }));
@@ -38,15 +46,7 @@ export async function mockSignedIn(page: Page) {
   await page.route('**/api/v1/auth/get-session', (route) => route.fulfill({ json: signedIn }));
   await page.route('**/api/v1/spaces', (route) =>
     route.fulfill({
-      json: [
-        {
-          id: 'sp1',
-          name: 'Personal',
-          kind: 'personal',
-          timeZone: 'America/Chicago',
-          role: 'owner',
-        },
-      ],
+      json: [personal],
     }),
   );
   await page.route('**/api/v1/auth/list-sessions', (route) =>

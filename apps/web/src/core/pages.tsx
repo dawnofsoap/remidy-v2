@@ -24,7 +24,7 @@ export function MorePage() {
         {areas.map(({ to, label, icon: Icon }) => (
           <ListRow
             key={to}
-            title={label === 'Space' ? 'Space settings' : label}
+            title={label}
             start={<Icon aria-hidden="true" className="size-5 text-ink-2" />}
             onClick={() => void navigate({ to })}
           />

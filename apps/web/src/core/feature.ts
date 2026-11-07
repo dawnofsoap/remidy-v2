@@ -22,7 +22,10 @@ export interface WebFeature {
   flagged?: boolean;
   routes: AnyRoute[];
   nav: NavItem[];
-  /** Sections this feature adds to Space settings, for things a space's members share. */
+  /**
+   * Sections about shared lists such as categories. They appear in Household, or in Settings for
+   * someone without a household, and use `useSettingsSpace` to know which space they're about.
+   */
   spaceSettings?: SettingsSection[];
 }
 

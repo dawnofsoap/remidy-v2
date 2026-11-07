@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { canManage, useSpaceFromAddress } from '../../../core/space.tsx';
+import { canManage, useSettingsSpace } from '../../../core/space.tsx';
 import { Button, EmptyState, ErrorState, List, ListRow, LoadingState } from '../../../ui/index.ts';
 import { categoriesKey, fetchCategories, type Category } from '../api.ts';
 import { CategoryModal } from './CategoryModal.tsx';
@@ -8,10 +8,9 @@ import { CategoryModal } from './CategoryModal.tsx';
 /** What the modal is showing: a new category, one being edited, or nothing. */
 type Editing = { category: Category | null } | null;
 
-/** The Categories section of Space settings, for the space in the address. */
+/** Categories for every bill the person sees: their household's, or their own without one. */
 export function CategoriesSection() {
-  const { space } = useSpaceFromAddress();
-  if (!space) return null;
+  const space = useSettingsSpace();
   return <SpaceCategories spaceId={space.id} canEdit={canManage(space)} />;
 }
 
