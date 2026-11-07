@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { ADMIN_EMAIL } from '@remidy/contracts';
 import { execSync } from 'node:child_process';
@@ -135,6 +136,63 @@ test('the real job runner reports its heartbeat to the admin', async ({ page }) 
     .filter({ hasText: 'Shows that background jobs are running.' });
   await expect(row.getByText('Working')).toBeVisible({ timeout: 90_000 });
   await expect(page.getByText('Removes expired sessions')).toBeVisible();
+});
+
+test('categories can be added, renamed, archived and deleted, at desktop and phone sizes', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await signInWith(page, CHOSEN_PASSWORD);
+  await expect(appHeading(page, 'Home')).toBeVisible();
+  await page.goto('/settings');
+
+  const list = page.getByRole('list', { name: 'Categories', exact: true });
+  const dialog = page.getByRole('dialog');
+  const row = (name: string) => list.getByRole('button', { name, exact: true });
+  await expect(row('Utilities')).toBeVisible();
+
+  // Add, then rename. A duplicate is refused on the field, whatever its case.
+  await page.getByRole('button', { name: 'Add category' }).click();
+  await dialog.getByLabel('Name').fill('Pets');
+  await dialog.getByRole('button', { name: 'Add' }).click();
+  await expect(row('Pets')).toBeVisible();
+
+  await row('Pets').click();
+  await dialog.getByLabel('Name').fill('utilities');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog.getByText('There’s already a category with this name.')).toBeVisible();
+  const { violations } = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .analyze();
+  expect(violations.map((violation) => violation.id)).toEqual([]);
+  await dialog.getByLabel('Name').fill('Animals');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(row('Animals')).toBeVisible();
+
+  // Archive and restore.
+  await row('Animals').click();
+  await dialog.getByRole('button', { name: 'Archive' }).click();
+  await expect(row('Animals')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show archived (1)' }).click();
+  const archived = page.getByRole('list', { name: 'Archived categories' });
+  await archived.getByRole('button', { name: 'Animals' }).click();
+  await dialog.getByRole('button', { name: 'Restore' }).click();
+  await expect(row('Animals')).toBeVisible();
+
+  // On a phone the same editor is a bottom sheet, and deleting asks first.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await row('Animals').click();
+  const sheet = await dialog.boundingBox();
+  expect((sheet?.y ?? 0) + (sheet?.height ?? 0)).toBeCloseTo(844, 0);
+  await dialog.getByRole('button', { name: 'Delete…' }).click();
+  await dialog.getByRole('button', { name: 'Keep it' }).click();
+  await dialog.getByRole('button', { name: 'Delete…' }).click();
+  await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(row('Animals')).toHaveCount(0);
+
+  await page.reload();
+  await expect(row('Utilities')).toBeVisible();
+  await expect(row('Animals')).toHaveCount(0);
 });
 
 test('a wrong password is refused with a clear message', async ({ page }) => {
