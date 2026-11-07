@@ -1,3 +1,5 @@
+import { billOccurrence, payment } from '@remidy/db';
+import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { addSampleData } from '../../core/sample-data.ts';
 import { listBills } from './repo.ts';
@@ -6,20 +8,22 @@ import { ids, test, useBillsHarness } from './testing.ts';
 
 useBillsHarness();
 
-const run = (fresh = false) =>
+const run = () =>
   addSampleBills(
     { database: test.database },
-    {
-      userId: ids.alice,
-      personalSpaceId: ids.alicePersonal,
-      householdId: ids.household,
-      fresh,
-    },
+    { userId: ids.alice, personalSpaceId: ids.alicePersonal, householdId: ids.household },
   );
+
+const paymentCount = async () => {
+  const [row] = await test.database.orm
+    .select({ n: sql<number>`count(*)`.mapWith(Number) })
+    .from(payment);
+  return row?.n ?? 0;
+};
 
 describe('sample bills', () => {
   it('adds every sample bill through the real rules, personal and shared', async () => {
-    expect(await run()).toBe(`added ${String(SAMPLE_BILLS.length)} sample bills`);
+    expect(await run()).toBe(`added ${String(SAMPLE_BILLS.length)} sample bills, with payments`);
     const bills = await listBills(test.database.orm, ids.alice);
     expect(bills).toHaveLength(SAMPLE_BILLS.length);
     expect(bills.filter((bill) => bill.archived).map((bill) => bill.name)).toEqual([
@@ -32,19 +36,36 @@ describe('sample bills', () => {
     expect(bobs.length).toBe(SAMPLE_BILLS.filter((bill) => bill.shared).length);
   });
 
-  it('can run again without adding duplicates, and leaves other bills alone', async () => {
+  it('shows every payment state: paid, partly paid, voided, skipped and auto-pay', async () => {
     await run();
-    expect(await run()).toMatch(/already there/);
-    expect(await listBills(test.database.orm, ids.alice)).toHaveLength(SAMPLE_BILLS.length);
+    const states = await test.database.orm
+      .select({ state: billOccurrence.state })
+      .from(billOccurrence)
+      .groupBy(billOccurrence.state);
+    expect(states.map((row) => row.state).sort()).toEqual(['open', 'settled', 'skipped']);
+    const [kinds] = await test.database.orm
+      .select({
+        voided: sql<number>`count(*) filter (where ${payment.voidedAt} is not null)`.mapWith(
+          Number,
+        ),
+        autopay: sql<number>`count(*) filter (where ${payment.source} = 'autopay')`.mapWith(Number),
+      })
+      .from(payment);
+    expect(kinds?.voided).toBe(1);
+    expect(kinds?.autopay).toBeGreaterThan(0);
+    const partly = await test.database.orm
+      .select({ id: payment.id })
+      .from(payment)
+      .where(eq(payment.notes, 'The rest next week.'));
+    expect(partly).toHaveLength(1);
   });
 
-  it('replaces the sample bills when asked, keeping anything else', async () => {
+  it('can run again without adding duplicates or paying twice', async () => {
     await run();
-    const before = new Set((await listBills(test.database.orm, ids.alice)).map((bill) => bill.id));
-    expect(await run(true)).toMatch(/replacing/);
-    const after = await listBills(test.database.orm, ids.alice);
-    expect(after).toHaveLength(SAMPLE_BILLS.length);
-    expect(after.some((bill) => before.has(bill.id))).toBe(false);
+    const before = await paymentCount();
+    expect(await run()).toMatch(/already there/);
+    expect(await listBills(test.database.orm, ids.alice)).toHaveLength(SAMPLE_BILLS.length);
+    expect(await paymentCount()).toBe(before);
   });
 });
 
@@ -59,7 +80,7 @@ describe('the sample data command', () => {
       DATABASE_URL: 'postgresql://remidy:a-strong-test-password@localhost:5432/remidy',
     });
     try {
-      await expect(addSampleData([], [])).rejects.toThrow(/development only/);
+      await expect(addSampleData([])).rejects.toThrow(/development only/);
     } finally {
       process.env = saved;
     }

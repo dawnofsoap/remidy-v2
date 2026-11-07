@@ -71,7 +71,8 @@ export default {
     },
     {
       name: 'db-access-only-from-repos',
-      comment: 'Only repo.ts files and server core may use the database package.',
+      comment:
+        'Only repo.ts files, or files named like payments.repo.ts, and server core may use the database package.',
       severity: 'error',
       from: {
         pathNot: [
@@ -80,6 +81,7 @@ export default {
           '(^|/)apps/server/src/core/',
           '(^|/)apps/server/src/main\\.ts$',
           '(^|/)apps/server/src/features/[^/]+/repo\\.ts$',
+          '(^|/)apps/server/src/features/[^/]+/[a-z-]+\\.repo\\.ts$',
         ],
       },
       to: { path: '(^|/)packages/db/' },

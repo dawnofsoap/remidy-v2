@@ -10,15 +10,8 @@ import {
 } from '@remidy/contracts';
 import { z } from 'zod';
 import { defineRoute, type FeatureDependencies } from '../../core/feature.ts';
-import {
-  agenda,
-  checkRange,
-  createBill,
-  deleteBill,
-  listBills,
-  moveBill,
-  updateBill,
-} from './repo.ts';
+import { agenda, checkRange } from './agenda.repo.ts';
+import { createBill, deleteBill, listBills, moveBill, updateBill } from './repo.ts';
 
 const SPACE_BILLS = '/api/v1/spaces/:spaceId/bills';
 

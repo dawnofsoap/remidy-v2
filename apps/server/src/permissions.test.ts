@@ -45,6 +45,11 @@ const ROUTE_ACCESS: Record<string, string> = {
   'PATCH /api/v1/spaces/:spaceId/bills/:billId': 'space manager',
   'DELETE /api/v1/spaces/:spaceId/bills/:billId': 'space manager',
   'POST /api/v1/spaces/:spaceId/bills/:billId/move': 'space manager',
+  'POST /api/v1/spaces/:spaceId/occurrences/:occurrenceId/payments': 'space member',
+  'POST /api/v1/spaces/:spaceId/payments/:paymentId/void': 'space member',
+  'POST /api/v1/spaces/:spaceId/occurrences/:occurrenceId/skip': 'space member',
+  'POST /api/v1/spaces/:spaceId/occurrences/:occurrenceId/unskip': 'space member',
+  'GET /api/v1/spaces/:spaceId/bills/:billId/history': 'space member',
 };
 
 let test: TestDatabase;

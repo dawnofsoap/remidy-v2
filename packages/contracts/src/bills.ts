@@ -109,6 +109,8 @@ export const agendaEntry = z.object({
   isVariable: z.boolean(),
   categoryName: z.string().nullable(),
   state: z.enum(['open', 'settled', 'skipped']),
+  /** What's been paid toward it, never counting voided payments. */
+  paidCents: z.number(),
 });
 export type AgendaEntry = z.infer<typeof agendaEntry>;
 

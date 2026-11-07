@@ -12,7 +12,7 @@ const PARTNER = { id: 'sample-partner', name: 'Jamie Example', email: 'jamie@exa
  * own with a made-up second member, so shared screens can be seen before Sharing exists. Safe to
  * run again: what's already there is reused.
  */
-async function sampleSpaces(orm: Orm): Promise<Omit<SampleContext, 'fresh'>> {
+async function sampleSpaces(orm: Orm): Promise<SampleContext> {
   const [admin] = await orm.select({ id: user.id }).from(user).where(eq(user.email, ADMIN_EMAIL));
   if (!admin) {
     throw new Error('There’s no admin account yet. Start the server once, then try again.');
@@ -58,7 +58,7 @@ async function sampleSpaces(orm: Orm): Promise<Omit<SampleContext, 'fresh'>> {
  * Fills a development database with fictional data from every feature that has some, through each
  * feature's own code, so the data follows the same rules as real data. Refuses to run in production.
  */
-export async function addSampleData(features: Feature[], argv: string[]): Promise<string[]> {
+export async function addSampleData(features: Feature[]): Promise<string[]> {
   const config = loadConfig(process.env);
   if (config.NODE_ENV === 'production') {
     throw new Error('Sample data is for development only, and this is production.');
@@ -66,10 +66,7 @@ export async function addSampleData(features: Feature[], argv: string[]): Promis
   const database = createDatabase(config.DATABASE_URL);
   try {
     await database.migrate();
-    const context: SampleContext = {
-      ...(await sampleSpaces(database.orm)),
-      fresh: argv.includes('--fresh'),
-    };
+    const context = await sampleSpaces(database.orm);
     const report: string[] = [`Household: ${HOUSEHOLD_NAME}, with ${PARTNER.name}`];
     for (const feature of features) {
       if (!feature.sampleData) continue;

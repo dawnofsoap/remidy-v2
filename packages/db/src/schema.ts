@@ -244,6 +244,45 @@ export const billOccurrence = pgTable(
 );
 
 /**
+ * Money paid against a due date. A payment is never edited or deleted: a wrong one is voided, with
+ * who and why, and a correct one recorded. The database enforces that, and allows one auto-pay
+ * payment per due date that isn't voided.
+ */
+export const payment = pgTable(
+  'payment',
+  {
+    id: uuid('id')
+      .primaryKey()
+      .default(sql`uuidv7()`),
+    occurrenceId: uuid('occurrence_id')
+      .notNull()
+      .references(() => billOccurrence.id, { onDelete: 'restrict' }),
+    /** The due date's space, kept here so every query can be scoped without a join. */
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => space.id, { onDelete: 'restrict' }),
+    paidOn: date('paid_on', { mode: 'string' }).notNull(),
+    amountCents: bigint('amount_cents', { mode: 'number' }).notNull(),
+    /** Not a foreign key, so the record survives its author's account. Null means Remidy itself. */
+    paidBy: text('paid_by'),
+    source: text('source', { enum: ['manual', 'autopay', 'v1_archive'] }).notNull(),
+    confirmation: text('confirmation'),
+    notes: text('notes'),
+    voidedAt: timestamp('voided_at', { withTimezone: true }),
+    voidedBy: text('voided_by'),
+    voidReason: text('void_reason'),
+    createdAt: timestamps.createdAt,
+  },
+  (table) => [
+    index('payment_occurrence_id_idx').on(table.occurrenceId),
+    index('payment_space_id_paid_on_idx').on(table.spaceId, table.paidOn),
+    uniqueIndex('one_autopay_per_occurrence')
+      .on(table.occurrenceId)
+      .where(sql`${table.source} = 'autopay' and ${table.voidedAt} is null`),
+  ],
+);
+
+/**
  * Every change to something with history, written in the same transaction as the change. The
  * database refuses to update or delete a row here, so what happened can't be rewritten later.
  */

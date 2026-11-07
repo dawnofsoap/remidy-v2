@@ -45,6 +45,7 @@ describe('boundary rules', () => {
     ['domain-is-pure', 'packages/domain/src/bad-io.ts'],
     ['contracts-stay-shared', 'packages/contracts/src/bad-db-import.ts'],
     ['db-access-only-from-repos', 'apps/server/src/features/billing/service.ts'],
+    ['db-access-only-from-repos', 'apps/server/src/features/billing/repo-notes.ts'],
     ['db-driver-only-in-db-package', 'apps/server/src/features/billing/bad-driver.ts'],
     ['web-not-to-server', 'apps/web/src/features/billing/bad-server-import.ts'],
     ['server-not-to-web', 'apps/server/src/core/bad-web-import.ts'],
@@ -56,6 +57,7 @@ describe('boundary rules', () => {
   it.each([
     ['importing a feature through index.ts', 'apps/server/src/features/billing/good-import.ts'],
     ['a repo using the database', 'apps/server/src/features/billing/repo.ts'],
+    ['a named repo using the database', 'apps/server/src/features/billing/payments.repo.ts'],
     ['a test helper using the database and Fastify', 'apps/server/src/features/billing/testing.ts'],
     ['the db package using the driver', 'packages/db/src/index.ts'],
     ['importing within a feature', 'apps/server/src/features/other/index.ts'],
