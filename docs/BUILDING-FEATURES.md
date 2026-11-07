@@ -135,6 +135,11 @@ features -> core -> packages (domain, contracts, db)
 | Dependencies stay consistent | Frozen lockfile in CI |
 | No secrets or real data committed | GitHub secret scanning and push protection; seed data is fictional |
 
+## Secrets and history
+
+- **Stored secrets** go through `createEncryptor` in `core/encryption.ts`, with a context naming what the secret belongs to, such as `mfa:<user id>`. Never store one any other way.
+- **Changes to anything with history** call `recordActivity` in `core/activity.ts` inside the same transaction as the change. It takes only a transaction, so it can't be separated from the change by accident. It refuses fields that look like secrets, and the database refuses to update or delete what's been recorded.
+
 ## API versions
 
 Every route is under `/api/v1/`, including sign-in at `/api/v1/auth/`. `defineRoute` won't accept anything else, and the permission test checks the whole app. The one exception is `/api/health`, which describes the server rather than the API, so Docker and proxies don't depend on the version.

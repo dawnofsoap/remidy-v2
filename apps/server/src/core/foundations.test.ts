@@ -2,6 +2,7 @@ import { apiErrorResponse } from '@remidy/contracts';
 import { spawnSync } from 'node:child_process';
 import { Writable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
+import { createEncryptor } from './encryption.ts';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { buildApp } from './app.ts';
@@ -50,6 +51,7 @@ const REQUIRED = {
   DATABASE_URL: STRONG_URL,
   PUBLIC_URL: 'https://remidy.example.com',
   AUTH_SECRET: 'q'.repeat(48),
+  ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
 };
 
 function failure(env: Record<string, string>): string {
@@ -63,6 +65,52 @@ function failure(env: Record<string, string>): string {
 }
 
 describe('loadConfig', () => {
+  describe('the encryption key', () => {
+    const DEV_KEY = 'cmVtaWR5X2Rldl9vbmx5X2tleV8zMl9ieXRlc19sb24=';
+
+    it('is required', () => {
+      expect(() => loadConfig({ ...REQUIRED, ENCRYPTION_KEY: undefined })).toThrow(
+        /ENCRYPTION_KEY is required/,
+      );
+    });
+
+    it.each([
+      ['too short', Buffer.alloc(16, 7).toString('base64')],
+      ['too long', Buffer.alloc(33, 7).toString('base64')],
+      ['the placeholder', 'replace-me'],
+    ])('refuses a key that is %s, without repeating it', (_name, key) => {
+      const attempt = () => loadConfig({ ...REQUIRED, ENCRYPTION_KEY: key });
+      expect(attempt).toThrow(/ENCRYPTION_KEY must be 32 bytes/);
+      expect(attempt).not.toThrow(new RegExp(key.replace(/[+/=]/g, '.')));
+    });
+
+    it('refuses the development key in production only', () => {
+      const production = { ...REQUIRED, ENCRYPTION_KEY: DEV_KEY };
+      expect(() => loadConfig(production)).toThrow(/ENCRYPTION_KEY needs a unique random value/);
+      const development = {
+        ...production,
+        NODE_ENV: 'development',
+        PUBLIC_URL: 'http://localhost:5173',
+      };
+      expect(loadConfig(development).ENCRYPTION_KEY).toBe(DEV_KEY);
+    });
+
+    it('takes old keys for a rotation, and refuses a bad one', () => {
+      const old = Buffer.alloc(32, 9).toString('base64');
+      const config = loadConfig({ ...REQUIRED, ENCRYPTION_OLD_KEYS: ` ${old} , ${old}` });
+      expect(config.ENCRYPTION_OLD_KEYS).toEqual([old, old]);
+      expect(() => loadConfig({ ...REQUIRED, ENCRYPTION_OLD_KEYS: 'short' })).toThrow(
+        /ENCRYPTION_OLD_KEYS must be 32 bytes/,
+      );
+    });
+
+    it('matches what the encryption helper accepts', () => {
+      const { ENCRYPTION_KEY, ENCRYPTION_OLD_KEYS } = loadConfig(REQUIRED);
+      const encryptor = createEncryptor(ENCRYPTION_KEY, ENCRYPTION_OLD_KEYS);
+      expect(encryptor.decrypt(encryptor.encrypt('a secret', 'test'), 'test')).toBe('a secret');
+    });
+  });
+
   it('accepts a complete production configuration', () => {
     expect(loadConfig({ ...REQUIRED, PORT: '8080' })).toEqual({
       NODE_ENV: 'production',
@@ -70,6 +118,7 @@ describe('loadConfig', () => {
       LOG_LEVEL: 'info',
       ENABLED_FEATURES: [],
       TRUST_PROXY: '',
+      ENCRYPTION_OLD_KEYS: [],
       ...REQUIRED,
     });
   });

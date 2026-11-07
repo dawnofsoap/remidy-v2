@@ -29,6 +29,13 @@
       "when": 1794000783409,
       "tag": "0003_job_status",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794010539770,
+      "tag": "0004_activity_log",
+      "breakpoints": true
     }
   ]
 }

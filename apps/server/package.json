@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@types/nodemailer": "8.0.2",
+    "fast-check": "4.10.2",
     "nodemon": "3.1.14",
     "testcontainers": "12.2.1"
   }
