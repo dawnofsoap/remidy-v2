@@ -1,6 +1,7 @@
 import { createRoute } from '@tanstack/react-router';
 import { Settings } from 'lucide-react';
 import { useState } from 'react';
+import { useSettingsSections } from '../../core/AppLayout.tsx';
 import { defineFeature } from '../../core/feature.ts';
 import { Page } from '../../core/Page.tsx';
 import { rootRoute } from '../../core/router.tsx';
@@ -20,6 +21,7 @@ const themeOptions = [
 
 function SettingsPage() {
   const [theme, setTheme] = useState<ThemePreference>(readThemePreference);
+  const sections = useSettingsSections();
 
   return (
     <Page title="Settings">
@@ -33,6 +35,12 @@ function SettingsPage() {
         }}
       />
       <AccountSettings />
+      {sections.map(({ title, component: Section }) => (
+        <section key={title} className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <Section />
+        </section>
+      ))}
     </Page>
   );
 }

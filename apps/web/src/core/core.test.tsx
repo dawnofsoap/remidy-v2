@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
-import { defineFeature, visibleNav } from './feature.ts';
+import { defineFeature, visibleNav, visibleSettings } from './feature.ts';
 import { applyTheme, readThemePreference, saveThemePreference } from './theme.ts';
 
 afterEach(() => {
@@ -53,6 +53,30 @@ describe('navigation', () => {
 
   it('ignores enabled names it does not know', () => {
     expect(labels(['other'])).toEqual(['always']);
+  });
+
+  it('shows a flagged feature’s settings only once it is enabled', () => {
+    const Nothing = () => null;
+    const withSettings = [
+      defineFeature({
+        name: 'plain',
+        routes: [],
+        nav: [],
+        settings: [{ title: 'Plain', component: Nothing }],
+      }),
+      defineFeature({
+        name: 'beta',
+        flagged: true,
+        routes: [],
+        nav: [],
+        settings: [{ title: 'Beta', component: Nothing }],
+      }),
+      defineFeature({ name: 'none', routes: [], nav: [] }),
+    ];
+    const titles = (enabled: string[]) =>
+      visibleSettings(withSettings, enabled).map((section) => section.title);
+    expect(titles([])).toEqual(['Plain']);
+    expect(titles(['beta'])).toEqual(['Plain', 'Beta']);
   });
 });
 
