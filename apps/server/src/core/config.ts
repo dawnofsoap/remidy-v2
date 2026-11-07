@@ -10,6 +10,9 @@ const UNSAFE_PASSWORDS = new Set([
   'remidy',
 ]);
 
+const isEncryptionKey = (value: string) => Buffer.from(value, 'base64').length === 32;
+const KEY_MESSAGE = 'must be 32 bytes as base64. Generate one with: openssl rand -base64 32';
+
 function databasePassword(url: string): string | null {
   try {
     return decodeURIComponent(new URL(url).password);
@@ -39,6 +42,19 @@ const schema = z
     }),
     /** Signs sessions. Generate one with: openssl rand -base64 48 */
     AUTH_SECRET: z.string({ error: 'is required' }).min(32, 'must be at least 32 characters'),
+    /** Encrypts stored secrets, such as MFA keys. Losing it makes those unreadable. */
+    ENCRYPTION_KEY: z.string({ error: 'is required' }).refine(isEncryptionKey, KEY_MESSAGE),
+    /** Earlier keys, separated by commas, which still decrypt during a rotation. */
+    ENCRYPTION_OLD_KEYS: z
+      .string()
+      .default('')
+      .transform((value) =>
+        value
+          .split(',')
+          .map((key) => key.trim())
+          .filter(Boolean),
+      )
+      .refine((keys) => keys.every(isEncryptionKey), KEY_MESSAGE),
     /**
      * Addresses of reverse proxies in front of the app, separated by commas, such as 172.18.0.0/16.
      * Only these may say which client a request came from.
@@ -78,6 +94,13 @@ const schema = z
       context.addIssue({
         code: 'custom',
         path: ['AUTH_SECRET'],
+        message: 'needs a unique random value in production',
+      });
+    }
+    if (Buffer.from(env.ENCRYPTION_KEY, 'base64').toString().includes('dev_only')) {
+      context.addIssue({
+        code: 'custom',
+        path: ['ENCRYPTION_KEY'],
         message: 'needs a unique random value in production',
       });
     }

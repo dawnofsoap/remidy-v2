@@ -50,6 +50,35 @@ export const updateSpaceRequest = z.object({
   timeZone: timeZone.optional(),
 });
 
+export const activityQuery = z.object({
+  /** Only entries older than this one. Use `nextBefore` from the previous page. */
+  before: z.uuid('That isn’t a valid position in the list.').optional(),
+  limit: z.coerce
+    .number()
+    .int('Use a whole number.')
+    .min(1, 'Use at least 1.')
+    .max(100, 'Use 100 or fewer.')
+    .default(50),
+});
+
+export const activityResponse = z.object({
+  entries: z.array(
+    z.object({
+      id: z.string(),
+      entity: z.string(),
+      entityId: z.string(),
+      action: z.string(),
+      /** Who did it, or null when it was Remidy itself or their account no longer exists. */
+      actorName: z.string().nullable(),
+      before: z.record(z.string(), z.unknown()).nullable(),
+      after: z.record(z.string(), z.unknown()).nullable(),
+      createdAt: z.iso.datetime(),
+    }),
+  ),
+  /** Where the next page starts, or null on the last page. */
+  nextBefore: z.string().nullable(),
+});
+
 export const spaceMemberResponse = z.object({
   userId: z.string(),
   name: z.string(),

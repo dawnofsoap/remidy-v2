@@ -1,5 +1,12 @@
-import { spaceMemberResponse, spaceResponse, updateSpaceRequest } from '@remidy/contracts';
+import {
+  activityQuery,
+  activityResponse,
+  spaceMemberResponse,
+  spaceResponse,
+  updateSpaceRequest,
+} from '@remidy/contracts';
 import { z } from 'zod';
+import { listActivity } from '../../core/activity.ts';
 import { AppError } from '../../core/errors.ts';
 import { defineFeature, defineRoute } from '../../core/feature.ts';
 import { getSpace, listMembers, listSpacesFor, updateSpace } from './repo.ts';
@@ -33,8 +40,8 @@ export const spaces = defineFeature({
       access: { space: 'manager' },
       body: updateSpaceRequest,
       response: spaceResponse,
-      handler: async ({ space, body }) => {
-        const updated = await updateSpace(database.orm, space.id, body);
+      handler: async ({ space, user, body }) => {
+        const updated = await updateSpace(database.orm, space.id, user.userId, body);
         if (!updated) throw NOT_FOUND;
         return { ...updated, role: space.role };
       },
@@ -45,6 +52,14 @@ export const spaces = defineFeature({
       access: { space: 'member' },
       response: z.array(spaceMemberResponse),
       handler: ({ space }) => listMembers(database.orm, space.id),
+    }),
+    defineRoute({
+      method: 'GET',
+      url: '/api/v1/spaces/:spaceId/activity',
+      access: { space: 'member' },
+      query: activityQuery,
+      response: activityResponse,
+      handler: ({ space, query }) => listActivity(database.orm, space.id, query),
     }),
   ],
 });

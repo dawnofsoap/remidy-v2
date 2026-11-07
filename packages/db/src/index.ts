@@ -13,6 +13,7 @@ const MIGRATIONS_FOLDER = fileURLToPath(new URL('../migrations', import.meta.url
 const MIGRATION_LOCK = 7_302_114;
 
 export type Orm = NodePgDatabase<typeof schema>;
+export type Transaction = Parameters<Parameters<Orm['transaction']>[0]>[0];
 
 export interface Database {
   /** Typed queries. Only `repo.ts` files and server core may use this. */

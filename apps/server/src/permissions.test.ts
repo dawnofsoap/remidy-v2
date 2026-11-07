@@ -139,6 +139,135 @@ function call(route: Route, url: string, cookie?: string) {
 const errorCode = (response: { json: () => unknown }) =>
   (response.json() as { error: { code: string } }).error.code;
 
+describe('a space’s activity', () => {
+  const change = (name: string, spaceId: string, person: Person, body: object) =>
+    app.inject({
+      method: 'PATCH',
+      url: `/api/v1/spaces/${spaceId}`,
+      headers: { origin: PUBLIC_URL, cookie: person.cookie },
+      payload: { ...body, name },
+    });
+  const activity = (spaceId: string, person: Person, query = '') =>
+    app.inject({
+      url: `/api/v1/spaces/${spaceId}/activity${query}`,
+      headers: { cookie: person.cookie },
+    });
+  interface Page {
+    entries: {
+      id: string;
+      entityId: string;
+      actorName: string | null;
+      before: unknown;
+      after: unknown;
+    }[];
+    nextBefore: string | null;
+  }
+
+  it('records an edit, with who made it and only what changed', async () => {
+    const { owner } = people;
+    await change('First name', owner.personalSpaceId, owner, {});
+    const before = (await activity(owner.personalSpaceId, owner)).json<Page>().entries.length;
+
+    const response = await change('Second name', owner.personalSpaceId, owner, {});
+    expect(response.statusCode).toBe(200);
+
+    const { entries } = (await activity(owner.personalSpaceId, owner)).json<Page>();
+    expect(entries).toHaveLength(before + 1);
+    expect(entries[0]).toMatchObject({
+      entity: 'space',
+      entityId: owner.personalSpaceId,
+      action: 'updated',
+      actorName: 'owner',
+      before: { name: 'First name' },
+      after: { name: 'Second name' },
+    });
+  });
+
+  it('records nothing when nothing changed', async () => {
+    const { owner } = people;
+    await change('Same name', owner.personalSpaceId, owner, {});
+    const before = (await activity(owner.personalSpaceId, owner)).json<Page>().entries.length;
+    await change('Same name', owner.personalSpaceId, owner, {});
+    const after = (await activity(owner.personalSpaceId, owner)).json<Page>().entries.length;
+    expect(after).toBe(before);
+  });
+
+  it('never shows one space’s history to another, whatever is asked for', async () => {
+    const { owner, manager, stranger } = people;
+    await change('Owner’s private name', owner.personalSpaceId, owner, {});
+    await change('Stranger’s private name', stranger.personalSpaceId, stranger, {});
+    await change('Household renamed', sharedSpaceId, manager, {});
+
+    const own = (await activity(stranger.personalSpaceId, stranger)).json<Page>();
+    expect(own.entries.length).toBeGreaterThan(0);
+    for (const entry of own.entries) expect(entry.entityId).toBe(stranger.personalSpaceId);
+    expect(JSON.stringify(own)).not.toContain('Owner’s private name');
+    expect(JSON.stringify(own)).not.toContain('Household renamed');
+
+    // A position from someone else's history doesn't reveal anything either.
+    const others = (await activity(owner.personalSpaceId, owner)).json<Page>();
+    const position = `?before=${others.entries[0]?.id ?? ''}`;
+    const probed = (await activity(stranger.personalSpaceId, stranger, position)).json<Page>();
+    for (const entry of probed.entries) expect(entry.entityId).toBe(stranger.personalSpaceId);
+
+    expect((await activity(owner.personalSpaceId, stranger)).statusCode).toBe(404);
+  });
+
+  it('shows a shared space’s history to its members', async () => {
+    const { member, manager } = people;
+    await change('Household again', sharedSpaceId, manager, {});
+    const { entries } = (await activity(sharedSpaceId, member)).json<Page>();
+    expect(entries[0]).toMatchObject({ actorName: 'manager', after: { name: 'Household again' } });
+  });
+
+  it('comes back newest first, one page at a time, with nothing skipped or repeated', async () => {
+    const { manager: person } = people;
+    const id = person.personalSpaceId;
+    for (const n of [1, 2, 3, 4, 5]) await change(`Name ${String(n)}`, id, person, {});
+
+    const seen: unknown[] = [];
+    let query = '?limit=2';
+    for (;;) {
+      const page = (await activity(id, person, query)).json<Page>();
+      expect(page.entries.length).toBeLessThanOrEqual(2);
+      seen.push(...page.entries.map((entry) => (entry.after as { name: string }).name));
+      if (!page.nextBefore) break;
+      query = `?limit=2&before=${page.nextBefore}`;
+    }
+    expect(seen).toEqual(['Name 5', 'Name 4', 'Name 3', 'Name 2', 'Name 1']);
+  });
+
+  it('says when there’s another page, and only when there is', async () => {
+    const { manager: person } = people;
+    const id = person.personalSpaceId;
+    await change('Another name', id, person, {});
+    await change('One more name', id, person, {});
+    const total = (await activity(id, person, '?limit=100')).json<Page>().entries.length;
+    expect(total).toBeGreaterThanOrEqual(2);
+
+    const full = (await activity(id, person, `?limit=${String(total)}`)).json<Page>();
+    expect(full.entries).toHaveLength(total);
+    expect(full.nextBefore).toBeNull();
+
+    const short = (await activity(id, person, `?limit=${String(total - 1)}`)).json<Page>();
+    expect(short.entries).toHaveLength(total - 1);
+    expect(short.nextBefore).toBe(short.entries.at(-1)?.id);
+  });
+
+  it.each([
+    ['a limit of zero', '?limit=0', 'query.limit'],
+    ['a limit too large', '?limit=101', 'query.limit'],
+    ['a limit that isn’t a number', '?limit=abc', 'query.limit'],
+    ['a position that isn’t an id', '?before=1%20or%201=1', 'query.before'],
+  ])('refuses %s', async (_name, query, path) => {
+    const response = await activity(people.owner.personalSpaceId, people.owner, query);
+    expect(response.statusCode).toBe(422);
+    expect(response.json<{ error: { fields: { path: string }[] } }>().error.fields[0]?.path).toBe(
+      path,
+    );
+  });
+});
+
 // These walk the real app, so every route added by any feature is covered automatically.
 describe('every route in the app', () => {
   it('is under the API version, apart from the health check', () => {

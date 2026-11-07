@@ -2,7 +2,9 @@
 import {
   bigint,
   boolean,
+  index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -138,4 +140,30 @@ export const membership = pgTable(
     createdAt: timestamps.createdAt,
   },
   (table) => [primaryKey({ columns: [table.userId, table.spaceId] })],
+);
+
+/**
+ * Every change to something with history, written in the same transaction as the change. The
+ * database refuses to update or delete a row here, so what happened can't be rewritten later.
+ */
+export const activityLog = pgTable(
+  'activity_log',
+  {
+    id: uuid('id')
+      .primaryKey()
+      .default(sql`uuidv7()`),
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => space.id, { onDelete: 'restrict' }),
+    /** Not a foreign key, so the record survives its author's account. Null means Remidy itself. */
+    actorId: text('actor_id'),
+    entity: text('entity').notNull(),
+    entityId: uuid('entity_id').notNull(),
+    action: text('action').notNull(),
+    before: jsonb('before').$type<Record<string, unknown> | null>(),
+    after: jsonb('after').$type<Record<string, unknown> | null>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Ids are in time order, so this also lists a space's history newest first.
+  (table) => [index('activity_log_space_id_id_idx').on(table.spaceId, table.id)],
 );
