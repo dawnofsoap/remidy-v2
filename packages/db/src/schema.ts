@@ -2,6 +2,7 @@
 import {
   bigint,
   boolean,
+  date,
   index,
   integer,
   jsonb,
@@ -163,6 +164,82 @@ export const category = pgTable(
   // One name per space, whatever its case.
   (table) => [
     uniqueIndex('category_space_id_name_unique').on(table.spaceId, sql`lower(${table.name})`),
+  ],
+);
+
+/** How a bill repeats. Mirrors `Schedule` in @remidy/domain, which works out its due dates. */
+export type BillSchedule =
+  | { kind: 'once'; firstDue: string }
+  | {
+      kind: 'repeat';
+      unit: 'week' | 'month' | 'year';
+      every: number;
+      firstDue: string;
+      lastDue: string | null;
+    };
+
+/**
+ * Something that's paid on a schedule. A personal bill is in its owner's personal space, and a
+ * shared one in their household. Its category comes from the household's list when the owner has
+ * one, which a database trigger checks.
+ */
+export const bill = pgTable(
+  'bill',
+  {
+    id: uuid('id')
+      .primaryKey()
+      .default(sql`uuidv7()`),
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => space.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    /** Null only for a variable bill with no usual amount. */
+    expectedCents: bigint('expected_cents', { mode: 'number' }),
+    isVariable: boolean('is_variable').notNull().default(false),
+    schedule: jsonb('schedule').$type<BillSchedule>().notNull(),
+    categoryId: uuid('category_id').references(() => category.id, { onDelete: 'restrict' }),
+    autopay: boolean('autopay').notNull().default(false),
+    url: text('url'),
+    notes: text('notes'),
+    /** Set when archived: no new due dates, but the past is kept. */
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [index('bill_space_id_idx').on(table.spaceId)],
+);
+
+/**
+ * Each time a bill is due. Name, category and amount are copied from the bill when the occurrence
+ * is created, so editing the bill later doesn't rewrite what was due.
+ */
+export const billOccurrence = pgTable(
+  'bill_occurrence',
+  {
+    id: uuid('id')
+      .primaryKey()
+      .default(sql`uuidv7()`),
+    // Deleting a bill removes its occurrences. Payments will refuse that once a bill has any.
+    billId: uuid('bill_id')
+      .notNull()
+      .references(() => bill.id, { onDelete: 'cascade' }),
+    /** The bill's space, kept here so every query can be scoped without a join. */
+    spaceId: uuid('space_id')
+      .notNull()
+      .references(() => space.id, { onDelete: 'restrict' }),
+    dueOn: date('due_on', { mode: 'string' }).notNull(),
+    billName: text('bill_name').notNull(),
+    categoryId: uuid('category_id').references(() => category.id, { onDelete: 'restrict' }),
+    expectedCents: bigint('expected_cents', { mode: 'number' }),
+    isVariable: boolean('is_variable').notNull(),
+    state: text('state', { enum: ['open', 'settled', 'skipped'] })
+      .notNull()
+      .default('open'),
+    createdAt: timestamps.createdAt,
+  },
+  (table) => [
+    // Makes generating due dates safe to repeat.
+    uniqueIndex('bill_occurrence_bill_id_due_on_unique').on(table.billId, table.dueOn),
+    index('bill_occurrence_space_id_due_on_idx').on(table.spaceId, table.dueOn),
   ],
 );
 

@@ -21,11 +21,26 @@ const duplicate = (name: string) =>
     { path: 'name', message: 'There’s already a category with this name.' },
   ]);
 
-/** Postgres reports a broken unique rule with this code. Drizzle may wrap the error. */
-function isDuplicate(error: unknown): boolean {
-  const code = (value: unknown) => (value as { code?: unknown } | null)?.code;
-  return code(error) === '23505' || code((error as { cause?: unknown } | null)?.cause) === '23505';
+/** The Postgres error code, which Drizzle may wrap in one or more errors. */
+function pgCode(error: unknown): unknown {
+  for (let current = error; current; current = (current as { cause?: unknown }).cause) {
+    const { code } = current as { code?: unknown };
+    if (typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code)) return code;
+  }
+  return undefined;
 }
+
+/** Postgres reports a broken unique rule with this code. */
+const isDuplicate = (error: unknown) => pgCode(error) === '23505';
+
+/** Something still points at it, which the database refuses to delete (restrict, or foreign key). */
+const isInUse = (error: unknown) => ['23001', '23503'].includes(String(pgCode(error)));
+
+const IN_USE = new AppError(
+  409,
+  'in_use',
+  'Bills use this category, so it can’t be deleted. Archive it instead to keep their history.',
+);
 
 /** Runs a change, turning a duplicate name into an answer the person can act on. */
 async function guardDuplicate<T>(name: string | undefined, change: () => Promise<T>): Promise<T> {
@@ -125,29 +140,37 @@ export function updateCategory(
   );
 }
 
-/**
- * Deletes a category. Once bills can use one, a category with history will be refused here and
- * archived instead.
- */
+/** Deletes a category. One that bills use is refused, and should be archived instead. */
 export function deleteCategory(
   orm: Orm,
   spaceId: string,
   categoryId: string,
   actorId: string,
 ): Promise<void> {
-  return orm.transaction(async (transaction) => {
-    const current = await lockCategory(transaction, spaceId, categoryId);
-    await transaction
-      .delete(category)
-      .where(and(eq(category.spaceId, spaceId), eq(category.id, categoryId)));
-    await recordActivity(transaction, {
-      spaceId,
-      actorId,
-      entity: 'category',
-      entityId: categoryId,
-      action: 'deleted',
-      before: { name: current.name, archived: current.archived },
-      after: null,
-    });
-  });
+  return inUseGuard(() =>
+    orm.transaction(async (transaction) => {
+      const current = await lockCategory(transaction, spaceId, categoryId);
+      await transaction
+        .delete(category)
+        .where(and(eq(category.spaceId, spaceId), eq(category.id, categoryId)));
+      await recordActivity(transaction, {
+        spaceId,
+        actorId,
+        entity: 'category',
+        entityId: categoryId,
+        action: 'deleted',
+        before: { name: current.name, archived: current.archived },
+        after: null,
+      });
+    }),
+  );
+}
+
+async function inUseGuard(change: () => Promise<void>): Promise<void> {
+  try {
+    await change();
+  } catch (error) {
+    if (isInUse(error)) throw IN_USE;
+    throw error;
+  }
 }

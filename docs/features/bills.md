@@ -27,14 +27,17 @@ places that disagreed, so Remidy needs one tested rule that every screen uses.
 - Given "every N weeks", then each date is 7 × N days after the last.
 - Given "once", then there's exactly one occurrence.
 - Given a last date, then nothing is due after it.
-- Given any bill, then occurrences exist for every due date from its first due date to 13 months from today, and a
-  daily job keeps that true. Running the job twice changes nothing.
+- Given a new bill, then its occurrences start at the beginning of this month, or its first due date if that's
+  later, and reach 13 months from today. A date earlier this month shows as overdue, but a bill started years ago
+  doesn't arrive with years of unpaid dates. An hourly job keeps every bill 13 months ahead, and running it twice
+  changes nothing.
 - Given today, then "today" is the bill's space's date in that space's time zone, and a bill due before it with
   no payment is overdue.
 - Given an edit to a bill, then only future occurrences change. Past ones keep the name, category and amount
   they had.
-- Given a bill with no past occurrences, then it can be deleted. Otherwise it can only be archived, which stops new
-  occurrences but keeps the past.
+- Given a bill with no payments, then it can be deleted, with its occurrences. Once payments exist (milestone 4),
+  the database refuses, and it can only be archived, which stops new occurrences but keeps the past.
+- Given a category that bills use, then it can't be deleted, only archived.
 - Given a variable bill, then its expected amount is optional and shown as "varies".
 - Given someone in a household, when they add a bill, then they choose personal or shared, and personal is the
   default. Without a household there's no choice.
@@ -52,15 +55,16 @@ belongs to the bill's space, or to a household its owner belongs to. A unique `(
 safe to repeat. No released data changes.
 
 ## API
-Under `/api/v1/bills`, scoped to every space the caller belongs to, never to one chosen space.
+Reading covers every space the caller belongs to, never one chosen space. Changing goes through the bill's
+space, so the usual role check applies.
 
 | Route | Access | Errors |
 |---|---|---|
-| `GET /bills` all the caller's bills | signed-in | |
-| `GET /agenda?from&to` occurrences across the caller's spaces | signed-in | 422 bad range |
-| `POST /bills` with `spaceId` personal or household | manager of that space | 422, 404 |
-| `PATCH /bills/:billId` | manager of its space | 422, 404 |
-| `POST /bills/:billId/archive`, `DELETE /bills/:billId` | manager of its space | 404, 409 has history |
+| `GET /api/v1/bills` all the caller's bills | signed-in | |
+| `GET /api/v1/agenda?from&to`: overdue, plus the range, up to 400 days | signed-in | 422 bad range |
+| `POST /api/v1/spaces/:spaceId/bills` personal or household | manager | 422, 404 |
+| `PATCH /api/v1/spaces/:spaceId/bills/:billId`, including `archived` | manager | 422, 404 |
+| `DELETE /api/v1/spaces/:spaceId/bills/:billId` | manager | 404, 409 has payments |
 
 ## Screens
 - **Home** becomes the agenda: Overdue, then the rest of this month, then later months, each row showing the bill,

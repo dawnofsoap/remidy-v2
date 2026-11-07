@@ -109,12 +109,17 @@ know which space it's about. See "Where things live" in `DESIGN.md` for which ar
 
 ### Migrations
 
-- **Generate, then finish it in one go.** `pnpm db:generate` writes the migration from `schema.ts`. Add any SQL it
-  can't write, such as triggers or filling in existing rows, to the same file before the dev server restarts. The
-  server applies migrations when it starts, and never applies the same file twice, so a half-written one stays half
-  applied. Restart it with `docker compose restart server` once the file is complete.
+- **Stop the dev server first.** It restarts whenever a source file changes and applies new migrations as it
+  starts, never applying the same file twice. A migration it finds half-written stays half applied, which happened
+  twice while building Categories and Bills. Run `docker compose stop server`, change `schema.ts`, run
+  `pnpm db:generate`, add any SQL it can't write such as triggers, then `docker compose start server`.
 - **Data every space needs comes from the database.** The starter categories are added by a trigger when a space is
   created, so no way of creating a space can miss them.
+
+### Packages
+
+- **A new workspace package for the server also goes in `deploy/Dockerfile`**, which copies only what it names. The
+  `production-image` check fails if one is missing, because the server can't start.
 
 ### Tests in a real browser
 
