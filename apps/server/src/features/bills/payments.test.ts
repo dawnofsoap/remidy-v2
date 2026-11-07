@@ -2,6 +2,7 @@ import { activityLog, billOccurrence, payment } from '@remidy/db';
 import { addDays } from '@remidy/domain';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
+import { periodTotals } from './agenda.repo.ts';
 import { recordAutopay } from './payments.repo.ts';
 import { call, create, ids, now, test, useBillsHarness } from './testing.ts';
 
@@ -127,6 +128,24 @@ describe('voiding', () => {
     expect((await voidIt('alice', ids.alicePersonal, paid.id)).statusCode).toBe(409);
   });
 
+  it('stops a voided payment counting toward what the agenda shows as paid', async () => {
+    const { due } = await newDue();
+    const paid = (await pay('alice', ids.alicePersonal, due.id, 4500)).json<Payment>();
+    await voidIt('alice', ids.alicePersonal, paid.id);
+    const agenda = (await call('alice', 'GET', `/api/v1/agenda?from=${now()}&to=${now()}`)).json<{
+      upcoming: { id: string; paidCents: number }[];
+    }>();
+    expect(agenda.upcoming.find((entry) => entry.id === due.id)?.paidCents).toBe(0);
+  });
+
+  it('can’t be reached through another space', async () => {
+    const shared = await create('alice', ids.household, once(now()));
+    const due = await dueOf(shared.id);
+    const paid = (await pay('alice', ids.household, due.id, 4500)).json<Payment>();
+    expect((await voidIt('alice', ids.alicePersonal, paid.id)).statusCode).toBe(404);
+    expect((await voidIt('bob', ids.bobPersonal, paid.id)).statusCode).toBe(404);
+  });
+
   it('can’t be undone or got around in the database', async () => {
     const { due } = await newDue();
     const paid = (await pay('alice', ids.alicePersonal, due.id, 4500)).json<Payment>();
@@ -156,6 +175,14 @@ describe('skipping', () => {
 
     expect((await skip('unskip')).json()).toEqual({ state: 'open' });
     expect((await dueOf(bill.id)).state).toBe('open');
+  });
+
+  it('leaves a skipped due date out of what’s due in its period', async () => {
+    const { due } = await newDue();
+    const before = await periodTotals(test.database.orm, 'alice', now(), now());
+    await call('alice', 'POST', `/api/v1/spaces/${ids.alicePersonal}/occurrences/${due.id}/skip`);
+    const after = await periodTotals(test.database.orm, 'alice', now(), now());
+    expect(after.dueCents).toBe(before.dueCents - 4500);
   });
 
   it('refuses a due date with payments', async () => {
@@ -238,10 +265,23 @@ describe('auto-pay', () => {
 
   it.each([
     ['a bill that varies', { autopay: true, isVariable: true, expectedCents: null }],
+    [
+      'a bill that varies, even with a usual amount',
+      { autopay: true, isVariable: true, expectedCents: 4000 },
+    ],
     ['a due date still to come', { autopay: true, ...once(addDays(now(), 3)) }],
     ['a bill without auto-pay', { autopay: false }],
   ])('leaves %s alone', async (_case, overrides) => {
     const { bill } = await newDue(overrides);
+    await recordAutopay(test.database.orm);
+    expect(await autopayFor(bill.id)).toEqual([]);
+  });
+
+  it('leaves an archived bill alone', async () => {
+    const { bill } = await newDue({ autopay: true, ...once(addDays(now(), -1)) });
+    await call('alice', 'PATCH', `/api/v1/spaces/${ids.alicePersonal}/bills/${bill.id}`, {
+      archived: true,
+    });
     await recordAutopay(test.database.orm);
     expect(await autopayFor(bill.id)).toEqual([]);
   });

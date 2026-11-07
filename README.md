@@ -45,8 +45,9 @@ docker compose exec server pnpm --filter @remidy/server sample-data
 
 It adds a household, The Example Household, with a made-up second member who can't sign in, and bills of every kind:
 personal and shared, fixed and varying, auto-pay, overdue, ending and archived. Dates count from today, so the data
-always looks current. Running it again adds nothing new, and `--fresh` replaces the sample data. Anything else in the
-database is left alone. It refuses to run in production.
+always looks current. Running it again adds nothing new, and anything else in the
+database is left alone. To start over, recreate the stack with `docker compose down -v` and `docker compose up`, then run
+it again. It refuses to run in production.
 
 ## Running it for real
 

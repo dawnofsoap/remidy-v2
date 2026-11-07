@@ -159,8 +159,6 @@ export interface SampleContext {
   personalSpaceId: string;
   /** A sample household the admin owns, with a made-up second member. */
   householdId: string;
-  /** Replace this feature's sample data rather than keeping what's there. */
-  fresh: boolean;
 }
 
 export interface Feature {

@@ -110,7 +110,7 @@ know which space it's about. See "Where things live" in `DESIGN.md` for which ar
 ### Sample data
 
 Each feature adds its own fictional data through `sampleData` in its definition, using its own repo functions so the
-data follows the same rules as real data. It must be safe to run again, and only replace its own samples when asked.
+data follows the same rules as real data. It must be safe to run again without adding anything twice.
 Show what the screens need to handle, such as empty fields, long names and every state. Never use real data: the repo is
 public.
 
