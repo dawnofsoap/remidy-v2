@@ -1,5 +1,5 @@
 import type { HistoryEntry, PaymentResponse } from '@remidy/contracts';
-import { formatDate, formatMoney, type CalendarDate, type Cents } from '@remidy/domain';
+import { formatDate, formatMoney, today, type CalendarDate, type Cents } from '@remidy/domain';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { RequestFailure } from '../../../core/session.ts';
@@ -106,6 +106,7 @@ export function BillHistory({ bill }: { bill: Bill }) {
   });
   const refresh = useRefresh();
   const [paying, setPaying] = useState<HistoryEntry | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   if (history.isPending) return <LoadingState label="Loading history" />;
   if (history.isError) {
@@ -113,10 +114,16 @@ export function BillHistory({ bill }: { bill: Bill }) {
   }
   if (history.data.length === 0) return <p className="text-ink-2">No due dates yet.</p>;
 
+  // The past and the next one coming up. Later ones, up to 13 months out, are there if wanted.
+  const now = today(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const upcoming = history.data.filter((due) => due.dueOn > now);
+  const later = upcoming.slice(0, -1);
+  const shown = showAll ? history.data : history.data.filter((due) => !later.includes(due));
+
   return (
     <>
       <ol aria-label="Due dates" className="flex flex-col divide-y divide-line">
-        {history.data.map((due) => {
+        {shown.map((due) => {
           const paid = due.payments
             .filter((payment) => !payment.voided)
             .reduce((sum, payment) => sum + payment.amountCents, 0);
@@ -158,6 +165,19 @@ export function BillHistory({ bill }: { bill: Bill }) {
           );
         })}
       </ol>
+      {later.length > 0 ? (
+        <div>
+          <Button
+            variant="ghost"
+            aria-expanded={showAll}
+            onClick={() => {
+              setShowAll((all) => !all);
+            }}
+          >
+            {showAll ? 'Hide later due dates' : `Show ${String(later.length)} later due dates`}
+          </Button>
+        </div>
+      ) : null}
       {paying ? (
         <PaySheet
           entry={{
