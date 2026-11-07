@@ -116,7 +116,7 @@ test('the calendar shows the month as a grid, or as a list of days on a phone', 
   await expect(water).toBeVisible();
   if (info.project.name !== 'phone') {
     // Every day of the grid is listed, each with its full date for screen readers.
-    const days = page.getByRole('list', { name: /d{4}$/ }).getByRole('listitem');
+    const days = page.getByRole('list', { name: /\d{4}$/ }).getByRole('listitem');
     expect(await days.count()).toBeGreaterThanOrEqual(28);
   }
   await expectNoViolations(page);
