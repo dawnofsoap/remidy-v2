@@ -209,6 +209,62 @@ test('categories can be added, renamed, archived and deleted, at desktop and pho
   await expect(row('Animals')).toHaveCount(0);
 });
 
+test('a bill can be added, shows on Home, and can be edited, at desktop and phone sizes', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await signInWith(page, CHOSEN_PASSWORD);
+  await expect(appHeading(page, 'Home')).toBeVisible();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Bills' }).click();
+  await expect(appHeading(page, 'Bills')).toBeVisible();
+
+  // Due on the 31st, so the next due date falls on a short month's last day at some point.
+  const dialog = page.getByRole('dialog');
+  await page.getByRole('button', { name: 'Add bill' }).click();
+  await dialog.getByLabel('Name').fill('Water');
+  await dialog.getByLabel('Amount due').fill('45');
+  await dialog.getByRole('combobox', { name: 'Repeats' }).selectOption('monthly');
+  await dialog.getByLabel('Next due date').fill('1/31/2030');
+  await expect(dialog.getByText(/Monthly on the last day/)).toBeVisible();
+  await dialog.getByRole('combobox', { name: 'Category' }).selectOption({ label: 'Utilities' });
+  await dialog.getByRole('button', { name: 'Add bill' }).click();
+
+  const bills = page.getByRole('list', { name: 'Bills', exact: true });
+  await expect(bills.getByRole('button', { name: /Water/ })).toContainText('$45.00');
+  await expect(bills.getByRole('button', { name: /Water/ })).toContainText('Utilities');
+
+  // One due this month shows on Home.
+  await page.getByRole('button', { name: 'Add bill' }).click();
+  await dialog.getByLabel('Name').fill('Phone');
+  await dialog.getByLabel('Amount').getByText('Varies').click();
+  await dialog.getByRole('combobox', { name: 'Repeats' }).selectOption('once');
+  const todayText = await page.evaluate(() => {
+    const now = new Date();
+    return `${String(now.getMonth() + 1)}/${String(now.getDate())}/${String(now.getFullYear())}`;
+  });
+  await dialog.getByLabel('Due date').fill(todayText);
+  await dialog.getByRole('button', { name: 'Add bill' }).click();
+  await expect(bills.getByRole('button', { name: /Phone/ })).toContainText('Varies');
+
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home' }).click();
+  await expect(page.getByRole('list', { name: 'Rest of this month' })).toContainText('Phone');
+
+  // On a phone, editing is a bottom sheet, and a rename shows straight away.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/bills');
+  await bills.getByRole('button', { name: /Water/ }).click();
+  const sheet = await dialog.boundingBox();
+  expect((sheet?.y ?? 0) + (sheet?.height ?? 0)).toBeCloseTo(844, 0);
+  await dialog.getByLabel('Name').fill('Water and sewer');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(bills.getByRole('button', { name: /Water and sewer/ })).toBeVisible();
+
+  await bills.getByRole('button', { name: /Phone/ }).click();
+  await dialog.getByRole('button', { name: 'Delete…' }).click();
+  await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(bills.getByRole('button', { name: /Phone/ })).toHaveCount(0);
+});
+
 test('a wrong password is refused with a clear message', async ({ page }) => {
   await page.goto('/');
   await signInWith(page, 'not the right password');
