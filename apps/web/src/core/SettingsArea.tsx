@@ -57,7 +57,10 @@ export function SettingsArea({ title, subtitle, basePath, sections, section }: S
           </ul>
         </nav>
         {current && Section ? (
-          <section aria-labelledby="section-title" className="flex min-w-0 flex-col gap-4">
+          <section
+            aria-labelledby="section-title"
+            className="flex min-w-0 max-w-5xl flex-col gap-4"
+          >
             <Link
               to={basePath}
               className={cn(

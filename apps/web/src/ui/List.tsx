@@ -1,11 +1,26 @@
 import type { ReactNode } from 'react';
 import { cn, focusRing } from './cn.ts';
 
-export function List({ label, children }: { label: string; children: ReactNode }) {
+interface ListProps {
+  label: string;
+  children: ReactNode;
+  /**
+   * For short items, such as category names: they flow into columns on wider screens instead of
+   * one long, mostly empty list.
+   */
+  columns?: boolean;
+}
+
+export function List({ label, children, columns = false }: ListProps) {
   return (
     <ul
       aria-label={label}
-      className="flex flex-col divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface"
+      className={cn(
+        'overflow-hidden rounded-2xl border border-line bg-surface',
+        columns
+          ? 'grid grid-cols-1 gap-px bg-line sm:grid-cols-2 xl:grid-cols-3 [&>li]:bg-surface'
+          : 'flex flex-col divide-y divide-line',
+      )}
     >
       {children}
     </ul>

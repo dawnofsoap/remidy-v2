@@ -50,7 +50,7 @@ function SpaceCategories({ spaceId, canEdit }: { spaceId: string; canEdit: boole
   ) : null;
 
   return (
-    <div className="flex max-w-md flex-col gap-3">
+    <div className="flex flex-col gap-3">
       {active.length === 0 ? (
         <EmptyState
           title="No categories"
@@ -59,7 +59,7 @@ function SpaceCategories({ spaceId, canEdit }: { spaceId: string; canEdit: boole
         />
       ) : (
         <>
-          <List label="Categories">
+          <List label="Categories" columns>
             {active.map((category) => (
               <CategoryRow key={category.id} category={category} onClick={open(category)} />
             ))}
@@ -82,7 +82,7 @@ function SpaceCategories({ spaceId, canEdit }: { spaceId: string; canEdit: boole
             </Button>
           </div>
           {showArchived ? (
-            <List label="Archived categories">
+            <List label="Archived categories" columns>
               {archived.map((category) => (
                 <CategoryRow key={category.id} category={category} onClick={open(category)} />
               ))}

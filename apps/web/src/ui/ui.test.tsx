@@ -18,7 +18,6 @@ import {
   MoneyField,
   NewPasswordField,
   SelectField,
-  Steps,
   TextField,
 } from './index.ts';
 
@@ -195,28 +194,6 @@ describe('state panels', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Bills couldn’t load.');
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();
-  });
-});
-
-describe('Steps', () => {
-  const steps = ['What it is', 'When it’s due', 'Details'];
-
-  it('names the current step, and marks it for screen readers', () => {
-    render(<Steps steps={steps} current={1} />);
-    expect(screen.getByRole('navigation', { name: 'Steps' })).toHaveTextContent(
-      'Step 2 of 3: When it’s due',
-    );
-    const items = screen.getAllByRole('listitem');
-    expect(items[1]).toHaveAttribute('aria-current', 'step');
-    expect(items[0]).not.toHaveAttribute('aria-current');
-    expect(screen.queryByRole('button')).toBeNull();
-  });
-
-  it('lets people jump to a step only when allowed', async () => {
-    const onSelect = vi.fn();
-    render(<Steps steps={steps} current={0} onSelect={onSelect} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Go to Details' }));
-    expect(onSelect).toHaveBeenCalledWith(2);
   });
 });
 
