@@ -12,6 +12,7 @@
     "@fastify/rate-limit": "11.2.2",
     "@remidy/contracts": "workspace:*",
     "@remidy/db": "workspace:*",
+    "@remidy/domain": "workspace:*",
     "better-auth": "1.7.17",
     "drizzle-orm": "0.45.4",
     "fastify": "5.12.8",

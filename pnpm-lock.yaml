@@ -217,6 +217,9 @@ importers:
       '@remidy/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@remidy/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       better-auth:
         specifier: 1.7.17
         version: 1.7.17(@opentelemetry/api@1.10.0)(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@opentelemetry/api@1.10.0)(@types/pg@8.23.1)(kysely@0.29.8)(pg@8.23.1))(pg@8.23.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(vitest@5.1.0)

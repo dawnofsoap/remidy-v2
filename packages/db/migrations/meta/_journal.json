@@ -43,6 +43,13 @@
       "when": 1794071934557,
       "tag": "0005_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794079654500,
+      "tag": "0006_bills",
+      "breakpoints": true
     }
   ]
 }

@@ -173,7 +173,7 @@ bills (
 )
 
 bill_occurrences (
-  id uuid PRIMARY KEY, bill_id uuid NOT NULL REFERENCES bills ON DELETE RESTRICT,
+  id uuid PRIMARY KEY, bill_id uuid NOT NULL REFERENCES bills ON DELETE CASCADE,  -- payments restrict it
   due_on date NOT NULL,
   bill_name text NOT NULL,          -- copied: the record of what this occurrence was
   category_id uuid,                 -- copied
@@ -202,7 +202,7 @@ activity_log (
 ```
 
 - **Overdue** is derived: `state = 'open'` and `due_on` is before today in the space's time zone.
-- **Generation:** a daily job keeps occurrences 13 months ahead, and can safely re-run because of the `UNIQUE` constraint.
+- **Generation:** a new bill's occurrences start at the beginning of the current month, and an hourly job keeps them 13 months ahead. It can safely re-run because of the `UNIQUE` constraint.
 - **Month-end dates** always come from the anchor, so Jan 31 gives Feb 28 and then Mar 31.
 - **Partial payments** are allowed. An occurrence settles when payments reach the expected amount; a variable bill settles on its first payment.
 - **Duplicate auto-pay** is prevented by the database index, whichever code path runs.
