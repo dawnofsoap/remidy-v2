@@ -9,4 +9,5 @@ export { isPasswordReady, NewPasswordField } from './NewPasswordField.tsx';
 export { RadioField } from './RadioField.tsx';
 export { EmptyState, ErrorState, LoadingState } from './StatePanels.tsx';
 export { Steps } from './Steps.tsx';
+export { Table, type TableColumn } from './Table.tsx';
 export { toast, Toaster } from './Toast.tsx';

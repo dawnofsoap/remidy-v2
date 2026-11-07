@@ -16,6 +16,7 @@ import {
   NewPasswordField,
   SelectField,
   Steps,
+  Table,
   TextField,
   toast,
   Toaster,
@@ -112,6 +113,31 @@ function Gallery() {
         <ErrorState
           message="Bills couldn’t load. Check your connection and try again."
           onRetry={() => undefined}
+        />
+      </Section>
+      <Section title="Table">
+        <Table
+          label="Bills"
+          columns={[
+            {
+              key: 'name',
+              header: 'Name',
+              cell: (row: { name: string; amount: string }) => row.name,
+            },
+            {
+              key: 'amount',
+              header: 'Amount',
+              numeric: true,
+              cell: (row: { name: string; amount: string }) => row.amount,
+            },
+          ]}
+          rows={[
+            { name: 'Rent', amount: '$1,450.00' },
+            { name: 'Water', amount: '$45.00' },
+          ]}
+          rowKey={(row) => row.name}
+          onRowClick={() => undefined}
+          rowLabel={(row) => `Edit ${row.name}`}
         />
       </Section>
       <Section title="Steps">
