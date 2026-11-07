@@ -144,7 +144,8 @@ export function AppLayout() {
           tabIndex={-1}
           className="min-w-0 flex-auto p-4 pb-24 outline-none md:p-8"
         >
-          <div className="mx-auto max-w-5xl">
+          {/* One column beside the sidebar, the same width on every page, so pages line up. */}
+          <div className="max-w-3xl">
             <ServerStatus />
             <Outlet />
           </div>
