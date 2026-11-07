@@ -228,7 +228,8 @@ export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
           </div>
         ) : null}
         <DateField
-          label={repeat === 'once' ? 'Due date' : 'Next due date'}
+          label={repeat === 'once' ? 'Due date' : bill ? 'First due date' : 'Next due date'}
+          {...(bill && repeat !== 'once' ? { hint: 'Later due dates count from this one.' } : {})}
           date={firstDue}
           onDateChange={setFirstDue}
           {...err('schedule.firstDue')}

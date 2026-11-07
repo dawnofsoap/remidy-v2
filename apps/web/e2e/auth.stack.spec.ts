@@ -224,7 +224,7 @@ test('a bill can be added, shows on Home, and can be edited, at desktop and phon
   await dialog.getByLabel('Name').fill('Water');
   await dialog.getByLabel('Amount due').fill('45');
   await dialog.getByRole('combobox', { name: 'Repeats' }).selectOption('monthly');
-  await dialog.getByLabel('Next due date').fill('1/31/2030');
+  await dialog.getByRole('textbox', { name: 'Next due date' }).fill('1/31/2030');
   await expect(dialog.getByText(/Monthly on the last day/)).toBeVisible();
   await dialog.getByRole('combobox', { name: 'Category' }).selectOption({ label: 'Utilities' });
   await dialog.getByRole('button', { name: 'Add bill' }).click();
@@ -233,21 +233,23 @@ test('a bill can be added, shows on Home, and can be edited, at desktop and phon
   await expect(bills.getByRole('button', { name: /Water/ })).toContainText('$45.00');
   await expect(bills.getByRole('button', { name: /Water/ })).toContainText('Utilities');
 
-  // One due this month shows on Home.
+  // One due in a few days shows on Home. The space's time zone was changed earlier, so its
+  // "today" may not be the browser's, and a date a few days out is upcoming either way.
   await page.getByRole('button', { name: 'Add bill' }).click();
   await dialog.getByLabel('Name').fill('Phone');
-  await dialog.getByLabel('Amount').getByText('Varies').click();
+  await dialog.getByRole('group', { name: 'Amount' }).getByText('Varies').click();
   await dialog.getByRole('combobox', { name: 'Repeats' }).selectOption('once');
   const todayText = await page.evaluate(() => {
-    const now = new Date();
+    const now = new Date(Date.now() + 3 * 86_400_000);
     return `${String(now.getMonth() + 1)}/${String(now.getDate())}/${String(now.getFullYear())}`;
   });
-  await dialog.getByLabel('Due date').fill(todayText);
+  await dialog.getByRole('textbox', { name: 'Due date' }).fill(todayText);
   await dialog.getByRole('button', { name: 'Add bill' }).click();
   await expect(bills.getByRole('button', { name: /Phone/ })).toContainText('Varies');
 
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home' }).click();
-  await expect(page.getByRole('list', { name: 'Rest of this month' })).toContainText('Phone');
+  await expect(page.getByRole('main')).toContainText('Phone');
+  await expect(page.getByRole('list', { name: 'Overdue' })).toHaveCount(0);
 
   // On a phone, editing is a bottom sheet, and a rename shows straight away.
   await page.setViewportSize({ width: 390, height: 844 });
@@ -357,6 +359,8 @@ test('someone with an email address can reset a forgotten password', async ({ pa
     `exec -T db psql -U remidy -d remidy -c "insert into \\"user\\" (id, name, email) values ('reset-test', 'Alex', '${email}')"`,
   );
 
+  // This file signs in more than 20 times a minute from one address, which the real limit refuses.
+  compose('exec -T db psql -U remidy -d remidy -c "delete from rate_limit"');
   await context.clearCookies();
   await page.goto('/');
   await page.getByRole('button', { name: 'Forgot your password?' }).click();
