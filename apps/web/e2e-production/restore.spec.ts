@@ -37,8 +37,25 @@ const api = <T>(page: Page, url: string, method = 'GET', body?: unknown) =>
     [url, method, body],
   ) as Promise<T>;
 
+/**
+ * Opens the sign-in page. Restarting containers changes the machine's network interfaces, and
+ * Chromium then drops any request in flight with ERR_NETWORK_CHANGED, sometimes leaving the page
+ * without its script. That's the test machine, not the app, so the page is loaded again.
+ */
+async function openSignIn(page: Page) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await page.goto('/');
+      await page.getByLabel('Email').waitFor({ timeout: 10_000 });
+      return;
+    } catch (error) {
+      if (attempt === 3) throw error;
+    }
+  }
+}
+
 async function signIn(page: Page, password: string) {
-  await page.goto('/');
+  await openSignIn(page);
   await page.getByLabel('Email').fill(ADMIN_EMAIL);
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
