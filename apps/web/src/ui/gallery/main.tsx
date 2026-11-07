@@ -15,6 +15,7 @@ import {
   MoneyField,
   NewPasswordField,
   SelectField,
+  Steps,
   TextField,
   toast,
   Toaster,
@@ -111,6 +112,14 @@ function Gallery() {
         <ErrorState
           message="Bills couldn’t load. Check your connection and try again."
           onRetry={() => undefined}
+        />
+      </Section>
+      <Section title="Steps">
+        <Steps steps={['What it is', 'When it’s due', 'Details']} current={1} />
+        <Steps
+          steps={['What it is', 'When it’s due', 'Details']}
+          current={0}
+          onSelect={() => undefined}
         />
       </Section>
       <Section title="Modal and toast">
