@@ -159,7 +159,7 @@ users --< memberships >-- spaces --< bills, accounts, categories, income
 - Client-editable preferences are a strict schema, separate from roles.
 - `users.is_instance_admin` manages the instance and grants no access to bills.
 - A private bill is a bill in the personal space.
-- The schema allows several shared spaces per user; the v2.0 UI assumes one.
+- The schema allows several shared spaces per user; the app allows one. See "Where things live" in section 8.
 
 ### Bills, occurrences, payments
 
@@ -254,6 +254,35 @@ The layout is settled: a sidebar on desktop, bottom navigation on phones, and an
 - **Every state is designed:** loading, empty and error, not only the populated screen.
 - **Motion and detail:** subtle, and only where it explains a change.
 
+### Where things live
+
+**One view of everything you're responsible for.** Spaces decide who owns and can see something, but the app never
+makes you pick one: pages such as the agenda show your personal bills and your household's shared bills together,
+each marked as personal or shared. Hiding bills behind a choice is how they get missed.
+
+- **A bill is personal or shared**, chosen when it's created. Personal means your personal space, and shared means
+  your household. Other members see the shared bills, and never your personal ones.
+- **A person belongs to one household at most.** The schema allows more, but one combined view gets confusing with
+  several, so the app doesn't offer it.
+- **Shared lists, such as categories, belong to the household** and are used for every bill its members see,
+  personal or shared, so filters work across everything. Someone without a household has their own. Members can
+  see the household's category names, but never another member's personal bills.
+- **Main pages** such as Home and Bills are in the sidebar on desktop, and in the tab bar on phones.
+- **Three settings areas**, each with its own address and sections:
+
+| Area | Address | For | Holds |
+|---|---|---|---|
+| Settings | `/settings` | Only the person signed in | Profile, appearance, time zone for personal bills, security, and later notifications. Shared lists such as categories too, for someone without a household |
+| Household | `/household` | Members of the household, and hidden from everyone else. Managers and owners can change things, and members see them read-only | Time zone for shared bills, shared lists such as categories, and later members and history |
+| Administration | `/admin` | Instance admins only, and hidden from everyone else | Background jobs, and later users and defaults for new spaces |
+
+- **On desktop** the areas are at the bottom of the sidebar, and each shows its sections beside the chosen one.
+- **On phones** they're behind the More tab, because the tab bar only has room for main pages. Each section opens
+  as its own page with a way back.
+- **A feature adds a shared list** through `spaceSettings` in its definition. It appears in Household, or in
+  Settings for someone without a household, and `useSettingsSpace` says which space it's about. Neither area needs
+  to know about each feature.
+
 ## 9. Moving from v1
 
 v1's payment history isn't reliable enough to treat as fact, so v2 **starts its history fresh**.
@@ -283,3 +312,4 @@ payments use `source = 'v1_archive'`, have no occurrence, and appear only on a d
 | # | Decision | Default until decided |
 |---|---|---|
 | 1 | Is this always self-hosted, or a possible public service later? | Self-hosted, with spaces ready for more |
+| 2 | How a personal bill uses its household's category, which lives in another space, and what happens to it when someone leaves the household | Decided in the Bills spec, before Sharing |

@@ -1,20 +1,14 @@
 import { enabledFeaturesResponse } from '@remidy/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { Ellipsis } from 'lucide-react';
 import { createContext, useContext, useEffect, useRef } from 'react';
 import { cn, focusRing, Toaster } from '../ui/index.ts';
-import {
-  visibleNav,
-  visibleSettings,
-  type NavItem,
-  type SettingsSection,
-  type WebFeature,
-} from './feature.ts';
+import { visibleNav, visibleSpaceSettings, type NavItem, type WebFeature } from './feature.ts';
+import { useAreaLinks } from './areas.ts';
+import { activeLink, listLink } from './navStyles.ts';
 import { ServerStatus } from './ServerStatus.tsx';
-
-// The router marks the current page's link with data-status="active".
-const activeLink =
-  'data-[status=active]:bg-accent-soft data-[status=active]:font-semibold data-[status=active]:text-accent-text';
+import type { SettingsSection } from './feature.ts';
 
 const FeaturesContext = createContext<WebFeature[]>([]);
 export const FeaturesProvider = FeaturesContext.Provider;
@@ -24,7 +18,7 @@ async function fetchEnabledFeatures({ signal }: { signal: AbortSignal }): Promis
   return enabledFeaturesResponse.parse(await response.json()).enabled;
 }
 
-/** The features to show. Flagged ones stay hidden until the server confirms they're on. */
+/** What features add. Flagged ones stay hidden until the server confirms they're on. */
 function useVisible<T>(pick: (features: WebFeature[], enabled: readonly string[]) => T): T {
   const features = useContext(FeaturesContext);
   const { data: enabled = [] } = useQuery({
@@ -35,40 +29,50 @@ function useVisible<T>(pick: (features: WebFeature[], enabled: readonly string[]
   return pick(features, enabled);
 }
 
-const useNavItems = (): NavItem[] => useVisible(visibleNav);
+/** The sections features add about shared lists, such as categories. */
+export const useSpaceSettingsSections = (): SettingsSection[] => useVisible(visibleSpaceSettings);
 
-/** The sections other features add to the Settings page. */
-export const useSettingsSections = (): SettingsSection[] => useVisible(visibleSettings);
+function NavList({ items }: { items: NavItem[] }) {
+  return (
+    <ul className="flex flex-col gap-1">
+      {items.map(({ to, label, icon: Icon }) => (
+        <li key={to}>
+          <Link to={to} className={listLink}>
+            <Icon aria-hidden="true" className="size-5" />
+            {label}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function Sidebar({ items }: { items: NavItem[] }) {
   return (
     <nav
       aria-label="Main"
-      className="hidden w-58 flex-none flex-col gap-6 border-r border-line bg-surface p-4 md:flex"
+      className="sticky top-0 hidden h-dvh w-58 flex-none flex-col gap-4 overflow-y-auto border-r border-line bg-surface p-4 md:flex"
     >
-      <p className="px-2 text-xl font-bold tracking-tight">Remidy</p>
-      <ul className="flex flex-col gap-1">
-        {items.map(({ to, label, icon: Icon }) => (
-          <li key={to}>
-            <Link
-              to={to}
-              className={cn(
-                'flex min-h-11 items-center gap-3 rounded-xl px-3 font-medium text-ink-2',
-                activeLink,
-                focusRing,
-              )}
-            >
-              <Icon aria-hidden="true" className="size-5" />
-              {label}
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <p className="px-3 text-xl font-bold tracking-tight">Remidy</p>
+      <NavList items={items} />
+      <div className="mt-auto border-t border-line pt-4">
+        <NavList items={useAreaLinks()} />
+      </div>
     </nav>
   );
 }
 
+const AREA_PATHS = /^\/(settings|admin|household|more)(\/|$)/;
+
 function BottomNav({ items }: { items: NavItem[] }) {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const tab = cn(
+    'flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-medium text-ink-2',
+    focusRing,
+  );
+  // The settings areas live behind More on phones, so More stays marked while in one.
+  const inMore = AREA_PATHS.test(pathname);
+
   return (
     <nav
       aria-label="Main"
@@ -77,26 +81,29 @@ function BottomNav({ items }: { items: NavItem[] }) {
       <ul className="grid auto-cols-fr grid-flow-col gap-1">
         {items.map(({ to, label, icon: Icon }) => (
           <li key={to}>
-            <Link
-              to={to}
-              className={cn(
-                'flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-medium text-ink-2',
-                activeLink,
-                focusRing,
-              )}
-            >
+            <Link to={to} className={cn(tab, activeLink)}>
               <Icon aria-hidden="true" className="size-5" />
               {label}
             </Link>
           </li>
         ))}
+        <li>
+          <Link
+            to="/more"
+            className={cn(tab, inMore && 'bg-accent-soft font-semibold text-accent-text')}
+            {...(inMore ? { 'aria-current': 'page' as const } : {})}
+          >
+            <Ellipsis aria-hidden="true" className="size-5" />
+            More
+          </Link>
+        </li>
       </ul>
     </nav>
   );
 }
 
 export function AppLayout() {
-  const items = useNavItems();
+  const items = useVisible(visibleNav);
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const mainRef = useRef<HTMLElement>(null);
   const previousPathname = useRef(pathname);
@@ -121,17 +128,19 @@ export function AppLayout() {
         Skip to content
       </a>
       <Sidebar items={items} />
-      <main
-        id="main"
-        ref={mainRef}
-        tabIndex={-1}
-        className="min-w-0 flex-auto p-4 pb-24 outline-none md:p-8"
-      >
-        <div className="mx-auto max-w-5xl">
-          <ServerStatus />
-          <Outlet />
-        </div>
-      </main>
+      <div className="flex min-w-0 flex-auto flex-col">
+        <main
+          id="main"
+          ref={mainRef}
+          tabIndex={-1}
+          className="min-w-0 flex-auto p-4 pb-24 outline-none md:p-8"
+        >
+          <div className="mx-auto max-w-5xl">
+            <ServerStatus />
+            <Outlet />
+          </div>
+        </main>
+      </div>
       <BottomNav items={items} />
       <Toaster />
     </div>

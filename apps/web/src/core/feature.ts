@@ -8,8 +8,10 @@ export interface NavItem {
   icon: LucideIcon;
 }
 
-/** A part of the Settings page that a feature adds, so Settings doesn't need to know about it. */
+/** One part of a settings area, with its own address. */
 export interface SettingsSection {
+  /** The last part of its address, such as `security`. */
+  slug: string;
   title: string;
   component: ComponentType;
 }
@@ -20,7 +22,11 @@ export interface WebFeature {
   flagged?: boolean;
   routes: AnyRoute[];
   nav: NavItem[];
-  settings?: SettingsSection[];
+  /**
+   * Sections about shared lists such as categories. They appear in Household, or in Settings for
+   * someone without a household, and use `useSettingsSpace` to know which space they're about.
+   */
+  spaceSettings?: SettingsSection[];
 }
 
 export function defineFeature(feature: WebFeature): WebFeature {
@@ -34,9 +40,9 @@ export function visibleNav(features: WebFeature[], enabled: readonly string[]): 
   return visible(features, enabled).flatMap((feature) => feature.nav);
 }
 
-export function visibleSettings(
+export function visibleSpaceSettings(
   features: WebFeature[],
   enabled: readonly string[],
 ): SettingsSection[] {
-  return visible(features, enabled).flatMap((feature) => feature.settings ?? []);
+  return visible(features, enabled).flatMap((feature) => feature.spaceSettings ?? []);
 }

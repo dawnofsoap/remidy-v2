@@ -4,22 +4,12 @@ import {
   changePassword,
   fetchOtherSessionCount,
   fetchSession,
-  fetchSpaces,
   RequestFailure,
   revokeOtherSessions,
   SESSION_QUERY_KEY,
   signOut,
-  updateSpace,
 } from '../../core/session.ts';
-import {
-  Button,
-  isPasswordReady,
-  NewPasswordField,
-  SelectField,
-  TextField,
-  toast,
-} from '../../ui/index.ts';
-import { JobStatus } from './JobStatus.tsx';
+import { Button, isPasswordReady, NewPasswordField, TextField, toast } from '../../ui/index.ts';
 
 const OTHER_SESSIONS_KEY = ['other-sessions'];
 
@@ -67,7 +57,7 @@ function ChangePasswordForm() {
         void save();
       }}
     >
-      <h2 className="text-lg font-semibold">Change password</h2>
+      <h3 className="text-lg font-semibold">Change password</h3>
       {error ? (
         <p role="alert" className="rounded-xl bg-danger-soft p-3 font-semibold text-danger">
           {error}
@@ -131,7 +121,7 @@ function SessionControls() {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">Devices</h2>
+      <h3 className="text-lg font-semibold">Devices</h3>
       <p className="text-ink-2">
         {count === 0
           ? 'You’re only signed in on this device.'
@@ -151,57 +141,22 @@ function SessionControls() {
   );
 }
 
-function TimeZoneSetting() {
-  const queryClient = useQueryClient();
-  const spaces = useQuery({ queryKey: ['spaces'], queryFn: fetchSpaces });
-  const personal = spaces.data?.find((space) => space.kind === 'personal');
-  if (!personal) return null;
-
-  const zones = Intl.supportedValuesOf('timeZone');
-  const options = zones.includes(personal.timeZone) ? zones : [personal.timeZone, ...zones];
-
-  async function save(timeZone: string, spaceId: string) {
-    try {
-      await updateSpace(spaceId, { timeZone });
-      toast('Time zone saved.');
-      await queryClient.invalidateQueries({ queryKey: ['spaces'] });
-    } catch (failure) {
-      toast(failureMessage(failure));
-    }
-  }
-
+export function ProfileSection() {
+  const session = useQuery({ queryKey: SESSION_QUERY_KEY, queryFn: fetchSession });
+  if (!session.data) return null;
   return (
-    <section className="flex max-w-md flex-col gap-3">
-      <h2 className="text-lg font-semibold">Your space</h2>
-      <SelectField
-        label="Time zone"
-        hint="Decides when a bill counts as due today."
-        value={personal.timeZone}
-        onChange={(event) => void save(event.target.value, personal.id)}
-      >
-        {options.map((zone) => (
-          <option key={zone}>{zone}</option>
-        ))}
-      </SelectField>
-    </section>
+    <div className="flex flex-col gap-1">
+      <p className="font-semibold">{session.data.user.name}</p>
+      <p className="text-ink-2">{session.data.user.email}</p>
+    </div>
   );
 }
 
-export function AccountSettings() {
-  const session = useQuery({ queryKey: SESSION_QUERY_KEY, queryFn: fetchSession });
+export function SecuritySection() {
   return (
     <div className="flex flex-col gap-8">
-      {session.data ? (
-        <section className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold">Account</h2>
-          <p>{session.data.user.name}</p>
-          <p className="text-ink-2">{session.data.user.email}</p>
-        </section>
-      ) : null}
-      <TimeZoneSetting />
       <ChangePasswordForm />
       <SessionControls />
-      {session.data?.user.isInstanceAdmin ? <JobStatus /> : null}
     </div>
   );
 }

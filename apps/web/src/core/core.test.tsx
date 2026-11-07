@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
 import { apiRequest, RequestFailure } from './session.ts';
-import { defineFeature, visibleNav, visibleSettings } from './feature.ts';
+import { defineFeature, visibleNav, visibleSpaceSettings } from './feature.ts';
 import { applyTheme, readThemePreference, saveThemePreference } from './theme.ts';
 
 afterEach(() => {
@@ -65,19 +65,19 @@ describe('navigation', () => {
         name: 'plain',
         routes: [],
         nav: [],
-        settings: [{ title: 'Plain', component: Nothing }],
+        spaceSettings: [{ slug: 'plain', title: 'Plain', component: Nothing }],
       }),
       defineFeature({
         name: 'beta',
         flagged: true,
         routes: [],
         nav: [],
-        settings: [{ title: 'Beta', component: Nothing }],
+        spaceSettings: [{ slug: 'beta', title: 'Beta', component: Nothing }],
       }),
       defineFeature({ name: 'none', routes: [], nav: [] }),
     ];
     const titles = (enabled: string[]) =>
-      visibleSettings(withSettings, enabled).map((section) => section.title);
+      visibleSpaceSettings(withSettings, enabled).map((section) => section.title);
     expect(titles([])).toEqual(['Plain']);
     expect(titles(['beta'])).toEqual(['Plain', 'Beta']);
   });

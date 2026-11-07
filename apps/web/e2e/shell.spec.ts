@@ -1,59 +1,14 @@
-import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { join } from 'node:path';
-
-const WCAG_22_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
-const healthy = { status: 'ok', database: 'up' };
-
-async function expectNoViolations(page: Page) {
-  const { violations } = await new AxeBuilder({ page }).withTags(WCAG_22_AA).analyze();
-  expect(
-    violations.map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target.join(' ')) })),
-  ).toEqual([]);
-}
-
-async function saveScreenshot(page: Page, name: string) {
-  const dir = process.env.SCREENSHOT_DIR;
-  if (dir) await page.screenshot({ path: join(dir, `${test.info().project.name}-${name}.png`) });
-}
-
-const visibleNav = (page: Page) =>
-  page.getByRole('navigation', { name: 'Main' }).filter({ visible: true });
-
-const signedIn = {
-  user: {
-    id: 'u1',
-    name: 'Alex Example',
-    email: 'alex@example.com',
-    mustChangePassword: false,
-    isInstanceAdmin: false,
-  },
-  session: { id: 's1' },
-};
+import {
+  expectNoViolations,
+  mockSignedIn,
+  saveScreenshot,
+  signedIn,
+  visibleNav,
+} from './support.ts';
 
 test.beforeEach(async ({ page }) => {
-  await page.route('**/api/health', (route) => route.fulfill({ json: healthy }));
-  await page.route('**/api/v1/features', (route) => route.fulfill({ json: { enabled: [] } }));
-  await page.route('**/api/v1/sign-in-options', (route) =>
-    route.fulfill({ json: { adminPasswordInConsole: false, passwordReset: true } }),
-  );
-  await page.route('**/api/v1/auth/get-session', (route) => route.fulfill({ json: signedIn }));
-  await page.route('**/api/v1/spaces', (route) =>
-    route.fulfill({
-      json: [
-        {
-          id: 'sp1',
-          name: 'Personal',
-          kind: 'personal',
-          timeZone: 'America/Chicago',
-          role: 'owner',
-        },
-      ],
-    }),
-  );
-  await page.route('**/api/v1/auth/list-sessions', (route) =>
-    route.fulfill({ json: [{ id: 's1' }] }),
-  );
+  await mockSignedIn(page);
 });
 
 for (const theme of ['light', 'dark'] as const) {
@@ -66,7 +21,9 @@ for (const theme of ['light', 'dark'] as const) {
 
     for (const [name, path, heading] of [
       ['home', '/', 'Home'],
-      ['settings', '/settings', 'Settings'],
+      ['settings', '/settings/appearance', 'Settings'],
+      ['time zone', '/settings/time-zone', 'Settings'],
+      ['more', '/more', 'More'],
       ['not found', '/does-not-exist', 'Page not found'],
     ] as const) {
       test(`${name} has no WCAG 2.2 AA violations`, async ({ page }) => {
@@ -93,29 +50,30 @@ test('exactly one navigation shows, in the right place for the screen', async ({
 
 test('navigating updates the page, marks the link, and moves focus to the content', async ({
   page,
-}) => {
+}, info) => {
   await page.goto('/');
   const nav = visibleNav(page);
   await expect(nav.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page');
 
-  await nav.getByRole('link', { name: 'Settings' }).click();
+  // On phones, the settings areas are behind More.
+  const marked = info.project.name === 'phone' ? 'More' : 'Settings';
+  if (marked === 'More') {
+    await nav.getByRole('link', { name: 'More' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await expect(page).toHaveURL(/\/settings$/);
+  } else {
+    await nav.getByRole('link', { name: 'Settings' }).click();
+    // With room for both, the area opens on its first section.
+    await expect(page).toHaveURL(/\/settings\/profile$/);
+  }
 
-  await expect(page).toHaveURL(/\/settings$/);
   await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
-  await expect(nav.getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+  await expect(nav.getByRole('link', { name: marked })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('main')).toBeFocused();
 
   // The current page reads differently from the others, not only by its background.
-  await expect(nav.getByRole('link', { name: 'Settings' })).toHaveCSS('font-weight', '600');
+  await expect(nav.getByRole('link', { name: marked })).toHaveCSS('font-weight', '600');
   await expect(nav.getByRole('link', { name: 'Home' })).toHaveCSS('font-weight', '500');
-});
-
-test('going straight to a page works, and back returns', async ({ page }) => {
-  await page.goto('/settings');
-  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
-  await visibleNav(page).getByRole('link', { name: 'Home' }).click();
-  await page.goBack();
-  await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
 });
 
 test('the skip link is first and jumps to the content', async ({ page }, info) => {
@@ -138,7 +96,7 @@ test.describe('appearance setting', () => {
 
   test('applies immediately and survives a reload', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' });
-    await page.goto('/settings');
+    await page.goto('/settings/appearance');
     await expect(page.getByRole('radio', { name: 'Match system' })).toBeChecked();
     expect(await background(page)).toBe(LIGHT);
 
@@ -155,7 +113,7 @@ test.describe('appearance setting', () => {
     await page.addInitScript(() => {
       localStorage.setItem('remidy.theme', 'light');
     });
-    await page.goto('/settings');
+    await page.goto('/settings/appearance');
     expect(await background(page)).toBe(LIGHT);
 
     await page.getByText('Match system', { exact: true }).click();
@@ -163,7 +121,7 @@ test.describe('appearance setting', () => {
   });
 
   test('can be changed with the keyboard', async ({ page }) => {
-    await page.goto('/settings');
+    await page.goto('/settings/appearance');
     await page.getByRole('radio', { name: 'Match system' }).focus();
     await page.keyboard.press('ArrowRight');
     await expect(page.getByRole('radio', { name: 'Light' })).toBeChecked();
@@ -237,9 +195,12 @@ test.describe('background job status', () => {
       asked = true;
       return route.abort();
     });
-    await page.goto('/settings');
+    await page.goto('/settings/security');
     await expect(page.getByRole('heading', { name: 'Devices' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Background jobs' })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Administration' })).toHaveCount(0);
+    await page.goto('/admin/jobs');
+    await expect(page.getByRole('heading', { name: 'Page not found', level: 1 })).toBeVisible();
     expect(asked).toBe(false);
   });
 
@@ -262,7 +223,7 @@ test.describe('background job status', () => {
         ],
       }),
     );
-    await page.goto('/settings');
+    await page.goto('/admin/jobs');
     const list = page.getByRole('list', { name: 'Background jobs' });
     await expect(list.getByText('Working', { exact: true })).toBeVisible();
     await expect(list.getByText('Hasn’t run yet')).toBeVisible();
@@ -276,7 +237,7 @@ test.describe('background job status', () => {
   test('says so when the status can’t be loaded', async ({ page }) => {
     await asAdmin(page);
     await page.route('**/api/v1/admin/jobs', (route) => route.abort());
-    await page.goto('/settings');
+    await page.goto('/admin/jobs');
     // The app tries a few times before giving up.
     await expect(page.getByRole('alert')).toContainText('couldn’t be loaded', { timeout: 20_000 });
     await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
@@ -290,7 +251,7 @@ test('a toast leaves the navigation and the button just pressed uncovered', asyn
   await page.route('**/api/v1/auth/list-sessions', (route) =>
     route.fulfill({ json: [{ id: 's1' }, { id: 's2' }] }),
   );
-  await page.goto('/settings');
+  await page.goto('/settings/security');
   const button = page.getByRole('button', { name: 'Sign out other devices' });
   await button.click();
   const toast = page.locator('[data-sonner-toast]');
@@ -511,8 +472,9 @@ test.describe('server status', () => {
 });
 
 test('controls and links are large enough to tap', async ({ page }) => {
-  await page.goto('/settings');
+  await page.goto('/settings/appearance');
   const nav = visibleNav(page).getByRole('link');
+  // Home and More on phones. Home and Settings in the sidebar, with no household or admin.
   await expect(nav).toHaveCount(2);
   for (let i = 0; i < (await nav.count()); i += 1) {
     expect((await nav.nth(i).boundingBox())?.height).toBeGreaterThanOrEqual(44);
@@ -522,7 +484,14 @@ test('controls and links are large enough to tap', async ({ page }) => {
 });
 
 test('no page scrolls sideways', async ({ page }) => {
-  for (const path of ['/', '/settings', '/does-not-exist']) {
+  for (const path of [
+    '/',
+    '/settings',
+    '/settings/security',
+    '/settings/time-zone',
+    '/more',
+    '/does-not-exist',
+  ]) {
     await page.goto(path);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
