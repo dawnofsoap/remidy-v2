@@ -1,4 +1,13 @@
-import { describeSchedule, formatMoney, type Cents, type Schedule } from '@remidy/domain';
+import {
+  addDays,
+  describeSchedule,
+  dueDates,
+  formatDate,
+  formatMoney,
+  today,
+  type Cents,
+  type Schedule,
+} from '@remidy/domain';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Page } from '../../../core/Page.tsx';
@@ -10,7 +19,9 @@ import {
   List,
   ListRow,
   LoadingState,
+  Table,
   toast,
+  type TableColumn,
 } from '../../../ui/index.ts';
 import { AGENDA_KEY, BILLS_KEY, fetchBills, type Bill } from '../api.ts';
 import { BillForm } from './BillForm.tsx';
@@ -19,6 +30,21 @@ export const amountText = (bill: { expectedCents: number | null; isVariable: boo
   bill.expectedCents === null
     ? 'Varies'
     : `${formatMoney(bill.expectedCents as Cents)}${bill.isVariable ? ', varies' : ''}`;
+
+/** The next due date from today, in words, or a dash when there isn't one. */
+function nextDue(bill: Bill): string {
+  if (bill.archived) return '—';
+  const from = today(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [next] = dueDates(bill.schedule as Schedule, from, addDays(from, 800));
+  return next ? formatDate(next, 'short') : '—';
+}
+
+const nameCell = (bill: Bill) => (
+  <span className="flex flex-col">
+    <span className="font-semibold">{bill.name}</span>
+    {bill.categoryName ? <span className="text-sm text-ink-2">{bill.categoryName}</span> : null}
+  </span>
+);
 
 /** Every bill the person sees, personal and shared, with a way to add and edit them. */
 export function BillsPage() {
@@ -36,33 +62,75 @@ export function BillsPage() {
     ]);
   }
 
+  const open = (bill: Bill | null) => {
+    setEditing({ bill });
+  };
   const add = (
     <Button
       onClick={() => {
-        setEditing({ bill: null });
+        open(null);
       }}
     >
       Add bill
     </Button>
   );
 
-  const row = (bill: Bill) => (
-    <ListRow
-      key={bill.id}
-      title={bill.name}
-      subtitle={[
-        describeSchedule(bill.schedule as Schedule),
-        bill.categoryName,
-        household ? (bill.shared ? 'Shared' : 'Personal') : null,
-        bill.autopay ? 'Auto-pay' : null,
-      ]
-        .filter(Boolean)
-        .join(' · ')}
-      end={<span className="font-semibold tabular-nums">{amountText(bill)}</span>}
-      onClick={() => {
-        setEditing({ bill });
-      }}
-    />
+  const columns: TableColumn<Bill>[] = [
+    { key: 'name', header: 'Name', cell: nameCell },
+    {
+      key: 'schedule',
+      header: 'Schedule',
+      cell: (bill) => describeSchedule(bill.schedule as Schedule),
+    },
+    { key: 'next', header: 'Next due', cell: nextDue },
+    ...(household
+      ? [
+          {
+            key: 'whose',
+            header: 'Whose',
+            cell: (bill: Bill) => (bill.shared ? 'Shared' : 'Personal'),
+          },
+        ]
+      : []),
+    { key: 'autopay', header: 'Auto-pay', cell: (bill) => (bill.autopay ? 'Yes' : '') },
+    { key: 'amount', header: 'Amount', numeric: true, cell: amountText },
+  ];
+
+  /** A table on wider screens, and a list on phones, where columns don't fit. */
+  const billList = (label: string, items: Bill[]) => (
+    <>
+      <div className="hidden md:block">
+        <Table
+          label={label}
+          columns={columns}
+          rows={items}
+          rowKey={(bill) => bill.id}
+          onRowClick={open}
+        />
+      </div>
+      <div className="md:hidden">
+        <List label={label}>
+          {items.map((bill) => (
+            <ListRow
+              key={bill.id}
+              title={bill.name}
+              subtitle={[
+                describeSchedule(bill.schedule as Schedule),
+                bill.categoryName,
+                household ? (bill.shared ? 'Shared' : 'Personal') : null,
+                bill.autopay ? 'Auto-pay' : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              end={<span className="font-semibold tabular-nums">{amountText(bill)}</span>}
+              onClick={() => {
+                open(bill);
+              }}
+            />
+          ))}
+        </List>
+      </div>
+    </>
   );
 
   let body;
@@ -82,10 +150,7 @@ export function BillsPage() {
             fillPage={archived.length === 0}
           />
         ) : (
-          <>
-            <div>{add}</div>
-            <List label="Bills">{active.map(row)}</List>
-          </>
+          billList('Bills', active)
         )}
         {archived.length > 0 ? (
           <>
@@ -100,15 +165,16 @@ export function BillsPage() {
                 {showArchived ? 'Hide archived' : `Show archived (${String(archived.length)})`}
               </Button>
             </div>
-            {showArchived ? <List label="Archived bills">{archived.map(row)}</List> : null}
+            {showArchived ? billList('Archived bills', archived) : null}
           </>
         ) : null}
       </div>
     );
   }
 
+  const hasBills = Boolean(bills.data?.some((bill) => !bill.archived));
   return (
-    <Page title="Bills">
+    <Page title="Bills" actions={hasBills ? add : undefined}>
       {body}
       {editing ? (
         <BillForm
