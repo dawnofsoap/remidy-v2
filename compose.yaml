@@ -51,7 +51,7 @@ services:
       ENCRYPTION_KEY: cmVtaWR5X2Rldl9vbmx5X2tleV8zMl9ieXRlc19sb24=
       DATABASE_URL: postgresql://remidy:remidy_dev_only@db:5432/remidy
       # Flagged features being built, so they can be tried here before anywhere else.
-      ENABLED_FEATURES: categories,bills
+      ENABLED_FEATURES: bills
     depends_on:
       db:
         condition: service_healthy

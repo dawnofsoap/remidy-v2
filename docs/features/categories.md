@@ -1,6 +1,6 @@
 # Feature: Categories
 
-**Status:** Approved
+**Status:** Done
 **Issue:** #
 
 ## Problem
