@@ -18,6 +18,7 @@ const entry = (id: string, name: string, dueOn: string, expectedCents: number | 
   isVariable: expectedCents === null,
   categoryName: 'Utilities',
   state: 'open',
+  paidCents: 0,
 });
 
 const bill = (id: string, name: string, expectedCents: number | null) => ({
