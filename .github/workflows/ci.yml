@@ -68,6 +68,27 @@ jobs:
         if: failure()
         run: docker compose logs --no-color
 
+  production-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      STACK: docker compose -p remidy-prodcheck -f deploy/compose.yaml -f deploy/check/compose.yaml --env-file deploy/check/check.env
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @remidy/web exec playwright install --with-deps chromium
+      - name: Build the image and start it behind TLS
+        run: $STACK up --detach --build --wait --wait-timeout 300
+      - run: pnpm --filter @remidy/web e2e:production
+      - name: Show logs on failure
+        if: failure()
+        run: $STACK logs --no-color
+
   commit-title:
     runs-on: ubuntu-latest
     timeout-minutes: 2

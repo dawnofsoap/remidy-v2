@@ -1,0 +1,12 @@
+# The image copies only what it names, and this keeps everything else out of the build context.
+.git
+.github
+.env
+.env.*
+notes
+backups
+coverage
+**/node_modules
+**/dist
+**/test-results
+**/playwright-report

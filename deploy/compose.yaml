@@ -1,0 +1,55 @@
+# Production: copy .env.example to .env, fill it in, then from the repo root:
+#   docker compose -f deploy/compose.yaml --env-file .env up --detach --build
+# Put a reverse proxy with TLS in front of port 3000.
+name: remidy
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: remidy
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: remidy
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U remidy -d remidy']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    init: true
+    # The app writes nothing to disk, so it doesn't get to.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - DATABASE_URL=postgresql://remidy:${POSTGRES_PASSWORD}@db:5432/remidy
+      # A name alone passes the value from .env, and leaves it unset if it isn't there.
+      - PUBLIC_URL
+      - AUTH_SECRET
+      - ENCRYPTION_KEY
+      - ENCRYPTION_OLD_KEYS
+      - TRUST_PROXY
+      - LOG_LEVEL
+      - ENABLED_FEATURES
+      - SMTP_URL
+      - EMAIL_FROM
+    ports:
+      - 127.0.0.1:${PORT:-3000}:3000
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:

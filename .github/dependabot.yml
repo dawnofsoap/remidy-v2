@@ -15,6 +15,12 @@ updates:
       # typescript-eslint does not support TypeScript 7 yet.
       - dependency-name: typescript
         versions: ['>=6.1.0']
+  - package-ecosystem: docker
+    directory: /deploy
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
   - package-ecosystem: github-actions
     directory: /
     schedule:
