@@ -49,6 +49,27 @@ async function get<T>(url: string, schema: z.ZodType<T>, signal?: AbortSignal): 
   return schema.parse(await response.json());
 }
 
+/**
+ * Calls the API for a feature. A failure becomes a RequestFailure with a message that's safe to
+ * show, and field problems keyed by field name. Without a schema, the response body is ignored.
+ */
+export async function apiRequest<T = undefined>(
+  method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
+  url: string,
+  options: { body?: object; schema?: z.ZodType<T>; signal?: AbortSignal } = {},
+): Promise<T> {
+  const { body, schema, signal } = options;
+  const response = await fetch(url, {
+    method,
+    ...(body
+      ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }
+      : {}),
+    ...(signal ? { signal } : {}),
+  });
+  if (!response.ok) throw await failureFrom(response, GENERIC_FAILURE);
+  return (schema ? schema.parse(await response.json()) : undefined) as T;
+}
+
 export const fetchSignInOptions = ({ signal }: { signal: AbortSignal }) =>
   get('/api/v1/sign-in-options', signInOptionsResponse, signal);
 
