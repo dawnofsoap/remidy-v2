@@ -1,4 +1,4 @@
-import type { AgendaResponse, BillResponse, BillScheduleInput } from '@remidy/contracts';
+import type { BillResponse, BillScheduleInput } from '@remidy/contracts';
 import {
   bill,
   billOccurrence,
@@ -9,8 +9,6 @@ import {
   type Transaction,
 } from '@remidy/db';
 import {
-  compareDates,
-  daysBetween,
   describeSchedule,
   parseCalendarDate,
   scheduleProblem,
@@ -18,9 +16,9 @@ import {
   type CalendarDate,
   type Schedule,
 } from '@remidy/domain';
-import { and, asc, eq, gte, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, isNotNull, isNull, sql } from 'drizzle-orm';
 import { recordActivity } from '../../core/activity.ts';
-import { AppError } from '../../core/errors.ts';
+import { AppError, isStillUsed } from '../../core/errors.ts';
 import { roleAtLeast } from '../../core/spaces.ts';
 import { firstDueDates, futureDueDates } from './occurrences.ts';
 
@@ -183,50 +181,6 @@ export function listBills(orm: Orm | Transaction, userId: string, billId?: strin
     .orderBy(sql`lower(${bill.name})`, asc(bill.id)) as Promise<BillResponse[]>;
 }
 
-/** Due dates across every space the person belongs to: anything overdue, and the range asked for. */
-export async function agenda(
-  orm: Orm,
-  userId: string,
-  from: CalendarDate,
-  to: CalendarDate,
-): Promise<AgendaResponse> {
-  const spaceToday = sql`(now() at time zone ${space.timeZone})::date`;
-  const entries = (where: ReturnType<typeof and>) =>
-    orm
-      .select({
-        id: billOccurrence.id,
-        billId: billOccurrence.billId,
-        shared: sql<boolean>`${space.kind} = 'shared'`.mapWith(Boolean),
-        name: billOccurrence.billName,
-        dueOn: billOccurrence.dueOn,
-        expectedCents: billOccurrence.expectedCents,
-        isVariable: billOccurrence.isVariable,
-        categoryName: category.name,
-        state: billOccurrence.state,
-      })
-      .from(billOccurrence)
-      .innerJoin(
-        membership,
-        and(eq(membership.spaceId, billOccurrence.spaceId), eq(membership.userId, userId)),
-      )
-      .innerJoin(space, eq(space.id, billOccurrence.spaceId))
-      .leftJoin(category, eq(category.id, billOccurrence.categoryId))
-      .where(where)
-      .orderBy(asc(billOccurrence.dueOn), sql`lower(${billOccurrence.billName})`);
-
-  const [overdue, upcoming] = await Promise.all([
-    entries(and(eq(billOccurrence.state, 'open'), lt(billOccurrence.dueOn, spaceToday))),
-    entries(
-      and(
-        gte(billOccurrence.dueOn, from),
-        lte(billOccurrence.dueOn, to),
-        or(sql`${billOccurrence.dueOn} >= ${spaceToday}`, sql`${billOccurrence.state} <> 'open'`),
-      ),
-    ),
-  ]);
-  return { overdue, upcoming };
-}
-
 async function timeZoneOf(transaction: Transaction, spaceId: string): Promise<string> {
   const [row] = await transaction
     .select({ timeZone: space.timeZone })
@@ -371,12 +325,23 @@ export function updateBill(
   });
 }
 
-/** Deletes a bill and its due dates. Once payments exist, a bill with any will be refused. */
+const HAS_PAYMENTS = new AppError(
+  409,
+  'has_payments',
+  'This bill has payments, so it can’t be deleted. Archive it instead to keep its history.',
+);
+
+/** Deletes a bill and its due dates. The database refuses one with payments. */
 export function deleteBill(orm: Orm, spaceId: string, billId: string, userId: string) {
   return orm.transaction(async (transaction) => {
     const before = await readBill(transaction, userId, billId);
     if (before.spaceId !== spaceId) throw NOT_FOUND;
-    await transaction.delete(bill).where(and(eq(bill.id, billId), eq(bill.spaceId, spaceId)));
+    try {
+      await transaction.delete(bill).where(and(eq(bill.id, billId), eq(bill.spaceId, spaceId)));
+    } catch (error) {
+      if (isStillUsed(error)) throw HAS_PAYMENTS;
+      throw error;
+    }
     await recordActivity(transaction, {
       spaceId,
       actorId: userId,
@@ -387,18 +352,6 @@ export function deleteBill(orm: Orm, spaceId: string, billId: string, userId: st
       after: null,
     });
   });
-}
-
-/** Checks a range is in order and not too long. */
-export function checkRange(fromText: string, toText: string, maxDays: number) {
-  const from = parseCalendarDate(fromText);
-  const to = parseCalendarDate(toText);
-  if (!from) throw invalid('from', 'That date doesn’t exist.');
-  if (!to) throw invalid('to', 'That date doesn’t exist.');
-  if (compareDates(from, to) > 0) throw invalid('to', 'The end can’t be before the start.');
-  if (daysBetween(from, to) > maxDays)
-    throw invalid('to', `Ask for ${String(maxDays)} days or fewer.`);
-  return { from, to };
 }
 
 /**

@@ -50,6 +50,13 @@
       "when": 1794079654500,
       "tag": "0006_bills",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794092127635,
+      "tag": "0007_payments",
+      "breakpoints": true
     }
   ]
 }

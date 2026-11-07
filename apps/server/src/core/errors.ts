@@ -61,3 +61,16 @@ export function registerErrorHandling(app: FastifyInstance): void {
     send(request, reply, 404, CLIENT_ERRORS[404] ?? INTERNAL),
   );
 }
+
+/** The Postgres error code behind a failed query, which Drizzle may wrap in one or more errors. */
+function databaseErrorCode(error: unknown): string | undefined {
+  for (let current = error; current; current = (current as { cause?: unknown }).cause) {
+    const { code } = current as { code?: unknown };
+    if (typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code)) return code;
+  }
+  return undefined;
+}
+
+/** The database refused to delete something because other rows still point at it. */
+export const isStillUsed = (error: unknown) =>
+  ['23001', '23503'].includes(databaseErrorCode(error) ?? '');
