@@ -152,12 +152,28 @@ export interface Job {
   run: () => Promise<void>;
 }
 
+/** Where a feature puts its sample data. */
+export interface SampleContext {
+  /** The admin, who owns the sample data. */
+  userId: string;
+  personalSpaceId: string;
+  /** A sample household the admin owns, with a made-up second member. */
+  householdId: string;
+  /** Replace this feature's sample data rather than keeping what's there. */
+  fresh: boolean;
+}
+
 export interface Feature {
   name: string;
   /** A flagged feature stays off unless named in the ENABLED_FEATURES setting. */
   flagged?: boolean;
   routes(dependencies: FeatureDependencies): Route[];
   jobs?(dependencies: FeatureDependencies): Job[];
+  /**
+   * Adds fictional data for development, through the feature's own code, and says what it added.
+   * Must be safe to run again, and only replace its own sample data when asked to.
+   */
+  sampleData?(dependencies: FeatureDependencies, context: SampleContext): Promise<string>;
 }
 
 export function defineFeature(feature: Feature): Feature {

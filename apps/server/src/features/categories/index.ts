@@ -6,3 +6,6 @@ export const categories = defineFeature({
   name: 'categories',
   routes: categoryRoutes,
 });
+
+// For other features' sample data, such as Bills, to pick categories by name.
+export { listCategories } from './repo.ts';

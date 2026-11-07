@@ -2,6 +2,7 @@ import { defineFeature } from '../../core/feature.ts';
 import { defineJob } from '../../core/jobs.ts';
 import { extendDueDates } from './repo.ts';
 import { billRoutes } from './routes.ts';
+import { addSampleBills } from './sample-data.ts';
 
 /** Bills and each time they're due. */
 export const bills = defineFeature({
@@ -9,6 +10,7 @@ export const bills = defineFeature({
   // Off until the screens are finished and tried for real.
   flagged: true,
   routes: billRoutes,
+  sampleData: addSampleBills,
   jobs: ({ database }) => [
     defineJob({
       name: 'bill-due-dates',

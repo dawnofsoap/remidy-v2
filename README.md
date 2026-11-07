@@ -35,6 +35,19 @@ In development, password reset emails are printed to the same console instead of
 If new packages were added since you last started it, restart with `docker compose down` and then
 `docker compose up`. Otherwise the running server can't find them.
 
+## Sample data
+
+To see how screens look with something in them, fill the development database with fictional data:
+
+```sh
+docker compose exec server pnpm --filter @remidy/server sample-data
+```
+
+It adds a household, The Example Household, with a made-up second member who can't sign in, and bills of every kind:
+personal and shared, fixed and varying, auto-pay, overdue, ending and archived. Dates count from today, so the data
+always looks current. Running it again adds nothing new, and `--fresh` replaces the sample data. Anything else in the
+database is left alone. It refuses to run in production.
+
 ## Running it for real
 
 Remidy runs as one image plus Postgres, behind a reverse proxy of your choice that handles TLS.
