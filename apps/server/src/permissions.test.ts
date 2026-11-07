@@ -23,6 +23,24 @@ const PUBLIC_ROUTES = [
   'POST /api/v1/auth/*',
 ];
 
+// Every route, and the least access it needs.
+const ROUTE_ACCESS: Record<string, string> = {
+  'GET /api/health': 'public',
+  'GET /api/v1/features': 'public',
+  'GET /api/v1/sign-in-options': 'public',
+  'POST /api/v1/auth/*': 'public',
+  'GET /api/v1/spaces': 'signed-in',
+  'GET /api/v1/admin/jobs': 'instance-admin',
+  'GET /api/v1/spaces/:spaceId': 'space member',
+  'PATCH /api/v1/spaces/:spaceId': 'space manager',
+  'GET /api/v1/spaces/:spaceId/members': 'space member',
+  'GET /api/v1/spaces/:spaceId/activity': 'space member',
+  'GET /api/v1/spaces/:spaceId/categories': 'space member',
+  'POST /api/v1/spaces/:spaceId/categories': 'space manager',
+  'PATCH /api/v1/spaces/:spaceId/categories/:categoryId': 'space manager',
+  'DELETE /api/v1/spaces/:spaceId/categories/:categoryId': 'space manager',
+};
+
 let test: TestDatabase;
 let orm: Orm;
 let auth: Auth;
@@ -320,6 +338,18 @@ describe('every route in the app', () => {
       .filter((route) => route.access === 'public')
       .map(key);
     expect(open.sort()).toEqual(PUBLIC_ROUTES);
+  });
+
+  // The tests below check each route against the access it declares, so they can't notice a
+  // route that declares too little. This list makes every change to access a deliberate one.
+  it('asks for exactly the access listed here', () => {
+    const declared = Object.fromEntries(
+      routes().map((route) => [
+        key(route),
+        typeof route.access === 'object' ? `space ${route.access.space}` : route.access,
+      ]),
+    );
+    expect(declared).toEqual(ROUTE_ACCESS);
   });
 
   it('has routes to check, so these tests can’t pass by checking nothing', () => {
