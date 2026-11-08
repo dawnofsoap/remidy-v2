@@ -167,6 +167,8 @@ describe('reading a v1 export', () => {
       exportOf([
         bill({ bill_name: 'Twice a month', billing_frequency: 'semimonthly' }),
         bill({ bill_name: 'No date', start_date: null, due_day: null }),
+        bill({ bill_name: 'Day zero', start_date: null, due_day: 0 }),
+        bill({ bill_name: 'Day 45', start_date: null, due_day: 45 }),
         bill({ bill_name: 'Bad amount', amount: 'lots' }),
         bill({ bill_name: 'No amount', amount: null }),
         bill({ bill_name: 'Fine' }),
@@ -177,10 +179,13 @@ describe('reading a v1 export', () => {
     expect(skipped.map((item) => item.name)).toEqual([
       'Twice a month',
       'No date',
+      'Day zero',
+      'Day 45',
       'Bad amount',
       'No amount',
     ]);
     expect(skipped[0]?.reason).toMatch(/semimonthly/);
+    expect(skipped.find((item) => item.name === 'Bad amount')?.reason).toMatch(/“lots”/);
   });
 
   it('collects categories from the list and from bills, once each, in order', () => {
