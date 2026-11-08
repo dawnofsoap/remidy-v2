@@ -17,8 +17,13 @@ const buttonStyles = cva(
         ghost: 'bg-transparent text-ink',
         danger: 'bg-danger-soft text-danger',
       },
+      size: {
+        normal: '',
+        // For dense layouts such as a calendar day, still meeting the 24px minimum target.
+        small: 'min-h-6 rounded-md px-1.5 text-sm font-medium',
+      },
     },
-    defaultVariants: { variant: 'primary' },
+    defaultVariants: { variant: 'primary', size: 'normal' },
   },
 );
 
@@ -29,6 +34,7 @@ interface ButtonProps extends ComponentProps<'button'>, VariantProps<typeof butt
 
 export function Button({
   variant,
+  size,
   busy = false,
   disabled = false,
   className,
@@ -40,7 +46,7 @@ export function Button({
       type={type}
       disabled={disabled || busy}
       aria-busy={busy || undefined}
-      className={cn(buttonStyles({ variant }), className)}
+      className={cn(buttonStyles({ variant, size }), className)}
       {...props}
     />
   );

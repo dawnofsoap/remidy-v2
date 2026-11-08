@@ -102,6 +102,8 @@ export const agendaQuery = z.object({ from: calendarDateText, to: calendarDateTe
 export const agendaEntry = z.object({
   id: z.string(),
   billId: z.string(),
+  /** The space it belongs to, which paying it goes through. */
+  spaceId: z.string(),
   shared: z.boolean(),
   name: z.string(),
   dueOn: z.string(),
@@ -121,3 +123,14 @@ export const agendaResponse = z.object({
   upcoming: z.array(agendaEntry),
 });
 export type AgendaResponse = z.infer<typeof agendaResponse>;
+
+/** A period's totals, by the one definition every screen uses. */
+export const totalsResponse = z.object({
+  /** Due dates in the period that weren't skipped. */
+  dueCents: z.number(),
+  /** Due dates in the period with no amount, from bills that vary. */
+  unknownCount: z.number(),
+  /** Payments made in the period that weren't voided. */
+  paidCents: z.number(),
+});
+export type TotalsResponse = z.infer<typeof totalsResponse>;

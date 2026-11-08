@@ -276,6 +276,30 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
   await expect(page.getByRole('main')).toContainText('Phone');
   await expect(page.getByRole('list', { name: 'Overdue' })).toHaveCount(0);
 
+  // Paying it from Home, in part and then the rest, then seeing it on the calendar.
+  await page.getByRole('button', { name: /Phone/ }).click();
+  await dialog.getByLabel('Amount paid').fill('20');
+  await dialog.getByRole('button', { name: 'Save payment' }).click();
+  await expect(page.getByRole('button', { name: /Phone/ })).toContainText('Paid $20.00');
+  await expect(page.getByRole('region', { name: 'This month' })).toContainText('Paid this month');
+
+  await page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Calendar' })
+    .click();
+  await expect(page.getByRole('heading', { name: 'Calendar', level: 1 })).toBeVisible();
+  await expect(page.getByRole('main')).toContainText('Phone');
+
+  // Its history shows the payment, which can be voided with a reason and stays listed.
+  await page.goto('/bills');
+  await table.getByRole('row', { name: /Phone/ }).click();
+  await dialog.getByRole('button', { name: 'Go to History' }).click();
+  await dialog.getByRole('button', { name: 'Void…' }).click();
+  await dialog.getByLabel('Why void it?').fill('Wrong bill');
+  await dialog.getByRole('button', { name: 'Void payment' }).click();
+  await expect(dialog.getByText('Wrong bill')).toBeVisible();
+  await page.keyboard.press('Escape');
+
   // On a phone, editing is a bottom sheet with the steps as tabs, and saves from any of them.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/bills');
@@ -286,11 +310,15 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(bills.getByRole('button', { name: /Water and sewer/ })).toBeVisible();
 
+  // A bill with payments, even voided ones, keeps its history: it can be archived, not deleted.
   await bills.getByRole('button', { name: /Phone/ }).click();
   await dialog.getByRole('button', { name: 'Go to Details' }).click();
   await dialog.getByRole('button', { name: 'Delete…' }).click();
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Archive it instead');
+  await dialog.getByRole('button', { name: 'Archive' }).click();
   await expect(bills.getByRole('button', { name: /Phone/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Show archived (1)' })).toBeVisible();
 });
 
 test('a wrong password is refused with a clear message', async ({ page }) => {

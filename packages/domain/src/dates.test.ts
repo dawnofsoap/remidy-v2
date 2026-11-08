@@ -7,10 +7,12 @@ import {
   dateFromParts,
   dateInputValue,
   datePartsOf,
+  dayOfWeek,
   daysBetween,
   formatDate,
   formatInstant,
   isValidTimeZone,
+  monthEnd,
   parseCalendarDate,
   parseTypedDate,
   today,
@@ -200,6 +202,26 @@ describe('compareDates and daysBetween', () => {
         expect(Math.sign(compareDates(end, start))).toBe(Math.sign(days));
       }),
     );
+  });
+});
+
+describe('weekdays and month ends', () => {
+  it.each([
+    ['2026-11-08', 0],
+    ['2026-11-09', 1],
+    ['2026-11-14', 6],
+    ['1969-12-31', 3],
+  ])('%s is day %i of the week, counting Sunday as 0', (text, day) => {
+    expect(dayOfWeek(date(text))).toBe(day);
+  });
+
+  it.each([
+    ['2026-02-10', '2026-02-28'],
+    ['2028-02-01', '2028-02-29'],
+    ['2026-12-31', '2026-12-31'],
+    ['2026-04-15', '2026-04-30'],
+  ])('the month of %s ends on %s', (text, end) => {
+    expect(monthEnd(date(text))).toBe(end);
   });
 });
 

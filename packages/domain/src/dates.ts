@@ -129,3 +129,14 @@ export function formatInstant(iso: string, timeZone: string): string {
     .toZonedDateTimeISO(timeZone)
     .toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
 }
+
+/** The day of the week, from 0 for Sunday to 6 for Saturday. */
+export function dayOfWeek(date: CalendarDate): number {
+  return plain(date).dayOfWeek % 7;
+}
+
+/** The last day of the month a date is in. */
+export function monthEnd(date: CalendarDate): CalendarDate {
+  const day = plain(date);
+  return toCalendarDate(day.with({ day: day.daysInMonth }));
+}

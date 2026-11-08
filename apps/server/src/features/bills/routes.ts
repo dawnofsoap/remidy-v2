@@ -2,6 +2,7 @@ import {
   AGENDA_MAX_DAYS,
   agendaQuery,
   agendaResponse,
+  totalsResponse,
   billParams,
   billResponse,
   createBillRequest,
@@ -10,7 +11,7 @@ import {
 } from '@remidy/contracts';
 import { z } from 'zod';
 import { defineRoute, type FeatureDependencies } from '../../core/feature.ts';
-import { agenda, checkRange } from './agenda.repo.ts';
+import { agenda, checkRange, periodTotals } from './agenda.repo.ts';
 import { createBill, deleteBill, listBills, moveBill, updateBill } from './repo.ts';
 
 const SPACE_BILLS = '/api/v1/spaces/:spaceId/bills';
@@ -33,6 +34,17 @@ export const billRoutes = ({ database: { orm } }: FeatureDependencies) => [
     handler: ({ user, query }) => {
       const { from, to } = checkRange(query.from, query.to, AGENDA_MAX_DAYS);
       return agenda(orm, user.userId, from, to);
+    },
+  }),
+  defineRoute({
+    method: 'GET',
+    url: '/api/v1/totals',
+    access: 'signed-in',
+    query: agendaQuery,
+    response: totalsResponse,
+    handler: ({ user, query }) => {
+      const { from, to } = checkRange(query.from, query.to, AGENDA_MAX_DAYS);
+      return periodTotals(orm, user.userId, from, to);
     },
   }),
   // Changing goes through the bill's space, so the usual role check applies.

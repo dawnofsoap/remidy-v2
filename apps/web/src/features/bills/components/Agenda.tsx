@@ -4,6 +4,7 @@ import {
   dateFromParts,
   datePartsOf,
   formatDate,
+  monthEnd,
   today,
   type CalendarDate,
 } from '@remidy/domain';
@@ -19,9 +20,12 @@ import {
   ListRow,
   LoadingState,
 } from '../../../ui/index.ts';
-import { AGENDA_KEY, fetchAgenda } from '../api.ts';
-import { amountText } from './BillsPage.tsx';
+import { AGENDA_KEY, fetchAgenda, fetchTotals, TOTALS_KEY } from '../api.ts';
+import { useState } from 'react';
+import { statusOf } from './dueStatus.ts';
 import { MonthSummary } from './MonthSummary.tsx';
+import { PaySheet } from './PaySheet.tsx';
+import { useRefresh } from '../useRefresh.ts';
 
 const MONTHS_SHOWN = 3;
 
@@ -44,27 +48,39 @@ function AgendaList({
   label,
   entries,
   showOwner,
+  overdue = false,
+  onOpen,
 }: {
   label: string;
   entries: AgendaEntry[];
   showOwner: boolean;
+  overdue?: boolean;
+  onOpen: (entry: AgendaEntry) => void;
 }) {
   return (
     <List label={label}>
-      {entries.map((entry) => (
-        <ListRow
-          key={entry.id}
-          title={entry.name}
-          subtitle={[
-            formatDate(entry.dueOn as CalendarDate, 'short'),
-            entry.categoryName,
-            showOwner ? (entry.shared ? 'Shared' : 'Personal') : null,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-          end={<span className="font-semibold tabular-nums">{amountText(entry)}</span>}
-        />
-      ))}
+      {entries.map((entry) => {
+        const status = statusOf(entry, overdue);
+        return (
+          <ListRow
+            key={entry.id}
+            title={entry.name}
+            subtitle={[
+              formatDate(entry.dueOn as CalendarDate, 'short'),
+              entry.categoryName,
+              showOwner ? (entry.shared ? 'Shared' : 'Personal') : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            end={
+              <span className={cn('font-semibold tabular-nums', status.tone)}>{status.text}</span>
+            }
+            onClick={() => {
+              onOpen(entry);
+            }}
+          />
+        );
+      })}
     </List>
   );
 }
@@ -78,6 +94,13 @@ export function Agenda() {
     queryKey: [...AGENDA_KEY, from, to],
     queryFn: ({ signal }) => fetchAgenda(from, to, signal),
   });
+  const monthTo = monthEnd(from);
+  const totals = useQuery({
+    queryKey: [...TOTALS_KEY, monthStart(from), monthTo],
+    queryFn: ({ signal }) => fetchTotals(monthStart(from), monthTo, signal),
+  });
+  const [paying, setPaying] = useState<AgendaEntry | null>(null);
+  const refresh = useRefresh();
 
   if (agenda.isPending) return <LoadingState label="Loading what’s due" />;
   if (agenda.isError) {
@@ -114,13 +137,24 @@ export function Agenda() {
     // The summary sits beside the list on wide screens, and above it on smaller ones.
     <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-8">
       <div className="xl:order-2 xl:sticky xl:top-8">
-        <MonthSummary overdue={overdue} upcoming={shown} today={from} />
+        <MonthSummary
+          overdue={overdue}
+          upcoming={shown}
+          today={from}
+          paidThisMonth={totals.data?.paidCents ?? null}
+        />
       </div>
       <div className="flex flex-col gap-6 xl:order-1">
         {overdue.length > 0 ? (
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-semibold text-danger">Overdue</h2>
-            <AgendaList label="Overdue" entries={overdue} showOwner={showOwner} />
+            <AgendaList
+              label="Overdue"
+              entries={overdue}
+              showOwner={showOwner}
+              overdue
+              onOpen={setPaying}
+            />
           </section>
         ) : null}
         {byMonth(shown).map(([month, entries]) => {
@@ -131,11 +165,25 @@ export function Agenda() {
           return (
             <section key={month} className="flex flex-col gap-3">
               <h2 className="text-lg font-semibold">{title}</h2>
-              <AgendaList label={title} entries={entries} showOwner={showOwner} />
+              <AgendaList
+                label={title}
+                entries={entries}
+                showOwner={showOwner}
+                onOpen={setPaying}
+              />
             </section>
           );
         })}
       </div>
+      {paying ? (
+        <PaySheet
+          entry={paying}
+          onClose={() => {
+            setPaying(null);
+          }}
+          onChanged={refresh}
+        />
+      ) : null}
     </div>
   );
 }

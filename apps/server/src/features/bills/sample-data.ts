@@ -267,6 +267,8 @@ async function addSamplePayments(
   };
 
   await pay('Maple Street Rent', 185_000);
+  // Paid off before it was cancelled, so the archived bill doesn't leave anything overdue.
+  await pay('Old magazine subscription', 1_200, 'Final payment before cancelling.');
   await pay('Riverside Water', 5_000, 'The rest next week.');
   const twice = await pay('Gym membership', 4_000);
   const gym = made.get('Gym membership');

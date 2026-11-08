@@ -177,6 +177,19 @@ describe('skipping', () => {
     expect((await dueOf(bill.id)).state).toBe('open');
   });
 
+  it('gives the period’s totals over the API, for the person’s spaces only', async () => {
+    const { due } = await newDue();
+    await pay('alice', ids.alicePersonal, due.id, 1500);
+    const totals: unknown = (
+      await call('alice', 'GET', `/api/v1/totals?from=${now()}&to=${now()}`)
+    ).json();
+    expect(totals).toMatchObject({ paidCents: 1500 });
+    const bobs: unknown = (
+      await call('bob', 'GET', `/api/v1/totals?from=${now()}&to=${now()}`)
+    ).json();
+    expect(bobs).toMatchObject({ paidCents: 0, dueCents: 0 });
+  });
+
   it('leaves a skipped due date out of what’s due in its period', async () => {
     const { due } = await newDue();
     const before = await periodTotals(test.database.orm, 'alice', now(), now());
@@ -221,6 +234,17 @@ describe('who can pay', () => {
 });
 
 describe('a bill with payments', () => {
+  it('can be edited and archived when a coming due date has a payment, keeping that payment', async () => {
+    const { bill, due } = await newDue(once(addDays(now(), 3)));
+    const paid = (await pay('alice', ids.alicePersonal, due.id, 100)).json<Payment>();
+    await voidIt('alice', ids.alicePersonal, paid.id);
+    const url = `/api/v1/spaces/${ids.alicePersonal}/bills/${bill.id}`;
+    expect((await call('alice', 'PATCH', url, { name: 'Renamed' })).statusCode).toBe(200);
+    expect((await call('alice', 'PATCH', url, { archived: true })).statusCode).toBe(200);
+    const [entry] = await history('alice', ids.alicePersonal, bill.id);
+    expect(entry?.payments.map((row) => row.id)).toEqual([paid.id]);
+  });
+
   it('can’t be deleted, only archived', async () => {
     const { bill, due } = await newDue();
     await pay('alice', ids.alicePersonal, due.id, 4500);
