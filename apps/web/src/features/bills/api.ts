@@ -22,11 +22,10 @@ export interface BillInput {
   autopay: boolean;
   url: string | null;
   notes: string | null;
+  logoId: string | null;
 }
 
-/** Where a bill's logo loads from, or null for a lettered tile. */
-export const logoUrl = (logoId: string | null): string | null =>
-  logoId ? `/api/v1/logos/${encodeURIComponent(logoId)}` : null;
+export { logoUrl } from '../logos/index.ts';
 
 export const BILLS_KEY = ['bills'];
 /** Everything that shows due dates, so it can all be refreshed after a change. */

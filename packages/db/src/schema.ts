@@ -182,6 +182,18 @@ export type BillSchedule =
     };
 
 /**
+ * Settings for the whole instance, changed by instance admins. Secrets, such as a service's key,
+ * are stored encrypted, with the setting's key as the encryption context.
+ */
+export const instanceSetting = pgTable('instance_setting', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  /** Not a foreign key, so the record survives its author's account. */
+  updatedBy: text('updated_by'),
+  updatedAt: timestamps.updatedAt,
+});
+
+/**
  * A company's logo, stored once by its contents and shared by every bill that uses it. Not in any
  * space, because a logo isn't private. Its type was checked from its bytes before it was stored.
  */

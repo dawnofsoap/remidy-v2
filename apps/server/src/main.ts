@@ -5,6 +5,7 @@ import { signInCleanupJob } from './core/auth/cleanup.ts';
 import { createAuth, createAuthorize } from './core/auth/index.ts';
 import { signInOptionsFeature } from './core/auth/sign-in-options.ts';
 import { ConfigError, loadConfig, type Config } from './core/config.ts';
+import { createEncryptor } from './core/encryption.ts';
 import { createJobRunner, heartbeatJob, jobsOfFeatures, jobStatusFeature } from './core/jobs.ts';
 import { loggerOptions } from './core/logging.ts';
 import { createConsoleMailer, createSmtpMailer, type Mailer } from './core/mail.ts';
@@ -29,6 +30,7 @@ function chooseMailer({ SMTP_URL, EMAIL_FROM, NODE_ENV }: Config): Mailer | null
 
 const config = readConfig();
 const database = createDatabase(config.DATABASE_URL);
+const encryptor = createEncryptor(config.ENCRYPTION_KEY, config.ENCRYPTION_OLD_KEYS);
 const mailer = chooseMailer(config);
 const auth = createAuth({
   orm: database.orm,
@@ -42,7 +44,7 @@ const auth = createAuth({
 const jobs = [
   heartbeatJob,
   signInCleanupJob(database.orm),
-  ...jobsOfFeatures(features, config.ENABLED_FEATURES, { database }),
+  ...jobsOfFeatures(features, config.ENABLED_FEATURES, { database, encryptor }),
 ];
 const app = buildApp({
   database,
@@ -58,6 +60,7 @@ const app = buildApp({
   publicUrl: config.PUBLIC_URL,
   trustProxy: config.TRUST_PROXY,
   webRoot: config.WEB_ROOT,
+  encryptor,
 });
 
 const jobRunner = createJobRunner({

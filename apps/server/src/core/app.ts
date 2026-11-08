@@ -6,6 +6,7 @@ import Fastify, {
   type RouteOptions,
 } from 'fastify';
 import { registerAuthRoutes, type Auth } from './auth/index.ts';
+import { unavailableEncryptor, type Encryptor } from './encryption.ts';
 import { AppError, registerErrorHandling } from './errors.ts';
 import {
   defineFeature,
@@ -56,6 +57,8 @@ interface AppOptions {
   trustProxy?: string;
   /** The built web app, in production. In development, Vite serves it instead. */
   webRoot?: string | undefined;
+  /** Encrypts secrets features store. Without one, storing a secret fails. */
+  encryptor?: Encryptor;
 }
 
 function coreFeature(database: AppOptions['database'], enabledFeatures: string[]): Feature {
@@ -98,6 +101,7 @@ export function buildApp({
   authRequestsPerMinute = 120,
   trustProxy = '',
   webRoot,
+  encryptor = unavailableEncryptor,
 }: AppOptions): FastifyInstance {
   const webFiles = webRoot ? loadWebFiles(webRoot) : undefined;
   const app = Fastify({
@@ -170,13 +174,22 @@ export function buildApp({
 
     for (const feature of all) {
       if (feature.flagged && !enabledFeatures.includes(feature.name)) continue;
-      for (const route of feature.routes({ database } as FeatureDependencies)) {
+      for (const route of feature.routes({ database, encryptor } as FeatureDependencies)) {
         app.declaredRoutes.push(route);
         app.route({
           method: route.method,
           url: route.url,
           config: { declaredRoute: true },
           ...(route.logLevel ? { logLevel: route.logLevel } : {}),
+          ...(route.bodyLimit ? { bodyLimit: route.bodyLimit } : {}),
+          ...(route.requestsPerMinute
+            ? {
+                config: {
+                  declaredRoute: true,
+                  rateLimit: { max: route.requestsPerMinute, timeWindow: '1 minute' },
+                },
+              }
+            : {}),
           handler: (request, reply) => route.run(request, reply, authorize),
         });
       }

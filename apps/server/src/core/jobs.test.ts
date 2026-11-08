@@ -12,6 +12,7 @@ import {
   vi,
   type Mock,
 } from 'vitest';
+import { unavailableEncryptor } from './encryption.ts';
 import type { Job } from './feature.ts';
 import { defineFeature } from './feature.ts';
 import {
@@ -266,7 +267,10 @@ describe('jobs from features', () => {
       ofFeature('switched-off', true),
       defineFeature({ name: 'no-jobs', routes: () => [] }),
     ];
-    const jobs = jobsOfFeatures(features, ['switched-on'], { database: test.database });
+    const jobs = jobsOfFeatures(features, ['switched-on'], {
+      database: test.database,
+      encryptor: unavailableEncryptor,
+    });
     expect(jobs.map((item) => item.name)).toEqual(['always', 'switched-on']);
   });
 });

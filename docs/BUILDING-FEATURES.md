@@ -171,7 +171,9 @@ features -> core -> packages (domain, contracts, db)
 
 ## Secrets and history
 
-- **Stored secrets** go through `createEncryptor` in `core/encryption.ts`, with a context naming what the secret belongs to, such as `mfa:<user id>`. Never store one any other way.
+- **Stored secrets** go through `createEncryptor` in `core/encryption.ts`, with a context naming what the secret belongs to, such as `mfa:<user id>`. Never store one any other way. A feature gets the encryptor as `encryptor` in its dependencies, and a secret for the whole instance, such as a service's key, goes in `core/instance-settings.ts`.
+- **Fetching an address someone gave Remidy**, such as a bill's website, goes through `safeGet` in `core/outbound.ts`. It refuses private addresses, connects to the address it checked, checks every redirect, and limits time and size. Never call `fetch` on such an address directly. Tests give the feature a pretend fetch, so nothing reaches the internet.
+- **Uploads and searches** set `bodyLimit` or `requestsPerMinute` on their route, rather than raising the limits for everything.
 - **Changes to anything with history** call `recordActivity` in `core/activity.ts` inside the same transaction as the change. It takes only a transaction, so it can't be separated from the change by accident. It refuses fields that look like secrets, and the database refuses to update or delete what's been recorded.
 
 ## API versions

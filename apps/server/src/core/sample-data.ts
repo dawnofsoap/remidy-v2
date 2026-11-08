@@ -1,5 +1,6 @@
 import { ADMIN_EMAIL } from '@remidy/contracts';
 import { createDatabase, membership, space, user, type Orm } from '@remidy/db';
+import { createEncryptor } from './encryption.ts';
 import { and, eq } from 'drizzle-orm';
 import { loadConfig } from './config.ts';
 import type { Feature, SampleContext } from './feature.ts';
@@ -67,10 +68,11 @@ export async function addSampleData(features: Feature[]): Promise<string[]> {
   try {
     await database.migrate();
     const context = await sampleSpaces(database.orm);
+    const encryptor = createEncryptor(config.ENCRYPTION_KEY, config.ENCRYPTION_OLD_KEYS);
     const report: string[] = [`Household: ${HOUSEHOLD_NAME}, with ${PARTNER.name}`];
     for (const feature of features) {
       if (!feature.sampleData) continue;
-      report.push(`${feature.name}: ${await feature.sampleData({ database }, context)}`);
+      report.push(`${feature.name}: ${await feature.sampleData({ database, encryptor }, context)}`);
     }
     return report;
   } finally {

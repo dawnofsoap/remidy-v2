@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export * from './bills.ts';
 export * from './categories.ts';
+export * from './logos.ts';
 export * from './password.ts';
 export * from './payments.ts';
 

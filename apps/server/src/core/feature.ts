@@ -2,6 +2,7 @@ import type { Database } from '@remidy/db';
 import { IMAGE_TYPES, type ImageType } from '@remidy/domain';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import type { Encryptor } from './encryption.ts';
 import { AppError } from './errors.ts';
 
 /**
@@ -81,6 +82,10 @@ interface RouteDefinition<Params, Query, Body, Response, A extends Access> {
   /** The default status code. */
   status?: number;
   logLevel?: 'warn';
+  /** A larger body than the usual 256 KB, such as for an upload. */
+  bodyLimit?: number;
+  /** Requests allowed per minute from one address, when this route needs less than the usual. */
+  requestsPerMinute?: number;
   handler(context: RouteContext<Params, Query, Body, A>): Promise<Response> | Response;
 }
 
@@ -89,6 +94,8 @@ export interface Route {
   url: string;
   access: Access;
   logLevel?: 'warn';
+  bodyLimit?: number;
+  requestsPerMinute?: number;
   run(request: FastifyRequest, reply: FastifyReply, authorize: Authorize): Promise<unknown>;
 }
 
@@ -125,6 +132,8 @@ export function defineRoute<
     url: definition.url,
     access: definition.access,
     ...(definition.logLevel ? { logLevel: definition.logLevel } : {}),
+    ...(definition.bodyLimit ? { bodyLimit: definition.bodyLimit } : {}),
+    ...(definition.requestsPerMinute ? { requestsPerMinute: definition.requestsPerMinute } : {}),
     async run(request, reply, authorize) {
       // Check access first, so a caller without it learns nothing from validation errors.
       const authorized = access === 'public' ? null : await authorize(access, request);
@@ -160,6 +169,8 @@ export function defineRoute<
 
 export interface FeatureDependencies {
   database: Database;
+  /** For secrets a feature stores, such as a service's key. */
+  encryptor: Encryptor;
 }
 
 /** Work that runs on a schedule. It's retried if it fails, so it must be safe to run again. */
