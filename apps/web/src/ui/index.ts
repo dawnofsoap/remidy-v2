@@ -3,6 +3,7 @@ export { cn, focusRing } from './cn.ts';
 export { DateField } from './DateField.tsx';
 export { SelectField, TextField } from './Field.tsx';
 export { List, ListRow } from './List.tsx';
+export { initialsOf, LogoTile } from './LogoTile.tsx';
 export { MoneyField } from './MoneyField.tsx';
 export { Modal } from './Modal.tsx';
 export { isPasswordReady, NewPasswordField } from './NewPasswordField.tsx';

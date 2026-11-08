@@ -55,6 +55,8 @@ const billFields = {
     .trim()
     .max(BILL_NOTES_MAX, `Use ${String(BILL_NOTES_MAX)} characters or fewer.`)
     .nullable(),
+  /** Optional, so older copies of the app that don't send it keep working. */
+  logoId: z.uuid('That isn’t a valid logo.').nullable().optional(),
 };
 
 const needsAmount = (bill: {
@@ -93,6 +95,7 @@ export const billResponse = z.object({
   autopay: z.boolean(),
   url: z.string().nullable(),
   notes: z.string().nullable(),
+  logoId: z.string().nullable(),
   archived: z.boolean(),
 });
 export type BillResponse = z.infer<typeof billResponse>;
@@ -110,6 +113,8 @@ export const agendaEntry = z.object({
   expectedCents: z.number().nullable(),
   isVariable: z.boolean(),
   categoryName: z.string().nullable(),
+  /** The bill's logo now, which is only for display. */
+  logoId: z.string().nullable(),
   state: z.enum(['open', 'settled', 'skipped']),
   /** What's been paid toward it, never counting voided payments. */
   paidCents: z.number(),

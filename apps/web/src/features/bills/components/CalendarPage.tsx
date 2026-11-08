@@ -14,8 +14,16 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Page } from '../../../core/Page.tsx';
-import { Button, cn, ErrorState, List, ListRow, LoadingState } from '../../../ui/index.ts';
-import { AGENDA_KEY, fetchAgenda } from '../api.ts';
+import {
+  Button,
+  cn,
+  ErrorState,
+  List,
+  ListRow,
+  LoadingState,
+  LogoTile,
+} from '../../../ui/index.ts';
+import { AGENDA_KEY, fetchAgenda, logoUrl } from '../api.ts';
 import { useRefresh } from '../useRefresh.ts';
 import { statusOf } from './dueStatus.ts';
 import { PaySheet } from './PaySheet.tsx';
@@ -152,7 +160,7 @@ export function CalendarPage() {
                           variant="ghost"
                           size="small"
                           className={cn(
-                            'w-full justify-between gap-1 truncate',
+                            'w-full justify-start gap-1.5 truncate',
                             status.tone,
                             entry.state === 'skipped' && 'line-through',
                           )}
@@ -161,6 +169,7 @@ export function CalendarPage() {
                             setPaying(entry);
                           }}
                         >
+                          <LogoTile size="small" src={logoUrl(entry.logoId)} name={entry.name} />
                           <span className="truncate">{entry.name}</span>
                         </Button>
                       );
@@ -191,6 +200,7 @@ export function CalendarPage() {
                     <ListRow
                       key={entry.id}
                       title={entry.name}
+                      start={<LogoTile src={logoUrl(entry.logoId)} name={entry.name} />}
                       end={
                         <span className={cn('font-semibold tabular-nums', status.tone)}>
                           {status.text}

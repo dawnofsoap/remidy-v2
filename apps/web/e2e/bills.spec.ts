@@ -23,6 +23,7 @@ const internet = {
   autopay: false,
   url: null,
   notes: null,
+  logoId: null,
   archived: false,
 };
 

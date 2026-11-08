@@ -1,4 +1,4 @@
-import { billOccurrence, payment } from '@remidy/db';
+import { bill, billOccurrence, payment } from '@remidy/db';
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import { addSampleData } from '../../core/sample-data.ts';
@@ -58,6 +58,22 @@ describe('sample bills', () => {
       .from(payment)
       .where(eq(payment.notes, 'The rest next week.'));
     expect(partly).toHaveLength(1);
+  });
+
+  it('gives most bills a drawn logo, and leaves some with none', async () => {
+    await run();
+    const bills = await listBills(test.database.orm, ids.alice);
+    const withLogo = bills.filter((bill) => bill.logoId !== null);
+    expect(withLogo).toHaveLength(SAMPLE_BILLS.filter((bill) => bill.logo).length);
+    expect(withLogo.length).toBeLessThan(bills.length);
+  });
+
+  it('adds logos to sample bills made before logos existed', async () => {
+    await run();
+    await test.database.orm.update(bill).set({ logoId: null });
+    expect(await run()).toMatch(/already there, and 10 got logos/);
+    const bills = await listBills(test.database.orm, ids.alice);
+    expect(bills.filter((row) => row.logoId !== null)).toHaveLength(10);
   });
 
   it('can run again without adding duplicates or paying twice', async () => {

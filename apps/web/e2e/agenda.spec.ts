@@ -8,6 +8,12 @@ const iso = (offsetDays: number) => {
   return `${String(date.getFullYear())}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
+// A drawn sample logo, like the ones in the sample data.
+const LOGO_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAA+ElEQVR4nO3bTQ6CQBBEYU7hWT2Tl9TExJ1RaOh50z2vktlC1cfKH7YtmNv98ZzpRHeUHDsMhR6AQtClUQS6LIpAl0QR6HIoAl0KR6ALoQB0GRyBLiKAAIsCfIICkE+ABngj0ONpBAFmGE8iDAf4FwE6A+xNS4CjaQUQTQuAsykNcFVKAlydUgBZEUCAAgDZEUAAAQQQYGaATISMrgIIkHDRDISsnn4czrz4FQjZ/fxKbMRNIgijevnLEHHTmY4AdAH6CEAXoI8A9P+E8PECCCCAACsi+L7Aym+NfB2/CsLP8d0Rdo3vinBofDeE0PgOEKeHV0KJ7ngBJ0TVH7i9YKwAAAAASUVORK5CYII=';
+// Water has a logo, so the screens show both a logo and a lettered tile.
+const logoOf = (name: string) => (name === 'Water' ? 'l1' : null);
+
 const entry = (id: string, name: string, dueOn: string, expectedCents: number | null) => ({
   id,
   billId: id,
@@ -18,6 +24,7 @@ const entry = (id: string, name: string, dueOn: string, expectedCents: number | 
   expectedCents,
   isVariable: expectedCents === null,
   categoryName: 'Utilities',
+  logoId: logoOf(name),
   state: 'open',
   paidCents: 0,
 });
@@ -35,6 +42,7 @@ const bill = (id: string, name: string, expectedCents: number | null) => ({
   autopay: false,
   url: null,
   notes: null,
+  logoId: logoOf(name),
   archived: false,
 });
 
@@ -52,7 +60,12 @@ async function withBills(page: Page) {
     }),
   );
   await page.route('**/api/v1/bills', (route) =>
-    route.fulfill({ json: [bill('b1', 'Rent', 145_000), bill('b2', 'Electric', null)] }),
+    route.fulfill({
+      json: [bill('b1', 'Rent', 145_000), bill('b2', 'Electric', null), bill('b3', 'Water', 4_500)],
+    }),
+  );
+  await page.route('**/api/v1/logos/*', (route) =>
+    route.fulfill({ contentType: 'image/png', body: Buffer.from(LOGO_PNG, 'base64') }),
   );
 }
 

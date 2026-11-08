@@ -9,6 +9,7 @@ import { AppError } from '../../core/errors.ts';
 import type { Authorize } from '../../core/feature.ts';
 import { findMembership, roleAtLeast } from '../../core/spaces.ts';
 import { categories } from '../categories/index.ts';
+import { logos } from '../logos/index.ts';
 import { bills } from './index.ts';
 
 // Shared by the bills tests. Sign-in is covered elsewhere: here a header says who's calling, and
@@ -146,7 +147,7 @@ export function useBillsHarness() {
     await test.database.migrate();
     app = buildApp({
       database: test.database,
-      features: [categories, bills],
+      features: [categories, logos, bills],
       enabledFeatures: ['categories', 'bills'],
       authorize,
       publicUrl: PUBLIC_URL,
@@ -162,7 +163,7 @@ export function useBillsHarness() {
   beforeEach(async () => {
     const { orm } = test.database;
     await orm.execute(
-      sql`truncate activity_log, bill_occurrence, bill, category, membership, space, "user" cascade`,
+      sql`truncate activity_log, bill_occurrence, bill, logo, category, membership, space, "user" cascade`,
     );
     for (const name of ['alice', 'bob', 'carol'] as const) {
       await orm.insert(user).values({ id: name, name, email: `${name}@example.com` });

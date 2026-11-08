@@ -39,6 +39,7 @@ const ROUTE_ACCESS: Record<string, string> = {
   'POST /api/v1/spaces/:spaceId/categories': 'space manager',
   'PATCH /api/v1/spaces/:spaceId/categories/:categoryId': 'space manager',
   'DELETE /api/v1/spaces/:spaceId/categories/:categoryId': 'space manager',
+  'GET /api/v1/logos/:logoId': 'signed-in',
   'GET /api/v1/bills': 'signed-in',
   'GET /api/v1/agenda': 'signed-in',
   'GET /api/v1/totals': 'signed-in',
