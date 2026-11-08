@@ -159,6 +159,13 @@ describe('Logo.dev', () => {
     expect(asked[0]?.url).not.toContain('sk_');
   });
 
+  it('keeps no image that isn’t one Remidy keeps', async () => {
+    const imageUrl =
+      'https://img.logo.dev/citypower.example?token=pk_test1234&size=128&format=png&fallback=404';
+    const { fetch } = fakeFetch({ [imageUrl]: { body: SVG } });
+    expect(await logoDevImage('citypower.example', keys, fetch)).toBeNull();
+  });
+
   it('keeps no image it can’t use, and never builds an address from a bad domain', async () => {
     const { fetch, asked } = fakeFetch({});
     expect(await logoDevImage('citypower.example', keys, fetch)).toBeNull();

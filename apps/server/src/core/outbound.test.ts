@@ -44,21 +44,20 @@ describe('which addresses are public', () => {
 
 describe('refusing addresses before connecting', () => {
   it.each([
-    ['a file', 'file:///etc/passwd'],
-    ['another protocol', 'ftp://example.com/logo.png'],
-    ['a password in the address', 'https://user:secret@example.com/'],
-    ['an unusual port', 'https://example.com:8443/'],
-    ['loopback', 'http://127.0.0.1/'],
-    ['loopback, written as a number', 'http://2130706433/'],
-    ['IPv6 loopback', 'http://[::1]/'],
-    ['IPv4 loopback inside IPv6', 'http://[::ffff:127.0.0.1]/'],
-    ['a cloud metadata service', 'http://169.254.169.254/latest/meta-data/'],
-    ['a name for this computer', 'http://localhost/'],
-  ])('refuses %s', async (_why, address) => {
-    await expect(safeGet(address, { maxBytes: 1000 })).rejects.toThrow(OutboundError);
+    ['a file', 'file:///etc/passwd', /Only web addresses/],
+    ['another protocol', 'ftp://example.com/logo.png', /Only web addresses/],
+    ['a password in the address', 'https://user:secret@example.com/', /password/],
+    ['an unusual port', 'https://example.com:8443/', /usual web ports/],
+    ['loopback', 'http://127.0.0.1/', /private/],
+    ['loopback, written as a number', 'http://2130706433/', /private/],
+    ['IPv6 loopback', 'http://[::1]/', /private/],
+    ['IPv4 loopback inside IPv6', 'http://[::ffff:127.0.0.1]/', /private/],
+    ['a cloud metadata service', 'http://169.254.169.254/latest/meta-data/', /private/],
+    ['a name for this computer', 'http://localhost/', /private/],
+  ])('refuses %s, saying why', async (_why, address, reason) => {
+    await expect(safeGet(address, { maxBytes: 1000 })).rejects.toThrow(reason);
   });
 });
-
 describe('fetching', () => {
   // A server on this computer stands in for a website. The tests allow its address and port, which
   // real fetching never would, and check everything else still applies.
@@ -153,6 +152,33 @@ describe('fetching', () => {
       safeGet(`http://localhost:${String(port)}/`, options({ addressAllowed: () => false })),
     ).rejects.toThrow(/private/);
     expect(hits).toHaveLength(0);
+  });
+
+  it('refuses this computer’s address, even on a port that’s allowed', async () => {
+    await expect(safeGet(local('/'), { maxBytes: 1000, allowedPorts: [port] })).rejects.toThrow(
+      /private/,
+    );
+    expect(hits).toHaveLength(0);
+  });
+
+  it('refuses a name when any one of its addresses is private', async () => {
+    const twoWays = () =>
+      Promise.resolve([
+        { address: '127.0.0.1', family: 4 },
+        { address: '10.0.0.1', family: 4 },
+      ]);
+    await expect(
+      safeGet(`http://bills.test:${String(port)}/`, options({ resolve: twoWays })),
+    ).rejects.toThrow(/private/);
+    expect(hits).toHaveLength(0);
+    // The same name with only the allowed address connects, so the lookup above was what refused.
+    respond = () => ({ status: 200, body: 'ok' });
+    const oneWay = () => Promise.resolve([{ address: '127.0.0.1', family: 4 }]);
+    const result = await safeGet(
+      `http://bills.test:${String(port)}/`,
+      options({ resolve: oneWay }),
+    );
+    expect(result.body.toString()).toBe('ok');
   });
 
   it('stops reading at the limit, whether or not the size was given', async () => {

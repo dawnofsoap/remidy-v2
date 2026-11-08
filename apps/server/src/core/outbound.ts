@@ -73,6 +73,8 @@ export interface SafeGetOptions {
   addressAllowed?: (address: string) => boolean;
   /** Only for tests. Otherwise only the usual ports, 80 and 443, are allowed. */
   allowedPorts?: readonly number[];
+  /** Only for tests, to give a name several addresses. */
+  resolve?: (hostname: string) => Promise<{ address: string; family: number }[]>;
 }
 
 export interface SafeResponse {
@@ -107,9 +109,13 @@ function checkUrl(url: URL, options: SafeGetOptions) {
  * ways can't be used. The connection is made to the addresses returned here, so nothing can
  * change them between the check and the connection.
  */
-function guardedLookup(allowed: (address: string) => boolean): LookupFunction {
+function guardedLookup(
+  allowed: (address: string) => boolean,
+  resolve: SafeGetOptions['resolve'] = (hostname) =>
+    resolveName(hostname, { all: true, order: 'verbatim' }),
+): LookupFunction {
   return (hostname, options, callback) => {
-    resolveName(hostname, { all: true, order: 'verbatim' }).then(
+    resolve(hostname).then(
       (addresses) => {
         const first = addresses[0];
         if (!first || addresses.some((entry) => !allowed(entry.address))) {
@@ -145,7 +151,7 @@ function requestOnce(url: URL, options: SafeGetOptions, signal: AbortSignal): Pr
         signal,
         // A new connection each time, so every one goes through the check.
         agent: false,
-        lookup: guardedLookup(options.addressAllowed ?? isPublicAddress),
+        lookup: guardedLookup(options.addressAllowed ?? isPublicAddress, options.resolve),
         headers: {
           'user-agent': USER_AGENT,
           // Compressed responses are refused, so a small download can't expand into a huge one.
