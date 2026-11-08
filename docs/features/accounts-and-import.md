@@ -61,7 +61,7 @@ Bills, payments, categories, the activity log, and `domain` schedules and money.
 
 ## Lessons from v1
 - v1 stored categories on bills by name, and frequencies as free text with a separate `due_day`. The import has to
-  read both shapes, including bills edited after `due_day` was removed in January 2026.
+read both shapes.
 - v1's bulk CSV import had no review step, so mistakes were saved straight away.
 
 ## Questions for the owner
