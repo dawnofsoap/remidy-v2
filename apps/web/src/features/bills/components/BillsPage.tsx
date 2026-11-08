@@ -19,11 +19,12 @@ import {
   List,
   ListRow,
   LoadingState,
+  LogoTile,
   Table,
   toast,
   type TableColumn,
 } from '../../../ui/index.ts';
-import { AGENDA_KEY, BILLS_KEY, fetchBills, type Bill } from '../api.ts';
+import { AGENDA_KEY, BILLS_KEY, fetchBills, logoUrl, type Bill } from '../api.ts';
 import { BillForm } from './BillForm.tsx';
 
 export const amountText = (bill: { expectedCents: number | null; isVariable: boolean }) =>
@@ -40,9 +41,12 @@ function nextDue(bill: Bill): string {
 }
 
 const nameCell = (bill: Bill) => (
-  <span className="flex flex-col">
-    <span className="font-semibold">{bill.name}</span>
-    {bill.categoryName ? <span className="text-sm text-ink-2">{bill.categoryName}</span> : null}
+  <span className="flex items-center gap-3">
+    <LogoTile src={logoUrl(bill.logoId)} name={bill.name} />
+    <span className="flex flex-col">
+      <span className="font-semibold">{bill.name}</span>
+      {bill.categoryName ? <span className="text-sm text-ink-2">{bill.categoryName}</span> : null}
+    </span>
   </span>
 );
 
@@ -114,6 +118,7 @@ export function BillsPage() {
             <ListRow
               key={bill.id}
               title={bill.name}
+              start={<LogoTile src={logoUrl(bill.logoId)} name={bill.name} />}
               subtitle={[
                 describeSchedule(bill.schedule as Schedule),
                 bill.categoryName,

@@ -1,5 +1,5 @@
 import type { AgendaResponse } from '@remidy/contracts';
-import { billOccurrence, category, membership, payment, space, type Orm } from '@remidy/db';
+import { bill, billOccurrence, category, membership, payment, space, type Orm } from '@remidy/db';
 import { compareDates, daysBetween, parseCalendarDate, type CalendarDate } from '@remidy/domain';
 import { and, asc, eq, gte, lt, lte, or, sql } from 'drizzle-orm';
 import { AppError } from '../../core/errors.ts';
@@ -33,6 +33,7 @@ export async function agenda(
         expectedCents: billOccurrence.expectedCents,
         isVariable: billOccurrence.isVariable,
         categoryName: category.name,
+        logoId: bill.logoId,
         state: billOccurrence.state,
         paidCents,
       })
@@ -43,6 +44,7 @@ export async function agenda(
       )
       .innerJoin(space, eq(space.id, billOccurrence.spaceId))
       .leftJoin(category, eq(category.id, billOccurrence.categoryId))
+      .innerJoin(bill, eq(bill.id, billOccurrence.billId))
       .where(where)
       .orderBy(asc(billOccurrence.dueOn), sql`lower(${billOccurrence.billName})`);
 

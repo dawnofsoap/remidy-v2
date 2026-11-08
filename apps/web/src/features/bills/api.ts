@@ -24,6 +24,10 @@ export interface BillInput {
   notes: string | null;
 }
 
+/** Where a bill's logo loads from, or null for a lettered tile. */
+export const logoUrl = (logoId: string | null): string | null =>
+  logoId ? `/api/v1/logos/${encodeURIComponent(logoId)}` : null;
+
 export const BILLS_KEY = ['bills'];
 /** Everything that shows due dates, so it can all be refreshed after a change. */
 export const AGENDA_KEY = ['agenda'];

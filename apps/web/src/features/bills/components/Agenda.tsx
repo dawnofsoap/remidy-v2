@@ -19,8 +19,9 @@ import {
   List,
   ListRow,
   LoadingState,
+  LogoTile,
 } from '../../../ui/index.ts';
-import { AGENDA_KEY, fetchAgenda, fetchTotals, TOTALS_KEY } from '../api.ts';
+import { AGENDA_KEY, fetchAgenda, fetchTotals, logoUrl, TOTALS_KEY } from '../api.ts';
 import { useState } from 'react';
 import { statusOf } from './dueStatus.ts';
 import { MonthSummary } from './MonthSummary.tsx';
@@ -65,6 +66,7 @@ function AgendaList({
           <ListRow
             key={entry.id}
             title={entry.name}
+            start={<LogoTile src={logoUrl(entry.logoId)} name={entry.name} />}
             subtitle={[
               formatDate(entry.dueOn as CalendarDate, 'short'),
               entry.categoryName,

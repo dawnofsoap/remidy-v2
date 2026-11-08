@@ -21,6 +21,7 @@ import { and, asc, eq, gte, isNotNull, isNull, sql } from 'drizzle-orm';
 import { recordActivity } from '../../core/activity.ts';
 import { AppError, isStillUsed } from '../../core/errors.ts';
 import { roleAtLeast } from '../../core/spaces.ts';
+import { logoExists } from '../logos/index.ts';
 import { firstDueDates, futureDueDates } from './occurrences.ts';
 
 const NOT_FOUND = new AppError(404, 'not_found', 'That bill wasn’t found.');
@@ -109,6 +110,7 @@ export interface BillFields {
   autopay: boolean;
   url: string | null;
   notes: string | null;
+  logoId?: string | null | undefined;
 }
 
 /** Checks the dates are real days and the schedule makes sense, for an answer the person can use. */
@@ -154,6 +156,12 @@ async function checkCategory(transaction: Transaction, userId: string, categoryI
   if (found.archivedAt) throw invalid('categoryId', 'That category is archived. Choose another.');
 }
 
+async function checkLogo(transaction: Transaction, logoId: string) {
+  if (!(await logoExists(transaction, logoId))) {
+    throw invalid('logoId', 'That logo isn’t available. Choose it again.');
+  }
+}
+
 const columns = {
   id: bill.id,
   spaceId: bill.spaceId,
@@ -167,6 +175,7 @@ const columns = {
   autopay: bill.autopay,
   url: bill.url,
   notes: bill.notes,
+  logoId: bill.logoId,
   archived: isNotNull(bill.archivedAt).mapWith(Boolean),
 };
 
@@ -225,9 +234,10 @@ export function createBill(
   return orm.transaction(async (transaction) => {
     const schedule = toSchedule(fields.schedule);
     if (fields.categoryId) await checkCategory(transaction, userId, fields.categoryId);
+    if (fields.logoId) await checkLogo(transaction, fields.logoId);
     const [created] = await transaction
       .insert(bill)
-      .values({ ...fields, spaceId, schedule })
+      .values({ ...fields, logoId: fields.logoId ?? null, spaceId, schedule })
       .returning({ id: bill.id });
     if (!created) throw new Error('The bill was not created.');
 
@@ -277,6 +287,9 @@ export function updateBill(
     if (changes.categoryId && changes.categoryId !== before.categoryId) {
       await checkCategory(transaction, userId, changes.categoryId);
     }
+    if (changes.logoId && changes.logoId !== before.logoId) {
+      await checkLogo(transaction, changes.logoId);
+    }
 
     const { archived, ...fields } = changes;
     await transaction
@@ -295,7 +308,9 @@ export function updateBill(
     const changed = (Object.keys(now) as (keyof typeof now)[]).filter(
       (key) => JSON.stringify(was[key]) !== JSON.stringify(now[key]),
     );
-    const otherChanges = (['url', 'notes'] as const).filter((key) => before[key] !== after[key]);
+    const otherChanges = (['url', 'notes', 'logoId'] as const).filter(
+      (key) => before[key] !== after[key],
+    );
     if (changed.length === 0 && otherChanges.length === 0) return after;
 
     if (changed.length > 0) {

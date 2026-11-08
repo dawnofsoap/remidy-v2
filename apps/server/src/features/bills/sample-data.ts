@@ -9,6 +9,7 @@ import {
 } from '@remidy/domain';
 import type { FeatureDependencies, SampleContext } from '../../core/feature.ts';
 import { listCategories } from '../categories/index.ts';
+import { drawSampleLogo, storeLogo, type SampleShape } from '../logos/index.ts';
 import {
   billHistory,
   recordAutopay,
@@ -33,6 +34,8 @@ interface SampleBill {
   url?: string;
   notes?: string;
   archived?: boolean;
+  /** A drawn logo's color and shape. Some have none, to show the lettered tile. */
+  logo?: [readonly [number, number, number], SampleShape];
 }
 
 /** A day this month, or the month's last day when it's shorter. */
@@ -58,6 +61,7 @@ const monthly =
 export const SAMPLE_BILLS: readonly SampleBill[] = [
   {
     name: 'Maple Street Rent',
+    logo: [[46, 94, 160], 'diamond'],
     shared: true,
     cents: 185_000,
     schedule: monthly(1),
@@ -65,6 +69,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'City Power & Light',
+    logo: [[214, 140, 20], 'bars'],
     shared: true,
     cents: 12_000,
     varies: true,
@@ -74,6 +79,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'Riverside Water',
+    logo: [[22, 120, 170], 'drop'],
     shared: true,
     cents: 9_640,
     schedule: monthly(10, 3),
@@ -81,6 +87,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'Fastline Internet',
+    logo: [[120, 60, 180], 'stripes'],
     shared: true,
     cents: 7_000,
     schedule: monthly(12),
@@ -90,6 +97,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'StreamBox',
+    logo: [[200, 40, 60], 'circle'],
     shared: true,
     cents: 2_299,
     schedule: monthly(22),
@@ -98,6 +106,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'Home insurance',
+    logo: [[30, 130, 90], 'ring'],
     shared: true,
     cents: 114_000,
     schedule: (now) => ({
@@ -125,6 +134,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'Mobile phone',
+    logo: [[60, 70, 90], 'bars'],
     shared: false,
     cents: 5_500,
     // On the 1st, so there's always an auto-pay payment to see, whatever day it is.
@@ -134,6 +144,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'Car loan',
+    logo: [[20, 100, 120], 'ring'],
     shared: false,
     cents: 38_912,
     schedule: (now) => ({
@@ -148,6 +159,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'Gym membership',
+    logo: [[230, 90, 40], 'circle'],
     shared: false,
     cents: 4_000,
     schedule: monthly(8),
@@ -155,6 +167,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'Car insurance',
+    logo: [[90, 120, 40], 'diamond'],
     shared: false,
     cents: 61_240,
     schedule: monthly(28, 6),
@@ -203,9 +216,19 @@ export async function addSampleBills(
   { userId, personalSpaceId, householdId }: SampleContext,
 ): Promise<string> {
   const names = new Set(SAMPLE_BILLS.map((bill) => bill.name));
-  const kept = new Set(
-    (await listBills(orm, userId)).filter((bill) => names.has(bill.name)).map((bill) => bill.name),
-  );
+  const existing = (await listBills(orm, userId)).filter((bill) => names.has(bill.name));
+  const kept = new Set(existing.map((bill) => bill.name));
+  const logoFor = async (sample: SampleBill) =>
+    sample.logo ? storeLogo(orm, drawSampleLogo(...sample.logo)) : null;
+
+  // Sample bills added before logos existed get theirs now.
+  let logosAdded = 0;
+  for (const found of existing) {
+    const sample = SAMPLE_BILLS.find((candidate) => candidate.name === found.name);
+    if (found.logoId || !sample?.logo) continue;
+    await updateBill(orm, found.spaceId, found.id, userId, { logoId: await logoFor(sample) });
+    logosAdded += 1;
+  }
 
   // Bills use the household's categories, since the admin belongs to one.
   const categories = await listCategories(orm, householdId);
@@ -227,13 +250,17 @@ export async function addSampleBills(
       autopay: sample.autopay ?? false,
       url: sample.url ?? null,
       notes: sample.notes ?? null,
+      logoId: await logoFor(sample),
     };
     const created = await createBill(orm, spaceId, userId, fields);
     if (sample.archived) await updateBill(orm, spaceId, created.id, userId, { archived: true });
     made.set(sample.name, { spaceId, id: created.id });
     added += 1;
   }
-  if (added === 0) return `all ${String(SAMPLE_BILLS.length)} sample bills were already there`;
+  if (added === 0) {
+    const logoNote = logosAdded > 0 ? `, and ${String(logosAdded)} got logos` : '';
+    return `all ${String(SAMPLE_BILLS.length)} sample bills were already there${logoNote}`;
+  }
   await addSamplePayments(orm, userId, made, now);
   return `added ${String(added)} sample bills, with payments`;
 }

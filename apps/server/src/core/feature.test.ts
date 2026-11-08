@@ -3,7 +3,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { buildApp } from './app.ts';
 import { AppError } from './errors.ts';
-import { defineFeature, defineRoute, type Authorize, type Feature } from './feature.ts';
+import {
+  defineFeature,
+  defineRoute,
+  imageResponse,
+  type Authorize,
+  type Feature,
+} from './feature.ts';
 
 const database = { ping: () => Promise.resolve(true) };
 
@@ -368,4 +374,32 @@ describe('feature flags', () => {
   it('refuses to start when the setting names an unknown feature', () => {
     expect(() => buildApp({ database, enabledFeatures: ['typo'] })).toThrow(/typo/);
   });
+});
+
+describe('image routes', () => {
+  const imageRoute = (type: string) =>
+    defineRoute({
+      method: 'GET',
+      url: '/api/v1/picture',
+      access: 'public',
+      response: imageResponse,
+      handler: () =>
+        ({ body: Buffer.from('<html><script></script>'), type, cacheControl: 'no-cache' }) as never,
+    });
+
+  it('send the bytes with their type and caching', async () => {
+    const response = await appWith([imageRoute('image/png')]).inject({ url: '/api/v1/picture' });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['content-type']).toBe('image/png');
+    expect(response.headers['cache-control']).toBe('no-cache');
+  });
+
+  it.each(['text/html', 'image/svg+xml', 'application/javascript'])(
+    'can never send %s',
+    async (type) => {
+      const response = await appWith([imageRoute(type)]).inject({ url: '/api/v1/picture' });
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['content-type']).toMatch(/^application\/json/);
+    },
+  );
 });

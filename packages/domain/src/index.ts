@@ -16,6 +16,7 @@ export {
   today,
   type CalendarDate,
 } from './dates.ts';
+export { IMAGE_TYPES, imageTypeOf, LOGO_MAX_BYTES, logoProblem, type ImageType } from './images.ts';
 export {
   formatMoney,
   MAX_CENTS,

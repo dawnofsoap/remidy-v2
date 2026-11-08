@@ -2,6 +2,7 @@
 import {
   bigint,
   boolean,
+  customType,
   date,
   index,
   integer,
@@ -20,6 +21,8 @@ const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 };
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
 
 // The next five tables hold what Better Auth, the sign-in library, expects. Its names are fixed.
 export const user = pgTable('user', {
@@ -179,6 +182,22 @@ export type BillSchedule =
     };
 
 /**
+ * A company's logo, stored once by its contents and shared by every bill that uses it. Not in any
+ * space, because a logo isn't private. Its type was checked from its bytes before it was stored.
+ */
+export const logo = pgTable('logo', {
+  id: uuid('id')
+    .primaryKey()
+    .default(sql`uuidv7()`),
+  sha256: text('sha256').notNull().unique(),
+  contentType: text('content_type', {
+    enum: ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/x-icon'],
+  }).notNull(),
+  bytes: bytea('bytes').notNull(),
+  createdAt: timestamps.createdAt,
+});
+
+/**
  * Something that's paid on a schedule. A personal bill is in its owner's personal space, and a
  * shared one in their household. Its category comes from the household's list when the owner has
  * one, which a database trigger checks.
@@ -201,11 +220,17 @@ export const bill = pgTable(
     autopay: boolean('autopay').notNull().default(false),
     url: text('url'),
     notes: text('notes'),
+    /** Shown beside the bill. Only for display, so the past never depends on it. */
+    logoId: uuid('logo_id').references(() => logo.id, { onDelete: 'set null' }),
     /** Set when archived: no new due dates, but the past is kept. */
     archivedAt: timestamp('archived_at', { withTimezone: true }),
     ...timestamps,
   },
-  (table) => [index('bill_space_id_idx').on(table.spaceId)],
+  (table) => [
+    index('bill_space_id_idx').on(table.spaceId),
+    // So finding logos no bill uses is quick.
+    index('bill_logo_id_idx').on(table.logoId),
+  ],
 );
 
 /**

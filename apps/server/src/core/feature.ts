@@ -1,7 +1,20 @@
 import type { Database } from '@remidy/db';
+import { IMAGE_TYPES, type ImageType } from '@remidy/domain';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { AppError } from './errors.ts';
+
+/**
+ * A route that returns an image rather than JSON. Only the image types Remidy keeps can be sent,
+ * so a route can never serve a page or a script.
+ */
+export const imageResponse = z.object({
+  body: z.instanceof(Buffer),
+  type: z.enum(IMAGE_TYPES as [ImageType, ...ImageType[]]),
+  /** Images that never change can be cached for a long time. */
+  cacheControl: z.string(),
+});
+export type ImageResponse = z.infer<typeof imageResponse>;
 
 export type SpaceRole = 'member' | 'manager' | 'owner';
 
@@ -130,7 +143,17 @@ export function defineRoute<
       if (status === 204) {
         return reply.code(204).send();
       }
-      return reply.code(status).send(definition.response.parse(result));
+      const parsed = definition.response.parse(result);
+      if ((definition.response as z.ZodType) === imageResponse) {
+        const image = parsed as ImageResponse;
+        return reply
+          .code(status)
+          .header('cache-control', image.cacheControl)
+          .header('content-disposition', 'inline')
+          .type(image.type)
+          .send(image.body);
+      }
+      return reply.code(status).send(parsed);
     },
   };
 }
