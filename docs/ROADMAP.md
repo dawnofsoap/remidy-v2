@@ -12,6 +12,7 @@ stability decides when a milestone is finished.
 | **2** | Reference feature: Categories | Create, edit, delete, list | Built entirely by following `BUILDING-FEATURES.md`; the guide and base are corrected wherever it was awkward | A few days |
 | **3** | Bills and occurrences | Recurrence rules, bills, agenda view | Property tests pass; your real bills show correct due dates | 1 week |
 | **4** | Payments: **Alpha 1** | Mark paid, voiding, history, partial payments, auto-pay recording, calendar view, the image published on tags, a generated changelog | History invariance test passes; **you run your real bills on it for a full billing month** with no status errors | 1 month |
+| **4.5** | [Logos and the calendar](features/logos.md) | Bill logos from Logo.dev or the bill's website, the Calendar page with logos and status, a small calendar on Home | Your bills show the right logos, and you can change any that are wrong | Runs during milestone 4's month |
 | **5** | Accounts and bill import | Payment accounts, CSV import, importing bills from v1 | Your v1 bills import correctly, ready to review | 1 week |
 | **6** | Sharing | Shared spaces, invites, roles | Two-person household tested for real; private bills stay private | 2 weeks |
 | **7** | Reminders | Notifications, push, PWA install | Reminders arrive on the correct local day across time zones | 2 weeks |
@@ -23,12 +24,13 @@ stability decides when a milestone is finished.
 ## Why this order
 
 ```
-base -> categories -> bills -> payments -> accounts, import -> sharing -> reminders -> ...
+base -> categories -> bills -> payments -> logos, calendar -> accounts, import -> sharing -> reminders -> ...
 ```
 
 - **Categories comes first** because it's small and has no date logic, so it tests the process cheaply.
 - **Bills and payments come before everything else** because most other features depend on them, and they hold the riskiest logic.
 - **Sharing is a feature but its foundation isn't.** Spaces and roles are in the base from day one, so turning on sharing later doesn't mean rewriting queries.
+- **Logos come before accounts and import** at the owner's request, so imported bills arrive with their logos.
 - **Statistics come late** because they only read data, and can't be correct until that data is.
 
 ## Deliberately not planned
