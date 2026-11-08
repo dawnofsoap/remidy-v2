@@ -24,6 +24,7 @@ import {
 import { AGENDA_KEY, fetchAgenda, fetchTotals, logoUrl, TOTALS_KEY } from '../api.ts';
 import { useState } from 'react';
 import { statusOf } from './dueStatus.ts';
+import { MiniCalendar } from './MiniCalendar.tsx';
 import { MonthSummary } from './MonthSummary.tsx';
 import { PaySheet } from './PaySheet.tsx';
 import { useRefresh } from '../useRefresh.ts';
@@ -138,13 +139,17 @@ export function Agenda() {
   return (
     // The summary sits beside the list on wide screens, and above it on smaller ones.
     <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-8">
-      <div className="xl:order-2 xl:sticky xl:top-8">
+      <div className="flex flex-col gap-6 xl:order-2 xl:sticky xl:top-8">
         <MonthSummary
           overdue={overdue}
           upcoming={shown}
           today={from}
           paidThisMonth={totals.data?.paidCents ?? null}
         />
+        {/* Only beside the list: above it, on smaller screens, it would push what's due down. */}
+        <div className="hidden xl:block">
+          <MiniCalendar today={from} />
+        </div>
       </div>
       <div className="flex flex-col gap-6 xl:order-1">
         {overdue.length > 0 ? (
