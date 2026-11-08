@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // Tests the production image behind a TLS proxy. Start it first, on a new database:
-//   docker compose -p remidy-prodcheck -f deploy/compose.yaml -f deploy/check/compose.yaml \
+//   docker compose -p remidy-prodcheck -f deploy/compose.yaml -f deploy/compose.build.yaml \
+//     -f deploy/check/compose.yaml \
 //     --env-file deploy/check/check.env up --detach --build --wait
 export default defineConfig({
   testDir: './e2e-production',
