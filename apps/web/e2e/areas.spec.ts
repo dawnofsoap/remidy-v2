@@ -23,8 +23,15 @@ test('each settings area lists its sections, and a phone opens one at a time', a
     await expect(sections).toBeHidden();
     await page.getByRole('link', { name: 'Settings', exact: true }).click();
     await expect(sections).toBeVisible();
+    await expectNoViolations(page);
+    await saveScreenshot(page, 'settings-list');
     await sections.getByRole('link', { name: 'Appearance' }).click();
     await expect(page.getByRole('heading', { name: 'Appearance', level: 2 })).toBeVisible();
+    // From the area's list, back to More, where the areas are.
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    await page.getByRole('main').getByRole('link', { name: 'More', exact: true }).click();
+    await expect(page).toHaveURL(/\/more$/);
+    await expect(page.getByRole('heading', { name: 'More', level: 1 })).toBeVisible();
   } else {
     await expect(sections.getByRole('link', { name: 'Security' })).toHaveAttribute(
       'aria-current',
