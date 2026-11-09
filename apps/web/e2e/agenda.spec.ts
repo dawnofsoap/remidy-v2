@@ -79,6 +79,7 @@ async function withBills(page: Page) {
   await page.route('**/api/v1/logos/*', (route) =>
     route.fulfill({ contentType: 'image/png', body: Buffer.from(LOGO_PNG, 'base64') }),
   );
+  await page.route('**/api/v1/payments?**', (route) => route.fulfill({ json: [] }));
 }
 
 test('Home shows the month’s figures, then cards, with what’s overdue first on a phone', async ({
@@ -129,6 +130,49 @@ test('Home is about this month: later bills are left to the Calendar', async ({ 
   await page.goto('/');
   await expect(page.getByRole('region', { name: 'Overdue' })).toContainText('Rent');
   await expect(page.getByRole('main')).not.toContainText('Insurance');
+});
+
+test('Home lists this month’s payments, newest first, and each opens its bill', async ({
+  page,
+}) => {
+  await withBills(page);
+  const made = (id: string, name: string, paidOn: string, amountCents: number) => ({
+    id,
+    occurrenceId: `occ-${id}`,
+    billId: BILL_IDS[name] ?? id,
+    spaceId: 'sp1',
+    shared: false,
+    name,
+    logoId: logoOf(name),
+    paidOn,
+    amountCents,
+    source: 'manual',
+    paidByName: 'Admin',
+  });
+  let asked = '';
+  await page.route('**/api/v1/payments?**', (route) => {
+    asked = new URL(route.request().url()).search;
+    return route.fulfill({
+      json: [made('p2', 'Water', iso(0), 4_500), made('p1', 'Electric', iso(0), 8_000)],
+    });
+  });
+  await page.goto('/');
+  const card = page.getByRole('region', { name: /^Paid in / });
+  await expect(card).toContainText('$125.00');
+  await expect(card.getByRole('listitem').first()).toContainText('Water');
+  await expect(card.getByRole('listitem').first()).toContainText('by Admin');
+  // From the 1st of this month to today.
+  expect(asked).toBe(`?from=${iso(0).slice(0, 8)}01&to=${iso(0)}`);
+  await card.getByRole('button', { name: /Water/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Water', exact: true })).toBeVisible();
+});
+
+test('with nothing paid yet, the payments card says so', async ({ page }) => {
+  await withBills(page);
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: /^Paid in / })).toContainText(
+    /Nothing paid yet in \w+\./,
+  );
 });
 
 test('a long card shows its first few, and the rest when asked', async ({ page }) => {

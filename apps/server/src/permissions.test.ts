@@ -48,6 +48,7 @@ const ROUTE_ACCESS: Record<string, string> = {
   'GET /api/v1/bills': 'signed-in',
   'GET /api/v1/agenda': 'signed-in',
   'GET /api/v1/totals': 'signed-in',
+  'GET /api/v1/payments': 'signed-in',
   'POST /api/v1/spaces/:spaceId/bills': 'space manager',
   'PATCH /api/v1/spaces/:spaceId/bills/:billId': 'space manager',
   'DELETE /api/v1/spaces/:spaceId/bills/:billId': 'space manager',

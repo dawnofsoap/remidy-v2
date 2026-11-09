@@ -141,6 +141,26 @@ export const agendaResponse = z.object({
 });
 export type AgendaResponse = z.infer<typeof agendaResponse>;
 
+/** A payment in a period, across every space, for lists such as Home's payments this month. */
+export const paymentListEntry = z.object({
+  id: z.string(),
+  /** The due date it paid toward, so it can open its bill. */
+  occurrenceId: z.string(),
+  billId: z.string(),
+  spaceId: z.string(),
+  shared: z.boolean(),
+  /** The bill's name on that due date. */
+  name: z.string(),
+  logoId: z.string().nullable(),
+  paidOn: z.string(),
+  amountCents: z.number(),
+  source: z.enum(['manual', 'autopay', 'v1_archive']),
+  /** Who recorded it, or null for Remidy itself, such as auto-pay. */
+  paidByName: z.string().nullable(),
+});
+export type PaymentListEntry = z.infer<typeof paymentListEntry>;
+export const paymentListResponse = z.array(paymentListEntry);
+
 /** A period's totals, by the one definition every screen uses. */
 export const totalsResponse = z.object({
   /** Due dates in the period that weren't skipped. */

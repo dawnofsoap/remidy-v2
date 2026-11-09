@@ -21,6 +21,7 @@ import { MiniCalendar } from './MiniCalendar.tsx';
 import { CardList, HomeCard } from './HomeCard.tsx';
 import { homeFigures, plural } from './homeFigures.ts';
 import { MonthFigures } from './MonthFigures.tsx';
+import { MonthPayments } from './MonthPayments.tsx';
 import { BillViewer } from './BillViewer.tsx';
 
 function monthStart(date: CalendarDate): CalendarDate {
@@ -97,6 +98,8 @@ export function Agenda() {
   });
   // The due date whose bill is open, found in the agenda each time so a payment shows at once.
   const [openId, setOpenId] = useState<string | null>(null);
+  // A bill opened from a payment, which has no due date to pay.
+  const [openBillId, setOpenBillId] = useState<string | null>(null);
 
   if (agenda.isPending) return <Placeholder />;
   if (agenda.isError) {
@@ -172,10 +175,28 @@ export function Agenda() {
           empty={`Nothing else due in ${monthName}.`}
         />
       </HomeCard>
-      {/* Only beside the month's bills: stacked on smaller screens, it would push them down. */}
-      <div className="hidden xl:block">
-        <MiniCalendar today={from} />
+      <div className="flex min-w-0 flex-col gap-6">
+        {/* Only beside the month's bills: stacked on smaller screens, it would push them down. */}
+        <div className="hidden xl:block">
+          <MiniCalendar today={from} />
+        </div>
+        <MonthPayments
+          from={monthStart(from)}
+          today={from}
+          showOwner={showOwner}
+          onOpen={(entry) => {
+            setOpenBillId(entry.billId);
+          }}
+        />
       </div>
+      {openBillId && !opened ? (
+        <BillViewer
+          billId={openBillId}
+          onClose={() => {
+            setOpenBillId(null);
+          }}
+        />
+      ) : null}
       {opened ? (
         <BillViewer
           billId={opened.billId}

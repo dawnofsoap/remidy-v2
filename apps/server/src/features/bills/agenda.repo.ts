@@ -1,7 +1,16 @@
-import type { AgendaResponse } from '@remidy/contracts';
-import { bill, billOccurrence, category, membership, payment, space, type Orm } from '@remidy/db';
+import type { AgendaResponse, PaymentListEntry } from '@remidy/contracts';
+import {
+  bill,
+  billOccurrence,
+  category,
+  membership,
+  payment,
+  space,
+  user,
+  type Orm,
+} from '@remidy/db';
 import { compareDates, daysBetween, parseCalendarDate, type CalendarDate } from '@remidy/domain';
-import { and, asc, eq, gte, lt, lte, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lt, lte, or, sql } from 'drizzle-orm';
 import { AppError } from '../../core/errors.ts';
 
 const invalid = (path: string, message: string) =>
@@ -116,4 +125,43 @@ export async function periodTotals(
     unknownCount: due?.unknown ?? 0,
     paidCents: paid?.cents ?? 0,
   };
+}
+
+/**
+ * Payments made in a period that weren't voided, newest first, across every space the person
+ * belongs to. Each comes with its bill's name on that due date, and who recorded it.
+ */
+export function paymentsIn(
+  orm: Orm,
+  userId: string,
+  from: CalendarDate,
+  to: CalendarDate,
+): Promise<PaymentListEntry[]> {
+  return orm
+    .select({
+      id: payment.id,
+      occurrenceId: payment.occurrenceId,
+      billId: billOccurrence.billId,
+      spaceId: payment.spaceId,
+      shared: sql<boolean>`${space.kind} = 'shared'`.mapWith(Boolean),
+      name: billOccurrence.billName,
+      logoId: bill.logoId,
+      paidOn: payment.paidOn,
+      amountCents: payment.amountCents,
+      source: payment.source,
+      paidByName: user.name,
+    })
+    .from(payment)
+    .innerJoin(
+      membership,
+      and(eq(membership.spaceId, payment.spaceId), eq(membership.userId, userId)),
+    )
+    .innerJoin(space, eq(space.id, payment.spaceId))
+    .innerJoin(billOccurrence, eq(billOccurrence.id, payment.occurrenceId))
+    .innerJoin(bill, eq(bill.id, billOccurrence.billId))
+    .leftJoin(user, eq(user.id, payment.paidBy))
+    .where(
+      and(gte(payment.paidOn, from), lte(payment.paidOn, to), sql`${payment.voidedAt} is null`),
+    )
+    .orderBy(desc(payment.paidOn), desc(payment.id));
 }

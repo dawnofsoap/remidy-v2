@@ -2,6 +2,7 @@ import {
   agendaResponse,
   billResponse,
   historyResponse,
+  paymentListResponse,
   paymentResponse,
   totalsResponse,
   type BillResponse,
@@ -64,6 +65,15 @@ export const TOTALS_KEY = ['totals'];
 
 export const fetchTotals = (from: string, to: string, signal: AbortSignal) =>
   apiRequest('GET', `/api/v1/totals?from=${from}&to=${to}`, { schema: totalsResponse, signal });
+
+export const PAYMENTS_KEY = ['payments'];
+
+/** Payments made in a period, newest first, across every space. */
+export const fetchPayments = (from: string, to: string, signal: AbortSignal) =>
+  apiRequest('GET', `/api/v1/payments?from=${from}&to=${to}`, {
+    schema: paymentListResponse,
+    signal,
+  });
 
 export const fetchHistory = (spaceId: string, billId: string, signal: AbortSignal) =>
   apiRequest('GET', `/api/v1/spaces/${spaceId}/bills/${billId}/history`, {
