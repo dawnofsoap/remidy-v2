@@ -137,6 +137,8 @@ test('Bills is a table on wider screens and a list on a phone', async ({ page },
   await saveScreenshot(page, 'bills-table');
   await add.click();
   await expect(page.getByRole('dialog', { name: 'Add bill' })).toBeVisible();
+  // Nothing of the page shows over a dialog, the floating button included.
+  await expect(page.locator('button[title="Add bill"]')).toBeHidden();
 });
 
 test('the calendar shows the month as a grid, or a small grid and a chosen day on a phone', async ({
