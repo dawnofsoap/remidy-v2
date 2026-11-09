@@ -9,18 +9,21 @@ interface PageProps {
    * as the tab bar marking where you are.
    */
   hideTitleOnPhone?: boolean;
+  /** A link back up, shown above the title on phones only, such as from Settings to More. */
+  back?: ReactNode;
   /** The page's main action, such as Add bill, shown beside the title. */
   actions?: ReactNode;
   children: ReactNode;
 }
 
-export function Page({ title, hideTitleOnPhone = false, actions, children }: PageProps) {
+export function Page({ title, hideTitleOnPhone = false, back, actions, children }: PageProps) {
   useEffect(() => {
     document.title = `${title} · Remidy`;
   }, [title]);
 
   return (
     <div className="flex flex-col gap-6">
+      {back ? <div className="-mb-4 md:hidden">{back}</div> : null}
       {/* The row itself goes on phones, so no gap is left above when the title is hidden. */}
       <div
         className={cn(

@@ -1,11 +1,27 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { cn, focusRing } from '../ui/index.ts';
 import type { SettingsSection } from './feature.ts';
-import { listLink } from './navStyles.ts';
+import { placeLink, placeList } from './navStyles.ts';
 import { Page } from './Page.tsx';
 import { NotFoundPage } from './pages.tsx';
+
+/** Back up a level on a phone, such as from a section to its area. */
+function BackLink({ to, label }: { to: string; label: string }) {
+  return (
+    <Link
+      to={to}
+      className={cn(
+        'inline-flex min-h-11 items-center gap-1 rounded-xl pr-3 font-semibold text-accent-text',
+        focusRing,
+      )}
+    >
+      <ChevronLeft aria-hidden="true" className="size-5" />
+      {label}
+    </Link>
+  );
+}
 
 interface SettingsAreaProps {
   title: string;
@@ -40,17 +56,28 @@ export function SettingsArea({ title, subtitle, basePath, sections, section }: S
   const Section = current?.component;
 
   return (
-    <Page title={title} hideTitleOnPhone={Boolean(current)}>
+    <Page
+      title={title}
+      hideTitleOnPhone={Boolean(current)}
+      // Phones reach an area from More, and a section from the area's list.
+      back={
+        current ? <BackLink to={basePath} label={title} /> : <BackLink to="/more" label="More" />
+      }
+    >
       {subtitle ? (
         <p className={cn('-mt-4 text-ink-2', current && 'max-md:hidden')}>{subtitle}</p>
       ) : null}
       <div className="flex flex-col gap-6 md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:items-start md:gap-10">
         <nav aria-label={`${title} sections`} className={cn(current && 'hidden md:block')}>
-          <ul className="flex flex-col gap-1">
+          <ul className={placeList}>
             {sections.map((item) => (
               <li key={item.slug}>
-                <Link to={`${basePath}/${item.slug}`} className={listLink}>
+                <Link to={`${basePath}/${item.slug}`} className={placeLink}>
                   {item.title}
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="ml-auto size-5 text-ink-2 md:hidden"
+                  />
                 </Link>
               </li>
             ))}
@@ -61,16 +88,6 @@ export function SettingsArea({ title, subtitle, basePath, sections, section }: S
             aria-labelledby="section-title"
             className="flex min-w-0 max-w-5xl flex-col gap-4"
           >
-            <Link
-              to={basePath}
-              className={cn(
-                'inline-flex min-h-11 items-center gap-1 self-start rounded-xl pr-3 font-semibold text-accent-text md:hidden',
-                focusRing,
-              )}
-            >
-              <ChevronLeft aria-hidden="true" className="size-5" />
-              {title}
-            </Link>
             <h2
               id="section-title"
               className="text-2xl font-bold tracking-tight md:text-xl md:font-semibold"
