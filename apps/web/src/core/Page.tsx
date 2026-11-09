@@ -21,11 +21,11 @@ export function Page({ title, hideTitleOnPhone = false, actions, children }: Pag
 
   return (
     <div className="flex flex-col gap-6">
-      {/* With nothing else in it, the row disappears on phones too, so no gap is left above. */}
+      {/* The row itself goes on phones, so no gap is left above when the title is hidden. */}
       <div
         className={cn(
           'flex flex-wrap items-center justify-between gap-3',
-          hideTitleOnPhone && (actions ? 'max-md:justify-end' : 'max-md:contents'),
+          hideTitleOnPhone && 'max-md:contents',
         )}
       >
         <h1
