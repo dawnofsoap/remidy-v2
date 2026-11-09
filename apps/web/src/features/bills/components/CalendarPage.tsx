@@ -10,7 +10,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Page } from '../../../core/Page.tsx';
 import {
   Button,
@@ -29,7 +29,35 @@ import { byUrgency, DAY_STATUS, dayStatusOf } from './dayStatus.ts';
 import { statusOf } from './dueStatus.ts';
 import { PaySheet } from './PaySheet.tsx';
 
-const SHOWN_PER_DAY = 3;
+/** In rem, matching the classes below: a day's padding, its date, and each line under it. */
+const DAY_PADDING = 0.75;
+const DAY_NUMBER = 2;
+const LINE = 1.75;
+
+/**
+ * How many lines fit under a day's date, from the height the grid gives each day. Days fill the
+ * window, so a taller screen shows more bills before "+N more".
+ */
+function useLinesPerDay(grid: RefObject<HTMLElement | null>): number {
+  const [lines, setLines] = useState(3);
+  useEffect(() => {
+    const element = grid.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => {
+      const day = element.firstElementChild;
+      if (!(day instanceof HTMLElement)) return;
+      // The root size in pixels, which grows on very wide screens.
+      const rem = Number(getComputedStyle(document.documentElement).fontSize.replace('px', ''));
+      const room = day.clientHeight / rem - DAY_PADDING - DAY_NUMBER;
+      setLines(Math.max(1, Math.floor(room / LINE)));
+    });
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+    };
+  });
+  return lines;
+}
 
 /** The day in the address, such as /calendar?day=2026-11-20 from Home's small calendar. */
 function useDayInAddress(): CalendarDate | null {
@@ -79,6 +107,8 @@ export function CalendarPage() {
     queryFn: ({ signal }) => fetchAgenda(month, to, signal),
   });
   const [paying, setPaying] = useState<AgendaEntry | null>(null);
+  const grid = useRef<HTMLOListElement>(null);
+  const linesPerDay = useLinesPerDay(grid);
   const refresh = useRefresh();
 
   const entries = agenda.data
@@ -159,17 +189,22 @@ export function CalendarPage() {
             </div>
             <ol
               aria-label={formatDate(month, 'monthYear')}
-              className="grid grid-cols-7 gap-px bg-line"
+              ref={grid}
+              // The weeks share the window's height below the page's header, and never get shorter
+              // than 8rem.
+              className="grid min-h-[calc(100dvh-13rem)] auto-rows-[minmax(8rem,1fr)] grid-cols-7 gap-px bg-line"
             >
               {gridDays(month).map((day) => {
                 const items = onDay(day);
                 const inMonth = sameMonth(day, month);
                 const count = items.length;
+                // Every bill when they all fit, or one line fewer to make room for "+N more".
+                const shown = count <= linesPerDay ? count : linesPerDay - 1;
                 return (
                   <li
                     key={day}
                     className={cn(
-                      'flex min-h-32 min-w-0 flex-col gap-1 bg-surface p-1.5',
+                      'flex min-w-0 flex-col gap-1 overflow-hidden bg-surface p-1.5',
                       !inMonth && 'bg-bg text-ink-2',
                     )}
                   >
@@ -187,7 +222,7 @@ export function CalendarPage() {
                     >
                       {datePartsOf(day).day}
                     </Button>
-                    {items.slice(0, SHOWN_PER_DAY).map((entry) => (
+                    {items.slice(0, shown).map((entry) => (
                       <DayChip
                         key={entry.id}
                         entry={entry}
@@ -197,7 +232,7 @@ export function CalendarPage() {
                         }}
                       />
                     ))}
-                    {count > SHOWN_PER_DAY ? (
+                    {count > shown ? (
                       <Button
                         variant="ghost"
                         size="small"
@@ -206,7 +241,7 @@ export function CalendarPage() {
                           setOpenDay(day);
                         }}
                       >
-                        +{count - SHOWN_PER_DAY} more
+                        +{count - shown} more
                         <span className="sr-only"> on {formatDate(day, 'long')}</span>
                       </Button>
                     ) : null}
