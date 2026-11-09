@@ -34,6 +34,7 @@ const bill = (id: string, name: string, expectedCents: number | null) => ({
   spaceId: 'sp1',
   shared: false,
   name,
+  merchant: null,
   expectedCents,
   isVariable: expectedCents === null,
   schedule: { kind: 'repeat', unit: 'month', every: 1, firstDue: '2026-01-15', lastDue: null },

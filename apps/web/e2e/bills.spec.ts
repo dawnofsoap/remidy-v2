@@ -15,6 +15,7 @@ const internet = {
   spaceId: 'sp1',
   shared: false,
   name: 'Internet',
+  merchant: null,
   expectedCents: 6000,
   isVariable: false,
   schedule: { kind: 'repeat', unit: 'month', every: 1, firstDue: '2026-01-10', lastDue: null },

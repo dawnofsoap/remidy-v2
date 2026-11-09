@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const BILL_NAME_MAX = 100;
 export const BILL_NOTES_MAX = 2000;
+export const BILL_MERCHANT_MAX = 100;
 /** The longest agenda range one request can ask for. */
 export const AGENDA_MAX_DAYS = 400;
 
@@ -35,6 +36,16 @@ const billFields = {
     .trim()
     .min(1, 'Enter a name.')
     .max(BILL_NAME_MAX, `Use ${String(BILL_NAME_MAX)} characters or fewer.`),
+  /**
+   * Who it's paid to, such as Chase for "Chase credit card". Optional, so older copies of the app
+   * that don't send it keep working.
+   */
+  merchant: z
+    .string()
+    .trim()
+    .max(BILL_MERCHANT_MAX, `Use ${String(BILL_MERCHANT_MAX)} characters or fewer.`)
+    .nullable()
+    .optional(),
   /** Null only for a variable bill with no usual amount. */
   expectedCents: z
     .number()
@@ -87,6 +98,7 @@ export const billResponse = z.object({
   /** Personal bills are only ever seen by their owner. */
   shared: z.boolean(),
   name: z.string(),
+  merchant: z.string().nullable(),
   expectedCents: z.number().nullable(),
   isVariable: z.boolean(),
   schedule: billSchedule,

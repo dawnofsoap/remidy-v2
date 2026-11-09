@@ -1,4 +1,4 @@
-import { BILL_NAME_MAX, BILL_NOTES_MAX } from '@remidy/contracts';
+import { BILL_MERCHANT_MAX, BILL_NAME_MAX, BILL_NOTES_MAX } from '@remidy/contracts';
 import { formatMoney, type RepeatUnit } from '@remidy/domain';
 import { useHousehold } from '../../../core/space.tsx';
 import { DateField, MoneyField, RadioField, SelectField, TextField } from '../../../ui/index.ts';
@@ -176,8 +176,31 @@ export function DetailsStep({
   const category = categories.find((item) => item.id === draft.categoryId);
   return (
     <>
+      <TextField
+        label="Merchant (optional)"
+        hint="Who you pay, such as Chase. Used to find its logo."
+        value={draft.merchant}
+        maxLength={BILL_MERCHANT_MAX}
+        autoComplete="off"
+        onChange={(event) => {
+          change({ merchant: event.target.value });
+        }}
+        {...errorOf(errors, 'merchant')}
+      />
+      <TextField
+        label="Website (optional)"
+        type="url"
+        inputMode="url"
+        placeholder="https://"
+        value={draft.url}
+        onChange={(event) => {
+          change({ url: event.target.value });
+        }}
+        {...errorOf(errors, 'url')}
+      />
       <LogoField
         name={draft.name}
+        searchFor={draft.merchant.trim() || draft.name}
         url={draft.url}
         logoId={draft.logoId}
         chosen={draft.logoChosen}
@@ -220,17 +243,6 @@ export function DetailsStep({
         }}
       />
       <TextField
-        label="Website (optional)"
-        type="url"
-        inputMode="url"
-        placeholder="https://"
-        value={draft.url}
-        onChange={(event) => {
-          change({ url: event.target.value });
-        }}
-        {...errorOf(errors, 'url')}
-      />
-      <TextField
         label="Notes (optional)"
         maxLength={BILL_NOTES_MAX}
         value={draft.notes}
@@ -244,6 +256,7 @@ export function DetailsStep({
           <p className="font-semibold">{draft.name.trim()}</p>
           <p className="text-ink-2">
             {[
+              draft.merchant.trim(),
               draft.cents === null ? 'Varies' : formatMoney(draft.cents),
               category?.name,
               draft.autopay === 'yes' ? 'Auto-pay' : null,

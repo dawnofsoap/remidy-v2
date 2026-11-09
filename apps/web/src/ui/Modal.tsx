@@ -12,7 +12,10 @@ interface ModalProps {
   children: ReactNode;
 }
 
-/** A centered dialog on larger screens and a bottom sheet on phones. Focus stays inside it. */
+/**
+ * A centered dialog on larger screens and a bottom sheet on phones. Focus stays inside it, and it
+ * scrolls when it's taller than the window.
+ */
 export function Modal({
   open,
   onOpenChange,
@@ -37,7 +40,7 @@ export function Modal({
             event.preventDefault();
             returnFocusTo.current?.focus();
           }}
-          className="fixed inset-x-0 bottom-0 flex max-h-[90dvh] flex-col gap-4 overflow-y-auto rounded-t-3xl bg-surface p-6 text-ink sm:inset-x-auto sm:top-24 sm:bottom-auto sm:left-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:rounded-3xl"
+          className="fixed inset-x-0 bottom-0 flex max-h-[90dvh] flex-col gap-4 overflow-y-auto rounded-t-3xl bg-surface p-6 text-ink sm:inset-x-auto sm:top-24 sm:bottom-auto sm:max-h-[calc(100dvh-8rem)] sm:left-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:rounded-3xl"
         >
           <div className="flex flex-col gap-1">
             <Dialog.Title className="text-xl font-bold tracking-tight">{title}</Dialog.Title>

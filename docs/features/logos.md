@@ -11,7 +11,8 @@ calendar where each day showed its bills with their logos and status. People wan
 - A logo on each bill, shown wherever the bill is: the bills table, the agenda, Home, the calendar, the payment sheet
   and the bill's history
 - Finding logos automatically from two sources:
-  1. **Logo.dev**, when an admin adds a Logo.dev key in Administration. It searches by the bill's name.
+  1. **Logo.dev**, when an admin adds a Logo.dev key in Administration. It searches by the bill's merchant, such as
+     Chase for "Chase credit card", or by its name when there's no merchant.
   2. **The bill's own website**, using the icon the site publishes, when the bill has a website.
 - Choosing between the logos found, uploading your own, or removing it
 - A lettered tile for a bill without a logo, the same size, so names line up

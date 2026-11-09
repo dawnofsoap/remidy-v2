@@ -169,7 +169,8 @@ export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
               {failure}
             </p>
           ) : null}
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Stays in view while a long step scrolls. */}
+          <div className="sticky -bottom-6 -mx-6 flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface px-6 py-4">
             {step > 0 ? (
               <Button
                 variant="secondary"

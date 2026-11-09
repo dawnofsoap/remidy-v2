@@ -25,6 +25,7 @@ import { createBill, listBills, updateBill, type BillFields } from './repo.ts';
 
 interface SampleBill {
   name: string;
+  merchant?: string;
   shared: boolean;
   cents: number | null;
   varies?: boolean;
@@ -134,6 +135,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'Mobile phone',
+    merchant: 'Signal Wireless',
     logo: [[60, 70, 90], 'bars'],
     shared: false,
     cents: 5_500,
@@ -144,6 +146,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'Car loan',
+    merchant: 'Northwind Bank',
     logo: [[20, 100, 120], 'ring'],
     shared: false,
     cents: 38_912,
@@ -167,6 +170,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'Car insurance',
+    merchant: 'Harbor Mutual',
     logo: [[90, 120, 40], 'diamond'],
     shared: false,
     cents: 61_240,
@@ -175,6 +179,7 @@ export const SAMPLE_BILLS: readonly SampleBill[] = [
   },
   {
     name: 'Credit card',
+    merchant: 'Northwind Bank',
     shared: false,
     cents: null,
     varies: true,
@@ -221,10 +226,13 @@ export async function addSampleBills(
   const logoFor = async (sample: SampleBill) =>
     sample.logo ? storeLogo(orm, drawSampleLogo(...sample.logo)) : null;
 
-  // Sample bills added before logos existed get theirs now.
+  // Sample bills added before logos and merchants existed get theirs now.
   let logosAdded = 0;
   for (const found of existing) {
     const sample = SAMPLE_BILLS.find((candidate) => candidate.name === found.name);
+    if (sample?.merchant && !found.merchant) {
+      await updateBill(orm, found.spaceId, found.id, userId, { merchant: sample.merchant });
+    }
     if (found.logoId || !sample?.logo) continue;
     await updateBill(orm, found.spaceId, found.id, userId, { logoId: await logoFor(sample) });
     logosAdded += 1;
@@ -243,6 +251,7 @@ export async function addSampleBills(
     const spaceId = sample.shared ? householdId : personalSpaceId;
     const fields: BillFields = {
       name: sample.name,
+      merchant: sample.merchant ?? null,
       expectedCents: sample.cents,
       isVariable: sample.varies ?? false,
       schedule: sample.schedule(now),

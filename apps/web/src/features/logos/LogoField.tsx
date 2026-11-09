@@ -9,6 +9,12 @@ const IMAGE_TYPES = 'image/png,image/jpeg,image/gif,image/webp,image/x-icon';
 /** Waits for typing to pause before searching again. */
 const WAIT_MS = 800;
 
+const tileClass = (chosen: boolean) =>
+  cn(
+    'h-full w-full flex-col justify-start gap-1 border border-line p-2 text-center font-normal whitespace-normal',
+    chosen && 'border-accent bg-accent-soft',
+  );
+
 const webAddress = (text: string): string | null => {
   const trimmed = text.trim();
   if (!URL.canParse(trimmed)) return null;
@@ -16,8 +22,10 @@ const webAddress = (text: string): string | null => {
 };
 
 interface LogoFieldProps {
-  /** The bill's name, which is searched for. */
+  /** The bill's name, for the initials shown without a logo. */
   name: string;
+  /** What's searched for: the bill's merchant, or its name without one. */
+  searchFor: string;
   /** The bill's website, whose own icon is offered too. */
   url: string;
   logoId: string | null;
@@ -32,7 +40,15 @@ interface LogoFieldProps {
 }
 
 /** The bill's logo, with a way to choose another, upload one, or remove it. */
-export function LogoField({ name, url, logoId, chosen, onChange, pickFirst }: LogoFieldProps) {
+export function LogoField({
+  name,
+  searchFor,
+  url,
+  logoId,
+  chosen,
+  onChange,
+  pickFirst,
+}: LogoFieldProps) {
   const [options, setOptions] = useState<LogoOption[]>([]);
   const [state, setState] = useState<'idle' | 'finding' | 'found' | 'failed'>('idle');
   const [open, setOpen] = useState(false);
@@ -42,11 +58,12 @@ export function LogoField({ name, url, logoId, chosen, onChange, pickFirst }: Lo
   const website = webAddress(url);
 
   async function find(signal?: AbortSignal) {
-    if (!name.trim()) return;
+    const term = searchFor.trim();
+    if (!term) return;
     const attempt = (latest.current += 1);
     setState('finding');
     try {
-      const found = await suggestLogos(name.trim(), website, signal);
+      const found = await suggestLogos(term, website, signal);
       if (attempt !== latest.current) return;
       setOptions(found.options);
       setState('found');
@@ -66,9 +83,9 @@ export function LogoField({ name, url, logoId, chosen, onChange, pickFirst }: Lo
       clearTimeout(timer);
       controller.abort();
     };
-    // Only the name and website decide what's found.
+    // Only what's searched for and the website decide what's found.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, website, pickFirst, chosen]);
+  }, [searchFor, website, pickFirst, chosen]);
 
   async function upload(file: File) {
     setUploading(true);
@@ -92,8 +109,8 @@ export function LogoField({ name, url, logoId, chosen, onChange, pickFirst }: Lo
   else if (state === 'failed') status = 'Logos couldn’t be found just now.';
   else if (state === 'found' && options.length === 0) {
     status = website
-      ? 'No logos found. You can upload one.'
-      : 'No logos found. Adding the website may find one, or you can upload one.';
+      ? 'No logos found. Try the merchant’s name, or upload one.'
+      : 'No logos found. Adding the merchant or website may find one, or you can upload one.';
   }
 
   return (
@@ -122,30 +139,42 @@ export function LogoField({ name, url, logoId, chosen, onChange, pickFirst }: Lo
       </p>
       {open ? (
         <div className="flex flex-col gap-3 rounded-xl border border-line p-3">
-          {options.length > 0 ? (
-            <ul aria-label="Logos found" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {options.map((option) => (
-                <li key={option.logoId}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    aria-pressed={option.logoId === logoId}
-                    className={cn(
-                      'h-auto w-full flex-col gap-1 border border-line p-2 text-center font-normal whitespace-normal',
-                      option.logoId === logoId && 'border-accent bg-accent-soft',
-                    )}
-                    onClick={() => {
-                      onChange(option.logoId, true);
-                    }}
-                  >
-                    <LogoTile size="large" src={logoUrl(option.logoId)} name={option.label} />
-                    <span className="font-semibold break-all">{option.label}</span>
-                    <span className="text-xs text-ink-2">{SOURCE_LABEL[option.source]}</span>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <ul aria-label="Logo choices" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {options.map((option) => (
+              <li key={option.logoId}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-pressed={option.logoId === logoId}
+                  title={option.label}
+                  className={tileClass(option.logoId === logoId)}
+                  onClick={() => {
+                    onChange(option.logoId, true);
+                  }}
+                >
+                  <LogoTile size="large" src={logoUrl(option.logoId)} name={option.label} />
+                  <span className="line-clamp-2 font-semibold break-words">{option.label}</span>
+                  <span className="text-xs text-ink-2">{SOURCE_LABEL[option.source]}</span>
+                </Button>
+              </li>
+            ))}
+            {/* Choosing none shows the bill's initials. */}
+            <li>
+              <Button
+                type="button"
+                variant="ghost"
+                aria-pressed={logoId === null}
+                className={tileClass(logoId === null)}
+                onClick={() => {
+                  onChange(null, true);
+                }}
+              >
+                <LogoTile size="large" src={null} name={name || '?'} />
+                <span className="font-semibold">No logo</span>
+                <span className="text-xs text-ink-2">Shows its initials</span>
+              </Button>
+            </li>
+          </ul>
           <div className="flex flex-wrap gap-2">
             <FileButton
               accept={IMAGE_TYPES}
@@ -157,22 +186,11 @@ export function LogoField({ name, url, logoId, chosen, onChange, pickFirst }: Lo
             <Button
               type="button"
               variant="ghost"
-              disabled={state === 'finding' || !name.trim()}
+              disabled={state === 'finding' || !searchFor.trim()}
               onClick={() => void find()}
             >
               Search again
             </Button>
-            {logoId ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  onChange(null, true);
-                }}
-              >
-                Remove logo
-              </Button>
-            ) : null}
           </div>
           <p className="text-sm text-ink-2">PNG, JPEG, GIF, WebP or ICO, up to 256 KB.</p>
           {uploadError ? (
