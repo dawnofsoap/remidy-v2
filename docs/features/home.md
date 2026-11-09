@@ -1,6 +1,6 @@
 # Feature: Home as cards
 
-**Status:** Draft
+**Status:** Approved
 **Issue:** #75
 
 ## Problem
