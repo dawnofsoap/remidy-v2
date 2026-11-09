@@ -9,7 +9,7 @@ import {
 } from '@remidy/domain';
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@tanstack/react-router';
-import { ChevronLeft, ChevronRight, Tag } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Tag } from 'lucide-react';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Page } from '../../../core/Page.tsx';
 import {
@@ -229,15 +229,20 @@ export function CalendarPage() {
         </Button>
       ) : null}
       {/* Phones list the bills by name already, so it's only for the grid. */}
+      {/* Filled with a check while on, so it's clear which way it is. */}
       <Button
-        variant="secondary"
+        variant={names ? 'primary' : 'secondary'}
         className="ml-auto hidden md:inline-flex"
         aria-pressed={names}
         onClick={() => {
           setNames(!names);
         }}
       >
-        <Tag aria-hidden="true" className="size-4" />
+        {names ? (
+          <Check aria-hidden="true" className="size-4" />
+        ) : (
+          <Tag aria-hidden="true" className="size-4" />
+        )}
         Show names
       </Button>
     </div>

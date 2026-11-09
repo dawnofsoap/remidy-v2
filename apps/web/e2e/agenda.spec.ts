@@ -173,6 +173,7 @@ test('the calendar shows logos only, with names when asked, and remembers', asyn
   await names.click();
   await expect(names).toHaveAttribute('aria-pressed', 'true');
   await expect(water).toContainText('Water');
+  await saveScreenshot(page, 'calendar-names');
   await page.reload();
   await expect(grid.getByRole('button', { name: /\bWater, / })).toContainText('Water');
   await expect(page.getByRole('button', { name: 'Show names' })).toHaveAttribute(
