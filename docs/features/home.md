@@ -5,24 +5,25 @@
 
 ## Problem
 Home answers "what needs my attention", but it reads as one long list beside a tall summary, and it's hard to take in
-at a glance. v1's Home was a grid of cards (a row of month figures, an overdue banner, the month's bills, recent
-payments and next month), which people liked. Home should get that polish, using data v2 already has.
+at a glance, and it lists the next few months as well, which the Calendar already shows. v1's Home was a grid of
+cards (a row of month figures, an overdue banner, the month's bills and recent payments), which people liked. Home
+should get that polish, using data v2 already has, and be about this month only.
 
 ## In scope
 - **Figures across the top**, one card each: Left to pay this month (with a bar for how much of the month is paid),
   Paid this month, Overdue, and Due in the next 7 days
 - **An overdue card**, tinted red, only when something is overdue
 - **This month's bills** in a wide card, as tiles in columns, with the small calendar beside it
-- **Recent payments:** what was paid in the last 14 days, with the total
-- **Next month:** its total and its bills
+- **This month's payments:** what's been paid since the 1st, with the total
 - Long cards show their first few items and "Show N more"
-- A new read-only route listing payments in a date range, for Recent payments
+- A new read-only route listing payments in a date range, for this month's payments
 
 ## Out of scope
 - **Income** and what's left after bills, which needs income and belongs to Insights (milestone 9). It goes in the
   backlog.
 - Moving, resizing, hiding or choosing cards. The layout is fixed ("Drag-and-resize dashboard widgets" is
   deliberately not planned).
+- Later months, which are on the Calendar page. Home no longer lists them.
 - Charts and statistics, which belong to Insights.
 - Changing how any figure is worked out. The figures are the ones Home shows today.
 
@@ -36,13 +37,15 @@ payments and next month), which people liked. Home should get that polish, using
 - Given this month's bills, then they're the ones due from today to the month's end, soonest first, each with its
   status as now, and each opens its preview.
 - Given a card with more items than it shows, then "Show N more" shows the rest, and "Show less" hides them again.
-- Given Recent payments, then they're the payments made in the last 14 days, including today, newest first, without
-  voided ones. The total is their sum. With none, it says "Nothing paid in the last 14 days".
-- Given Next month, then it shows the next calendar month's total and its bills, soonest first. With none, it says
-  "Nothing due in December", naming the month.
+- Given this month's payments, then they're the payments made from the 1st to today, newest first, without voided
+  ones, titled with the month, such as "Paid in November". The total is their sum, and matches Paid this month. With
+  none, it says "Nothing paid yet in November", naming the month.
+- Given bills due after this month, then Home doesn't list them, except in Due in the next 7 days, which can run into
+  the next month so a bill due in two days is never hidden.
+- Given an overdue bill from an earlier month, then it's still in the overdue card, since it still needs paying.
 - Given a household, then shared and personal bills both show, each marked as now, and only bills the person can see.
-- Given a phone, then the cards stack in this order: overdue, figures in two columns, this month, recent payments,
-  next month. The small calendar stays off phones, where the Calendar page is a tab away.
+- Given a phone, then the cards stack in this order: overdue, figures in two columns, this month's bills, this
+  month's payments. The small calendar stays off phones, where the Calendar page is a tab away.
 - Given any width from a phone to 3840 pixels, then the cards fill the width, with more columns on wider screens.
 
 ## Data
@@ -55,7 +58,7 @@ No changes. Recent payments reads `payment`, which already has an index on space
 
 ## Screens
 - **Desktop:** the figures in a row of four; under them the overdue card; then this month's bills, two cards wide,
-  beside the small calendar; then recent payments beside next month.
+  and beside them the small calendar with this month's payments under it.
 - **Phone:** stacked as under Behavior.
 - **Loading:** each card holds its place, so the page doesn't jump. **Error:** a card that can't load says so with
   Try again, and the others still show. **Empty:** with no bills at all, Home keeps its current empty state.
@@ -64,7 +67,8 @@ No changes. Recent payments reads `payment`, which already has an index on space
 The agenda and totals routes, payments, `BillViewer` for opening a bill, and the small calendar.
 
 ## Lessons from v1
-- Keep the grid of cards, the tinted overdue banner, recent payments and the next month preview.
+- Keep the grid of cards, the tinted overdue banner and the payments card. v1's next month preview is left to the
+  Calendar, to keep Home about this month.
 - v1 fixed each card at 426 pixels tall so a row lined up, so content had to fit that height. Cards here size to
   their content and line up by row, so larger text and wider screens still fit.
 

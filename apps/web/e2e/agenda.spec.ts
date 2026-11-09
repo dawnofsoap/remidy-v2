@@ -81,23 +81,78 @@ async function withBills(page: Page) {
   );
 }
 
-test('Home sums up the month beside what’s due, or above it on a phone', async ({ page }, info) => {
+test('Home shows the month’s figures, then cards, with what’s overdue first on a phone', async ({
+  page,
+}, info) => {
   await withBills(page);
+  await page.route('**/api/v1/totals?**', (route) =>
+    route.fulfill({ json: { dueCents: 0, unknownCount: 0, paidCents: 5_000 } }),
+  );
   await page.goto('/');
-  const summary = page.getByRole('region', { name: 'This month' });
-  await expect(summary).toContainText('Overdue');
-  await expect(summary).toContainText('$1,450.00');
-  await expect(summary).toContainText('$45.00 + 1 that varies');
+  const figures = page.getByRole('region', { name: 'This month' });
+  await expect(figures).toContainText('Overdue');
+  await expect(figures).toContainText('$1,450.00');
+  await expect(figures).toContainText('$45.00 + 1 that varies');
+  await expect(figures).toContainText('$50.00');
+  await expect(figures).toContainText(/\d+% paid/);
 
-  const list = await page.getByRole('list', { name: 'Overdue' }).boundingBox();
-  const panel = await summary.boundingBox();
+  const overdue = page.getByRole('region', { name: 'Overdue' });
+  await expect(overdue.getByRole('list', { name: 'Overdue' })).toContainText('Rent');
+  const late = await overdue.boundingBox();
+  const top = await figures.boundingBox();
   if (info.project.name === 'phone') {
-    expect(panel?.y ?? 0).toBeLessThan(list?.y ?? 0);
+    expect(late?.y ?? 0).toBeLessThan(top?.y ?? 0);
   } else {
-    expect(panel?.x ?? 0).toBeGreaterThan((list?.x ?? 0) + (list?.width ?? 0));
+    expect(top?.y ?? 0).toBeLessThan(late?.y ?? 0);
   }
   await expectNoViolations(page);
-  await saveScreenshot(page, 'home-summary');
+  await saveScreenshot(page, 'home-cards');
+
+  // A bill opens its preview, with this due date and Pay, as on the calendar.
+  await overdue.getByRole('button', { name: /Rent/ }).click();
+  const preview = page.getByRole('dialog', { name: 'Rent', exact: true });
+  await expect(preview.getByRole('region', { name: 'This due date' })).toBeVisible();
+  await expect(preview.getByRole('button', { name: 'Pay' })).toBeVisible();
+});
+
+test('Home is about this month: later bills are left to the Calendar', async ({ page }) => {
+  await withBills(page);
+  // Forty days on is always after this month, and outside the next 7 days.
+  await page.route('**/api/v1/agenda?**', (route) =>
+    route.fulfill({
+      json: {
+        overdue: [entry('o1', 'Rent', iso(-3), 145_000)],
+        upcoming: [entry('u9', 'Insurance', iso(40), 61_240)],
+      },
+    }),
+  );
+  await page.goto('/');
+  await expect(page.getByRole('region', { name: 'Overdue' })).toContainText('Rent');
+  await expect(page.getByRole('main')).not.toContainText('Insurance');
+});
+
+test('a long card shows its first few, and the rest when asked', async ({ page }) => {
+  await withBills(page);
+  const late = ['Rent', 'Water', 'Electric', 'Gym', 'Phone', 'Internet'];
+  await page.route('**/api/v1/agenda?**', (route) =>
+    route.fulfill({
+      json: {
+        overdue: late.map((name, index) =>
+          entry(`o${String(index)}`, name, iso(-1 - index), 1_000),
+        ),
+        upcoming: [],
+      },
+    }),
+  );
+  await page.goto('/');
+  const list = page.getByRole('list', { name: 'Overdue' });
+  await expect(list.getByRole('listitem')).toHaveCount(4);
+  const more = page.getByRole('button', { name: 'Show 2 more' });
+  await expect(more).toHaveAttribute('aria-expanded', 'false');
+  await more.click();
+  await expect(list.getByRole('listitem')).toHaveCount(6);
+  await page.getByRole('button', { name: 'Show less' }).click();
+  await expect(list.getByRole('listitem')).toHaveCount(4);
 });
 
 test('Bills is a table on wider screens and a list on a phone', async ({ page }, info) => {

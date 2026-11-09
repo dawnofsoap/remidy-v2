@@ -276,10 +276,17 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
   await expect(page.getByRole('main')).toContainText('Phone');
   await expect(page.getByRole('list', { name: 'Overdue' })).toHaveCount(0);
 
-  // Paying it from Home, in part and then the rest, then seeing it on the calendar.
+  // Paying it from Home, through its preview, then seeing it on the calendar.
   await page.getByRole('button', { name: /Phone/ }).click();
+  await page
+    .getByRole('dialog', { name: 'Phone', exact: true })
+    .getByRole('button', { name: 'Pay' })
+    .click();
   await dialog.getByLabel('Amount paid').fill('20');
   await dialog.getByRole('button', { name: 'Save payment' }).click();
+  // Paying goes back to the preview, and closing it shows Home.
+  await expect(page.getByRole('dialog', { name: 'Phone', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('button', { name: /Phone/ })).toContainText('Paid $20.00');
   await expect(page.getByRole('region', { name: 'This month' })).toContainText('Paid this month');
 
