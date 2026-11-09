@@ -280,6 +280,7 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
   await page.getByRole('button', { name: /Phone/ }).click();
   await page
     .getByRole('dialog', { name: 'Phone', exact: true })
+    .getByRole('region', { name: 'This due date' })
     .getByRole('button', { name: 'Pay' })
     .click();
   await dialog.getByLabel('Amount paid').fill('20');
