@@ -288,7 +288,10 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
     .getByRole('link', { name: 'Calendar' })
     .click();
   await expect(page.getByRole('heading', { name: 'Calendar', level: 1 })).toBeVisible();
-  await expect(page.getByRole('main')).toContainText('Phone');
+  // A logo in the month's grid, named for screen readers.
+  await expect(
+    page.getByRole('main').getByRole('button', { name: /Phone/ }).filter({ visible: true }),
+  ).toBeVisible();
 
   // Its history shows the payment, which can be voided with a reason and stays listed.
   await page.goto('/bills');

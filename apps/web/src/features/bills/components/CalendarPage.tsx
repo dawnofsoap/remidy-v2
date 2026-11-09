@@ -12,21 +12,14 @@ import { useSearch } from '@tanstack/react-router';
 import { Check, ChevronLeft, ChevronRight, Tag } from 'lucide-react';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Page } from '../../../core/Page.tsx';
-import {
-  Button,
-  cn,
-  ErrorState,
-  List,
-  ListRow,
-  LoadingState,
-  LogoTile,
-} from '../../../ui/index.ts';
+import { Button, cn, ErrorState, useIsNarrow, LoadingState, LogoTile } from '../../../ui/index.ts';
 import { AGENDA_KEY, fetchAgenda, logoUrl } from '../api.ts';
 import { browserToday, firstOfMonth, gridDays, sameMonth, WEEKDAYS } from './calendarGrid.ts';
 import { DaySheet } from './DaySheet.tsx';
 import { byUrgency, DAY_STATUS, dayStatusOf } from './dayStatus.ts';
 import { statusOf } from './dueStatus.ts';
 import { BillViewer } from './BillViewer.tsx';
+import { PhoneMonth } from './PhoneMonth.tsx';
 
 /** In rem, matching the classes below: a day's padding, its date, a gap, a name, and a logo. */
 const DAY_PADDING = 0.75;
@@ -169,7 +162,10 @@ export function CalendarPage() {
   const now = browserToday();
   const dayInAddress = useDayInAddress();
   const [month, setMonth] = useState(firstOfMonth(dayInAddress ?? now));
-  const [openDay, setOpenDay] = useState<CalendarDate | null>(dayInAddress);
+  const narrow = useIsNarrow();
+  // On a wide screen a day opens in a sheet; on a phone it's the chosen day under the grid.
+  const [openDay, setOpenDay] = useState<CalendarDate | null>(narrow ? null : dayInAddress);
+  const [chosen, setChosen] = useState<CalendarDate | null>(dayInAddress);
   const to = monthEnd(month);
   const agenda = useQuery({
     queryKey: [...AGENDA_KEY, month, to],
@@ -194,6 +190,14 @@ export function CalendarPage() {
   const showMonth = (next: CalendarDate) => {
     setMonth(next);
   };
+  // The day chosen on a phone: the one picked in this month, or today, or the first with bills.
+  const firstWithBills = entries.map((entry) => entry.dueOn).sort()[0];
+  const selected =
+    chosen && sameMonth(chosen, month)
+      ? chosen
+      : sameMonth(now, month)
+        ? now
+        : ((firstWithBills as CalendarDate | undefined) ?? month);
 
   const header = (
     <div className="flex flex-wrap items-center gap-2">
@@ -255,9 +259,6 @@ export function CalendarPage() {
       <ErrorState message="The calendar couldn’t load." onRetry={() => void agenda.refetch()} />
     );
   } else {
-    const daysWithBills = [
-      ...new Set(entries.map((entry) => entry.dueOn)),
-    ].sort() as CalendarDate[];
     body = (
       <>
         {/* A month grid where there's room for one. */}
@@ -354,40 +355,21 @@ export function CalendarPage() {
             </ol>
           </div>
         </div>
-        {/* On phones, a grid is too cramped to read, so days with bills are listed instead. */}
-        <div className="flex flex-col gap-4 md:hidden">
-          {daysWithBills.length === 0 ? (
-            <p className="text-ink-2">Nothing due this month.</p>
-          ) : null}
-          {daysWithBills.map((day) => (
-            <section key={day} className="flex flex-col gap-2">
-              <h3 className={cn('font-semibold', day === now && 'text-accent-text')}>
-                {formatDate(day, 'long')}
-                {day === now ? ' · Today' : ''}
-              </h3>
-              <List label={formatDate(day, 'long')}>
-                {onDay(day).map((entry) => {
-                  const status = DAY_STATUS[dayStatusOf(entry, now)];
-                  return (
-                    <ListRow
-                      key={entry.id}
-                      title={entry.name}
-                      subtitle={status.label}
-                      start={<LogoTile src={logoUrl(entry.logoId)} name={entry.name} />}
-                      end={
-                        <span className={cn('font-semibold tabular-nums', status.text)}>
-                          {statusOf(entry, false).text}
-                        </span>
-                      }
-                      onClick={() => {
-                        setOpenId(entry.id);
-                      }}
-                    />
-                  );
-                })}
-              </List>
-            </section>
-          ))}
+        {/* On phones, a small grid with marks, and the chosen day's bills under it. */}
+        <div className="md:hidden">
+          <PhoneMonth
+            month={month}
+            entries={entries}
+            today={now}
+            selected={selected}
+            onSelect={setChosen}
+            onSwipe={(by) => {
+              showMonth(addMonthsFromAnchor(month, by));
+            }}
+            onOpen={(entry) => {
+              setOpenId(entry.id);
+            }}
+          />
         </div>
       </>
     );

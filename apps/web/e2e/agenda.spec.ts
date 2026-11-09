@@ -14,6 +14,14 @@ const LOGO_PNG =
 // Water has a logo, so the screens show both a logo and a lettered tile.
 const logoOf = (name: string) => (name === 'Water' ? 'l1' : null);
 
+/** Chooses a day in the phone's month grid, found by its day of the month. */
+async function chooseDay(page: Page, day: string) {
+  await page
+    .getByRole('list', { name: /\d{4}$/ })
+    .getByRole('button', { name: new RegExp(` ${String(Number(day.slice(8)))}(,|$)`) })
+    .click();
+}
+
 // The mocked bills, so a due date opens its own bill.
 const BILL_IDS: Record<string, string> = { Rent: 'b1', Electric: 'b2', Water: 'b3' };
 
@@ -118,7 +126,7 @@ test('Bills is a table on wider screens and a list on a phone', async ({ page },
   await saveScreenshot(page, 'bills-table');
 });
 
-test('the calendar shows the month as a grid, or as a list of days on a phone', async ({
+test('the calendar shows the month as a grid, or a small grid and a chosen day on a phone', async ({
   page,
 }, info) => {
   await withBills(page);
@@ -127,6 +135,7 @@ test('the calendar shows the month as a grid, or as a list of days on a phone', 
   );
   await page.goto('/calendar');
   await expect(page.getByRole('heading', { name: 'Calendar', level: 1 })).toBeVisible();
+  if (info.project.name === 'phone') await chooseDay(page, iso(2));
   const water = page
     .getByRole('main')
     .getByRole('button', { name: /Water/ })
@@ -180,6 +189,40 @@ test('the calendar shows logos only, with names when asked, and remembers', asyn
     'aria-pressed',
     'true',
   );
+});
+
+test('on a phone, the month is a small grid, and choosing a day lists its bills', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name !== 'phone', 'Wider screens show the full grid.');
+  await withBills(page);
+  await page.goto('/calendar');
+  const grid = page.getByRole('list', { name: /\d{4}$/ });
+  // Today is chosen first, and marked as today.
+  const today = grid.getByRole('button', { pressed: true });
+  await expect(today).toHaveAttribute('aria-current', 'date');
+  // Days with bills say how many and how urgent.
+  await expect(grid.getByRole('button', { name: /, 1 due, overdue$/ })).toHaveCount(1);
+  await expect(grid.getByRole('button', { name: /, 1 due, due soon$/ })).toHaveCount(2);
+
+  await chooseDay(page, iso(2));
+  const day = page.getByRole('list', { name: /^\w+day, / });
+  await expect(day.getByRole('button', { name: /Water/ })).toBeVisible();
+  await expect(day.getByRole('button')).toHaveCount(1);
+  await expectNoViolations(page);
+  await saveScreenshot(page, 'calendar-phone-day');
+
+  // A swipe across the grid moves to the next month.
+  const month = page.getByRole('heading', { level: 2 });
+  const before = await month.textContent();
+  const box = await grid.boundingBox();
+  const y = (box?.y ?? 0) + 40;
+  const swipe = (type: string, x: number) =>
+    grid.dispatchEvent(type, { pointerType: 'touch', clientX: x, clientY: y, bubbles: true });
+  await swipe('pointerdown', 300);
+  await swipe('pointerup', 100);
+  await expect(month).not.toHaveText(before ?? '');
+  await expect(page.getByRole('button', { name: 'This month' })).toBeVisible();
 });
 
 test('a day’s list shows all its bills, most urgent first', async ({ page }, info) => {
