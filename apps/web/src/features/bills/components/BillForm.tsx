@@ -5,7 +5,6 @@ import { useHousehold, useListsSpace, usePersonalSpace } from '../../../core/spa
 import { Button, Modal, Steps } from '../../../ui/index.ts';
 import { categoriesKey, fetchCategories } from '../../categories/index.ts';
 import { createBill, moveBill, updateBill, type Bill } from '../api.ts';
-import { BillDangerZone } from './BillDangerZone.tsx';
 import {
   draftOf,
   errorKeyOf,
@@ -21,8 +20,6 @@ interface BillFormProps {
   /** The bill to edit, or null to add one. */
   bill: Bill | null;
   onClose: () => void;
-  /** After it's archived, restored or deleted, which leaves the bill where it was looked at. */
-  onRemoved?: () => void;
   onChanged: (message: string) => Promise<void>;
 }
 
@@ -33,7 +30,7 @@ const LAST = STEPS.length - 1;
  * which can be visited in any order and saved from any of them. A bill's history is shown where
  * it's looked at, in BillPreview.
  */
-export function BillForm({ bill, onClose, onRemoved, onChanged }: BillFormProps) {
+export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
   const isNew = bill === null;
   const personal = usePersonalSpace();
   const household = useHousehold();
@@ -180,9 +177,6 @@ export function BillForm({ bill, onClose, onRemoved, onChanged }: BillFormProps)
           </div>
         </div>
       </form>
-      {!isNew && step === LAST ? (
-        <BillDangerZone bill={bill} onClose={onRemoved ?? onClose} onChanged={onChanged} />
-      ) : null}
     </Modal>
   );
 }

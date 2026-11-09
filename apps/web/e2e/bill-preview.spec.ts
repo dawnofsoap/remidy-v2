@@ -56,6 +56,8 @@ test('opening a bill shows it, and editing it is a choice', async ({ page }) => 
     'https://maple.example/portal',
   );
   await expect(preview.getByRole('region', { name: 'History' })).toBeVisible();
+  await expect(preview.getByRole('button', { name: 'Archive' })).toBeVisible();
+  await expect(preview.getByRole('button', { name: 'Delete…' })).toBeVisible();
   // Nothing in it can be typed into.
   await expect(preview.getByRole('textbox')).toHaveCount(0);
   await expectNoViolations(page);

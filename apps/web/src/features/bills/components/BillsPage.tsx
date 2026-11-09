@@ -17,7 +17,7 @@ import {
 } from '../../../ui/index.ts';
 import { AGENDA_KEY, BILLS_KEY, fetchBills, logoUrl, type Bill } from '../api.ts';
 import { BillForm } from './BillForm.tsx';
-import { BillPreview } from './BillPreview.tsx';
+import { BillViewer } from './BillViewer.tsx';
 import { amountText, nextDue } from './billText.ts';
 
 const nameCell = (bill: Bill) => (
@@ -39,10 +39,9 @@ export function BillsPage() {
   const queryClient = useQueryClient();
   const household = useHousehold();
   const bills = useQuery({ queryKey: BILLS_KEY, queryFn: ({ signal }) => fetchBills(signal) });
-  const [editing, setEditing] = useState<{ bill: Bill | null } | null>(null);
-  // The bill being looked at. Found in the list each time, so it shows any change just saved.
+  // Only for adding: an existing bill is edited from its preview.
+  const [adding, setAdding] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
-  const viewing = bills.data?.find((bill) => bill.id === viewingId) ?? null;
   const [showArchived, setShowArchived] = useState(false);
 
   async function changed(message: string) {
@@ -59,7 +58,7 @@ export function BillsPage() {
   const add = (
     <Button
       onClick={() => {
-        setEditing({ bill: null });
+        setAdding(true);
       }}
     >
       Add bill
@@ -169,26 +168,19 @@ export function BillsPage() {
   return (
     <Page title="Bills" actions={hasBills ? add : undefined}>
       {body}
-      {viewing && !editing ? (
-        <BillPreview
-          bill={viewing}
-          onEdit={() => {
-            setEditing({ bill: viewing });
-          }}
+      {viewingId ? (
+        <BillViewer
+          billId={viewingId}
           onClose={() => {
             setViewingId(null);
           }}
         />
       ) : null}
-      {editing ? (
+      {adding ? (
         <BillForm
-          bill={editing.bill}
+          bill={null}
           onClose={() => {
-            setEditing(null);
-          }}
-          onRemoved={() => {
-            setEditing(null);
-            setViewingId(null);
+            setAdding(false);
           }}
           onChanged={changed}
         />

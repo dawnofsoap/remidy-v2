@@ -14,9 +14,12 @@ const LOGO_PNG =
 // Water has a logo, so the screens show both a logo and a lettered tile.
 const logoOf = (name: string) => (name === 'Water' ? 'l1' : null);
 
+// The mocked bills, so a due date opens its own bill.
+const BILL_IDS: Record<string, string> = { Rent: 'b1', Electric: 'b2', Water: 'b3' };
+
 const entry = (id: string, name: string, dueOn: string, expectedCents: number | null) => ({
   id,
-  billId: id,
+  billId: BILL_IDS[name] ?? id,
   spaceId: 'sp1',
   shared: false,
   name,
@@ -137,8 +140,13 @@ test('the calendar shows the month as a grid, or as a list of days on a phone', 
   await expectNoViolations(page);
   await saveScreenshot(page, 'calendar');
 
-  // Opening a bill offers to pay what's left.
+  // Opening a bill shows it with that due date, and Pay offers to pay what's left.
   await water.click();
+  const preview = page.getByRole('dialog', { name: 'Water' });
+  await expect(preview.getByRole('region', { name: 'This due date' })).toContainText('$45.00');
+  await expectNoViolations(page);
+  await saveScreenshot(page, 'calendar-bill');
+  await preview.getByRole('button', { name: 'Pay' }).click();
   const dialog = page.getByRole('dialog', { name: 'Pay Water' });
   await expect(dialog.getByLabel('Amount paid')).toHaveValue('45.00');
   await expect(dialog.getByRole('button', { name: 'Skip this one' })).toBeVisible();
@@ -173,9 +181,12 @@ test('a day with more bills than fit lists them all, most urgent first', async (
   await expectNoViolations(page);
   await saveScreenshot(page, 'calendar-day');
 
-  // Paying from the day opens the payment sheet, and closing it returns to the day.
+  // A bill from the day opens its preview, which pays it. Closing each goes back a step.
   await sheet.getByRole('button', { name: /Water/ }).click();
+  await page.getByRole('dialog', { name: 'Water' }).getByRole('button', { name: 'Pay' }).click();
   await expect(page.getByRole('dialog', { name: 'Pay Water' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Water' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog').getByRole('listitem')).toHaveCount(4);
 });

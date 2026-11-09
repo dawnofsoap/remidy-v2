@@ -315,9 +315,8 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
   await expect(bills.getByRole('button', { name: /Water and sewer/ })).toBeVisible();
 
   // A bill with payments, even voided ones, keeps its history: it can be archived, not deleted.
+  // Both are on its preview.
   await bills.getByRole('button', { name: /Phone/ }).click();
-  await dialog.getByRole('button', { name: 'Edit' }).click();
-  await dialog.getByRole('button', { name: 'Go to Details' }).click();
   await dialog.getByRole('button', { name: 'Delete…' }).click();
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText('Archive it instead');
