@@ -153,7 +153,7 @@ test('the calendar shows the month as a grid, or as a list of days on a phone', 
   await expectNoViolations(page);
 });
 
-test('a day with more bills than fit lists them all, most urgent first', async ({ page }, info) => {
+test('a day’s list shows all its bills, most urgent first', async ({ page }, info) => {
   test.skip(info.project.name === 'phone', 'Phones list every bill already.');
   await withBills(page);
   // Today, which is always in the month shown.
@@ -172,8 +172,8 @@ test('a day with more bills than fit lists them all, most urgent first', async (
     }),
   );
   await page.goto('/calendar');
-  // Three fit, paid last, so the fourth is behind "+1 more".
-  await page.getByRole('button', { name: /^\+1 more/ }).click();
+  // How many fit depends on the window's height, so the day is opened by its date.
+  await page.getByRole('button', { name: /, 4 due$/ }).click();
   const sheet = page.getByRole('dialog');
   await expect(sheet.getByRole('listitem')).toHaveCount(4);
   await expect(sheet.getByRole('listitem').first()).toContainText('Internet');

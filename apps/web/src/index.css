@@ -31,6 +31,15 @@
 }
 
 @layer base {
+  /*
+   * Everything is sized in rem, so on screens wider than 1920px it all grows a little with the
+   * window, up to 1.25 times at 3840px, rather than leaving small text on a big screen. It starts
+   * from the person's own browser text size, so their setting and zoom still apply.
+   */
+  html {
+    font-size: clamp(100%, 0.75rem + 0.2083vw, 125%);
+  }
+
   body {
     @apply bg-bg text-ink font-sans antialiased;
   }

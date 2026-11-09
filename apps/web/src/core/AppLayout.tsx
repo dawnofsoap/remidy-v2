@@ -144,12 +144,10 @@ export function AppLayout() {
           tabIndex={-1}
           className="relative min-w-0 flex-auto p-4 pb-24 outline-none md:p-8"
         >
-          {/* Pages start beside the sidebar and can use most of a wide screen. Forms inside keep
-              their own readable width. */}
-          <div className="max-w-[100rem]">
-            <ServerStatus />
-            <Outlet />
-          </div>
+          {/* Pages use the whole width beside the sidebar, however wide the screen. Forms inside
+              keep their own readable width. */}
+          <ServerStatus />
+          <Outlet />
         </main>
       </div>
       <BottomNav items={items} />

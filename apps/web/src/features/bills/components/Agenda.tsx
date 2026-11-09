@@ -138,7 +138,7 @@ export function Agenda() {
   const showOwner = Boolean(household);
   return (
     // The summary sits beside the list on wide screens, and above it on smaller ones.
-    <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-8">
+    <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] min-[120rem]:grid-cols-[minmax(0,1fr)_26rem] xl:items-start xl:gap-8">
       <div className="flex flex-col gap-6 xl:order-2 xl:sticky xl:top-8">
         <MonthSummary
           overdue={overdue}
