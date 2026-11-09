@@ -170,7 +170,8 @@ export function BillsPage() {
     >
       {/* Room at the end, so the floating button never covers the last bill. */}
       <div className="max-md:pb-16">{body}</div>
-      {hasBills ? (
+      {/* Gone while a bill is open or being added, so it never sits over the dialog. */}
+      {hasBills && !adding && !viewingId ? (
         <Button
           aria-label="Add bill"
           title="Add bill"
