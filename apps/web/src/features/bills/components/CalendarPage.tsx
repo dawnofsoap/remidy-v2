@@ -1,16 +1,14 @@
 import type { AgendaEntry } from '@remidy/contracts';
 import {
-  addDays,
   addMonthsFromAnchor,
-  dateFromParts,
   datePartsOf,
-  dayOfWeek,
   formatDate,
   monthEnd,
-  today,
+  parseCalendarDate,
   type CalendarDate,
 } from '@remidy/domain';
 import { useQuery } from '@tanstack/react-query';
+import { useSearch } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Page } from '../../../core/Page.tsx';
@@ -25,33 +23,56 @@ import {
 } from '../../../ui/index.ts';
 import { AGENDA_KEY, fetchAgenda, logoUrl } from '../api.ts';
 import { useRefresh } from '../useRefresh.ts';
+import { browserToday, firstOfMonth, gridDays, sameMonth, WEEKDAYS } from './calendarGrid.ts';
+import { DaySheet } from './DaySheet.tsx';
+import { byUrgency, DAY_STATUS, dayStatusOf } from './dayStatus.ts';
 import { statusOf } from './dueStatus.ts';
 import { PaySheet } from './PaySheet.tsx';
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const SHOWN_PER_DAY = 3;
 
-const browserToday = () => today(Intl.DateTimeFormat().resolvedOptions().timeZone);
-
-function firstOfMonth(date: CalendarDate): CalendarDate {
-  const { year, month } = datePartsOf(date);
-  return dateFromParts(year, month, 1) ?? date;
+/** The day in the address, such as /calendar?day=2026-11-20 from Home's small calendar. */
+function useDayInAddress(): CalendarDate | null {
+  const search: unknown = useSearch({ strict: false });
+  const day =
+    typeof search === 'object' && search !== null ? (search as { day?: unknown }).day : null;
+  return typeof day === 'string' ? parseCalendarDate(day) : null;
 }
 
-/** Every day shown in the month's grid: whole weeks, Sunday to Saturday. */
-function gridDays(month: CalendarDate): CalendarDate[] {
-  const start = addDays(month, -dayOfWeek(month));
-  const last = monthEnd(month);
-  const end = addDays(last, 6 - dayOfWeek(last));
-  const days: CalendarDate[] = [];
-  for (let day = start; day <= end; day = addDays(day, 1)) days.push(day);
-  return days;
+/** One bill on a day in the grid: its logo, name and status. */
+function DayChip({
+  entry,
+  now,
+  onOpen,
+}: {
+  entry: AgendaEntry;
+  now: CalendarDate;
+  onOpen: () => void;
+}) {
+  const status = DAY_STATUS[dayStatusOf(entry, now)];
+  const Icon = status.icon;
+  return (
+    <Button
+      variant="ghost"
+      size="small"
+      className={cn('w-full justify-start gap-1.5 px-1.5', status.chip)}
+      title={`${entry.name}: ${status.label}, ${statusOf(entry, false).text}`}
+      onClick={onOpen}
+    >
+      <LogoTile size="small" src={logoUrl(entry.logoId)} name={entry.name} />
+      <span className="min-w-0 flex-auto truncate text-left">{entry.name}</span>
+      {Icon ? <Icon aria-hidden="true" className="size-4 flex-none" /> : null}
+      <span className="sr-only">, {status.label}</span>
+    </Button>
+  );
 }
 
-/** Due dates and what's been paid, a month at a time. */
+/** Due dates and what's been paid, a month at a time, with each bill's logo and status. */
 export function CalendarPage() {
   const now = browserToday();
-  const [month, setMonth] = useState(firstOfMonth(now));
+  const dayInAddress = useDayInAddress();
+  const [month, setMonth] = useState(firstOfMonth(dayInAddress ?? now));
+  const [openDay, setOpenDay] = useState<CalendarDate | null>(dayInAddress);
   const to = monthEnd(month);
   const agenda = useQuery({
     queryKey: [...AGENDA_KEY, month, to],
@@ -65,8 +86,14 @@ export function CalendarPage() {
         (entry) => entry.dueOn >= month && entry.dueOn <= to,
       )
     : [];
-  const onDay = (day: CalendarDate) => entries.filter((entry) => entry.dueOn === day);
-  const isOverdue = (entry: AgendaEntry) => entry.state === 'open' && entry.dueOn < now;
+  const onDay = (day: CalendarDate) =>
+    byUrgency(
+      entries.filter((entry) => entry.dueOn === day),
+      now,
+    );
+  const showMonth = (next: CalendarDate) => {
+    setMonth(next);
+  };
 
   const header = (
     <div className="flex flex-wrap items-center gap-2">
@@ -74,7 +101,7 @@ export function CalendarPage() {
         variant="secondary"
         aria-label="Previous month"
         onClick={() => {
-          setMonth(addMonthsFromAnchor(month, -1));
+          showMonth(addMonthsFromAnchor(month, -1));
         }}
       >
         <ChevronLeft aria-hidden="true" className="size-5" />
@@ -86,7 +113,7 @@ export function CalendarPage() {
         variant="secondary"
         aria-label="Next month"
         onClick={() => {
-          setMonth(addMonthsFromAnchor(month, 1));
+          showMonth(addMonthsFromAnchor(month, 1));
         }}
       >
         <ChevronRight aria-hidden="true" className="size-5" />
@@ -95,7 +122,7 @@ export function CalendarPage() {
         <Button
           variant="ghost"
           onClick={() => {
-            setMonth(firstOfMonth(now));
+            showMonth(firstOfMonth(now));
           }}
         >
           This month
@@ -111,7 +138,9 @@ export function CalendarPage() {
       <ErrorState message="The calendar couldn’t load." onRetry={() => void agenda.refetch()} />
     );
   } else {
-    const daysWithBills = [...new Set(entries.map((entry) => entry.dueOn))].sort();
+    const daysWithBills = [
+      ...new Set(entries.map((entry) => entry.dueOn)),
+    ].sort() as CalendarDate[];
     body = (
       <>
         {/* A month grid where there's room for one. */}
@@ -134,50 +163,52 @@ export function CalendarPage() {
             >
               {gridDays(month).map((day) => {
                 const items = onDay(day);
-                const inMonth = day.slice(0, 7) === month.slice(0, 7);
+                const inMonth = sameMonth(day, month);
+                const count = items.length;
                 return (
                   <li
                     key={day}
                     className={cn(
-                      'flex min-h-28 flex-col gap-1 bg-surface p-1.5',
+                      'flex min-h-32 min-w-0 flex-col gap-1 bg-surface p-1.5',
                       !inMonth && 'bg-bg text-ink-2',
                     )}
                   >
-                    <span
+                    <Button
+                      variant="ghost"
+                      size="small"
                       className={cn(
-                        'self-start rounded-full px-1.5 text-sm tabular-nums',
+                        'size-8 self-start rounded-full p-0 tabular-nums',
                         day === now && 'bg-accent font-semibold text-on-accent',
                       )}
+                      aria-label={`${formatDate(day, 'long')}${count > 0 ? `, ${String(count)} due` : ''}`}
+                      onClick={() => {
+                        setOpenDay(day);
+                      }}
                     >
-                      <span aria-hidden="true">{datePartsOf(day).day}</span>
-                      <span className="sr-only">{formatDate(day, 'long')}</span>
-                    </span>
-                    {items.slice(0, SHOWN_PER_DAY).map((entry) => {
-                      const status = statusOf(entry, isOverdue(entry));
-                      return (
-                        <Button
-                          key={entry.id}
-                          variant="ghost"
-                          size="small"
-                          className={cn(
-                            'w-full justify-start gap-1.5 truncate',
-                            status.tone,
-                            entry.state === 'skipped' && 'line-through',
-                          )}
-                          title={`${entry.name}: ${status.text}`}
-                          onClick={() => {
-                            setPaying(entry);
-                          }}
-                        >
-                          <LogoTile size="small" src={logoUrl(entry.logoId)} name={entry.name} />
-                          <span className="truncate">{entry.name}</span>
-                        </Button>
-                      );
-                    })}
-                    {items.length > SHOWN_PER_DAY ? (
-                      <span className="px-1.5 text-xs text-ink-2">
-                        +{items.length - SHOWN_PER_DAY} more
-                      </span>
+                      {datePartsOf(day).day}
+                    </Button>
+                    {items.slice(0, SHOWN_PER_DAY).map((entry) => (
+                      <DayChip
+                        key={entry.id}
+                        entry={entry}
+                        now={now}
+                        onOpen={() => {
+                          setPaying(entry);
+                        }}
+                      />
+                    ))}
+                    {count > SHOWN_PER_DAY ? (
+                      <Button
+                        variant="ghost"
+                        size="small"
+                        className="justify-start px-1.5 text-ink-2"
+                        onClick={() => {
+                          setOpenDay(day);
+                        }}
+                      >
+                        +{count - SHOWN_PER_DAY} more
+                        <span className="sr-only"> on {formatDate(day, 'long')}</span>
+                      </Button>
                     ) : null}
                   </li>
                 );
@@ -192,18 +223,22 @@ export function CalendarPage() {
           ) : null}
           {daysWithBills.map((day) => (
             <section key={day} className="flex flex-col gap-2">
-              <h3 className="font-semibold">{formatDate(day as CalendarDate, 'long')}</h3>
-              <List label={formatDate(day as CalendarDate, 'long')}>
-                {onDay(day as CalendarDate).map((entry) => {
-                  const status = statusOf(entry, isOverdue(entry));
+              <h3 className={cn('font-semibold', day === now && 'text-accent-text')}>
+                {formatDate(day, 'long')}
+                {day === now ? ' · Today' : ''}
+              </h3>
+              <List label={formatDate(day, 'long')}>
+                {onDay(day).map((entry) => {
+                  const status = DAY_STATUS[dayStatusOf(entry, now)];
                   return (
                     <ListRow
                       key={entry.id}
                       title={entry.name}
+                      subtitle={status.label}
                       start={<LogoTile src={logoUrl(entry.logoId)} name={entry.name} />}
                       end={
-                        <span className={cn('font-semibold tabular-nums', status.tone)}>
-                          {status.text}
+                        <span className={cn('font-semibold tabular-nums', status.text)}>
+                          {statusOf(entry, false).text}
                         </span>
                       }
                       onClick={() => {
@@ -224,6 +259,19 @@ export function CalendarPage() {
     <Page title="Calendar">
       {header}
       {body}
+      {openDay && !paying ? (
+        <DaySheet
+          day={openDay}
+          entries={entries.filter((entry) => entry.dueOn === openDay)}
+          today={now}
+          onClose={() => {
+            setOpenDay(null);
+          }}
+          onOpen={(entry) => {
+            setPaying(entry);
+          }}
+        />
+      ) : null}
       {paying ? (
         <PaySheet
           entry={paying}
