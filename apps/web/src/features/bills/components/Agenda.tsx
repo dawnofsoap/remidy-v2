@@ -11,7 +11,7 @@ import {
 } from '@remidy/domain';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { CalendarDays, CircleAlert } from 'lucide-react';
+import { CalendarDays, CircleAlert, CircleCheck } from 'lucide-react';
 import { useHousehold } from '../../../core/space.tsx';
 import { cn, EmptyState, ErrorState, focusRing, ListRow, LogoTile } from '../../../ui/index.ts';
 import { AGENDA_KEY, fetchAgenda, fetchTotals, logoUrl, TOTALS_KEY } from '../api.ts';
@@ -44,7 +44,22 @@ function DueRow({
   return (
     <ListRow
       title={entry.name}
-      start={<LogoTile src={logoUrl(entry.logoId)} name={entry.name} />}
+      start={
+        <span className="relative block">
+          <LogoTile
+            src={logoUrl(entry.logoId)}
+            name={entry.name}
+            className={cn(entry.state !== 'open' && 'opacity-70')}
+          />
+          {entry.state === 'settled' ? (
+            // Paid at a glance: a check on the logo as well as the amount in the paid color.
+            <CircleCheck
+              aria-hidden="true"
+              className="absolute -right-1.5 -bottom-1.5 size-5 rounded-full bg-surface text-paid"
+            />
+          ) : null}
+        </span>
+      }
       subtitle={[
         formatDate(entry.dueOn as CalendarDate, 'short'),
         entry.categoryName,
@@ -87,8 +102,9 @@ export function Agenda() {
   const weekOn = addDays(from, 8);
   const to = weekOn > nextMonth ? weekOn : nextMonth;
   const agenda = useQuery({
-    queryKey: [...AGENDA_KEY, from, to],
-    queryFn: ({ signal }) => fetchAgenda(from, to, signal),
+    // From the 1st, so what's been paid this month shows with what's left.
+    queryKey: [...AGENDA_KEY, monthStart(from), to],
+    queryFn: ({ signal }) => fetchAgenda(monthStart(from), to, signal),
   });
   const monthTo = monthEnd(from);
   const totals = useQuery({
@@ -130,7 +146,11 @@ export function Agenda() {
   const thisMonth = from.slice(0, 7);
   const showOwner = Boolean(household);
   const figures = homeFigures(overdue, shown, from, totals.data?.paidCents ?? null);
-  const restOfMonth = shown.filter((entry) => entry.dueOn.startsWith(thisMonth));
+  // The whole month: what's left to pay first, soonest first, then what's paid or skipped.
+  const inMonth = shown.filter((entry) => entry.dueOn.startsWith(thisMonth));
+  const toPay = inMonth.filter((entry) => entry.state === 'open');
+  const done = inMonth.filter((entry) => entry.state !== 'open');
+  const monthBills = [...toPay, ...done];
   const opened = [...overdue, ...shown].find((entry) => entry.id === openId) ?? null;
   const open = (entry: AgendaEntry) => {
     setOpenId(entry.id);
@@ -141,8 +161,9 @@ export function Agenda() {
   const monthName = formatDate(`${thisMonth}-01` as CalendarDate, 'month');
 
   return (
-    // Stacked until there's room for columns. What's overdue comes first while stacked.
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    // Stacked until there's room for columns. What's overdue comes first while stacked. Each card
+    // is as tall as what's in it, not as tall as the cards beside it.
+    <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
       <div className="xl:col-span-3">
         <MonthFigures figures={figures} />
       </div>
@@ -160,16 +181,16 @@ export function Agenda() {
       <HomeCard
         title={`${monthName} bills`}
         icon={CalendarDays}
-        aside={plural(restOfMonth.length, 'bill', 'bills')}
+        aside={`${String(toPay.length)} to pay · ${String(done.filter((entry) => entry.state === 'settled').length)} paid`}
         className="xl:col-span-2"
       >
         <CardList
-          label="Rest of this month"
-          items={restOfMonth}
+          label={`${monthName} bills`}
+          items={monthBills}
           shown={8}
           columns
           render={row(false)}
-          empty={`Nothing else due in ${monthName}.`}
+          empty={`Nothing due in ${monthName}.`}
         />
       </HomeCard>
       {/* Only beside the month's bills: stacked on smaller screens, it would push them down. */}

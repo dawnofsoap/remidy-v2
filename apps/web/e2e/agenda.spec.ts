@@ -131,6 +131,33 @@ test('Home is about this month: later bills are left to the Calendar', async ({ 
   await expect(page.getByRole('main')).not.toContainText('Insurance');
 });
 
+test('the month’s card lists what’s left to pay first, then what’s paid, in the paid color', async ({
+  page,
+}) => {
+  await withBills(page);
+  // Both due today, so only whether it's paid decides the order, not the date or the name.
+  await page.route('**/api/v1/agenda?**', (route) =>
+    route.fulfill({
+      json: {
+        overdue: [],
+        upcoming: [
+          { ...entry('s1', 'Gym', iso(0), 4_000), state: 'settled', paidCents: 4_000 },
+          entry('u1', 'Water', iso(0), 4_500),
+        ],
+      },
+    }),
+  );
+  await page.goto('/');
+  const card = page.getByRole('region', { name: / bills$/ });
+  await expect(card).toContainText('1 to pay · 1 paid');
+  const rows = card.getByRole('listitem');
+  await expect(rows.nth(0)).toContainText('Water');
+  await expect(rows.nth(1)).toContainText('Gym');
+  await expect(rows.nth(1).getByText('Paid $40.00')).toHaveClass(/text-paid/);
+  await expectNoViolations(page);
+  await saveScreenshot(page, 'home-paid');
+});
+
 test('a long card shows its first few, and the rest when asked', async ({ page }) => {
   await withBills(page);
   const late = ['Rent', 'Water', 'Electric', 'Gym', 'Phone', 'Internet'];
