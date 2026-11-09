@@ -166,7 +166,7 @@ export function BillsPage() {
 
   const hasBills = Boolean(bills.data?.some((bill) => !bill.archived));
   return (
-    <Page title="Bills" actions={hasBills ? add : undefined}>
+    <Page title="Bills" hideTitleOnPhone actions={hasBills ? add : undefined}>
       {body}
       {viewingId ? (
         <BillViewer

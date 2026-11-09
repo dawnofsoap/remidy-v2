@@ -4,7 +4,10 @@ import { cn } from '../ui/index.ts';
 /** The heading and browser tab title that every page shares. */
 interface PageProps {
   title: string;
-  /** Keeps the title for screen readers only on phones, where something else heads the page. */
+  /**
+   * Keeps the title for screen readers only on phones, where something else heads the page, such
+   * as the tab bar marking where you are.
+   */
   hideTitleOnPhone?: boolean;
   /** The page's main action, such as Add bill, shown beside the title. */
   actions?: ReactNode;
@@ -18,7 +21,13 @@ export function Page({ title, hideTitleOnPhone = false, actions, children }: Pag
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* With nothing else in it, the row disappears on phones too, so no gap is left above. */}
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-between gap-3',
+          hideTitleOnPhone && (actions ? 'max-md:justify-end' : 'max-md:contents'),
+        )}
+      >
         <h1
           className={cn('text-3xl font-bold tracking-tight', hideTitleOnPhone && 'max-md:sr-only')}
         >
