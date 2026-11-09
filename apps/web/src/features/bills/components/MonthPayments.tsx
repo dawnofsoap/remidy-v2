@@ -11,11 +11,12 @@ interface MonthPaymentsProps {
   from: CalendarDate;
   today: CalendarDate;
   showOwner: boolean;
+  className?: string;
   onOpen: (payment: PaymentListEntry) => void;
 }
 
 /** What's been paid since the 1st, newest first, with the total, which matches Paid this month. */
-export function MonthPayments({ from, today, showOwner, onOpen }: MonthPaymentsProps) {
+export function MonthPayments({ from, today, showOwner, className, onOpen }: MonthPaymentsProps) {
   const payments = useQuery({
     queryKey: [...PAYMENTS_KEY, from, today],
     queryFn: ({ signal }) => fetchPayments(from, today, signal),
@@ -26,7 +27,7 @@ export function MonthPayments({ from, today, showOwner, onOpen }: MonthPaymentsP
     : null;
 
   return (
-    <HomeCard title={`Paid in ${month}`} icon={CircleCheck} aside={total}>
+    <HomeCard title={`Paid in ${month}`} icon={CircleCheck} aside={total} className={className}>
       {payments.isPending ? (
         <div role="status" aria-label="Loading payments" className="h-24 animate-pulse" />
       ) : payments.isError ? (
@@ -37,7 +38,8 @@ export function MonthPayments({ from, today, showOwner, onOpen }: MonthPaymentsP
         <CardList
           label={`Paid in ${month}`}
           items={payments.data}
-          shown={5}
+          shown={6}
+          columns
           empty={`Nothing paid yet in ${month}.`}
           render={(entry) => (
             <ListRow

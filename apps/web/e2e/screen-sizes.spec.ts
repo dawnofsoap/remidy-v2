@@ -122,11 +122,17 @@ test('Home’s cards fill each screen, with no sideways scrolling', async ({ pag
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       width,
     );
-    // The month's bills are as tall as they need to be, not as tall as the column beside them.
-    const month = await page.getByRole('region', { name: / bills$/ }).boundingBox();
+    // The month's bills are as tall as they need to be: the card ends just after its last bill.
+    const monthCard = page.getByRole('region', { name: / bills$/ });
+    const month = await monthCard.boundingBox();
+    const last = await monthCard.getByRole('listitem').last().boundingBox();
+    expect((month?.y ?? 0) + (month?.height ?? 0)).toBeLessThan(
+      (last?.y ?? 0) + (last?.height ?? 0) + 10,
+    );
+    // This month's payments have a row of their own, as wide as the figures.
     const paid = await page.getByRole('region', { name: /^Paid in / }).boundingBox();
-    const besideBottom = (paid?.y ?? 0) + (paid?.height ?? 0);
-    expect((month?.y ?? 0) + (month?.height ?? 0)).toBeLessThan(besideBottom - 20);
+    expect(paid?.y ?? 0).toBeGreaterThan((month?.y ?? 0) + (month?.height ?? 0));
+    expect(Math.abs((paid?.width ?? 0) - (figures?.width ?? 0))).toBeLessThan(2);
     await saveScreenshot(page, `home-${String(width)}`);
   }
 });

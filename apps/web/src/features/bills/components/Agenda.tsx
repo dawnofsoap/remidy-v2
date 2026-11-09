@@ -176,20 +176,20 @@ export function Agenda() {
           empty={`Nothing else due in ${monthName}.`}
         />
       </HomeCard>
-      <div className="flex min-w-0 flex-col gap-6">
-        {/* Only beside the month's bills: stacked on smaller screens, it would push them down. */}
-        <div className="hidden xl:block">
-          <MiniCalendar today={from} />
-        </div>
-        <MonthPayments
-          from={monthStart(from)}
-          today={from}
-          showOwner={showOwner}
-          onOpen={(entry) => {
-            setOpenBillId(entry.billId);
-          }}
-        />
+      {/* Only beside the month's bills: stacked on smaller screens, it would push them down. */}
+      <div className="hidden xl:block">
+        <MiniCalendar today={from} />
       </div>
+      {/* A row of its own, so no column runs on past the cards beside it. */}
+      <MonthPayments
+        from={monthStart(from)}
+        today={from}
+        showOwner={showOwner}
+        className="xl:col-span-3"
+        onOpen={(entry) => {
+          setOpenBillId(entry.billId);
+        }}
+      />
       {openBillId && !opened ? (
         <BillViewer
           billId={openBillId}
