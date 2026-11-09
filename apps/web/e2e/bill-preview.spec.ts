@@ -44,7 +44,7 @@ test('opening a bill shows it, and editing it is a choice', async ({ page }) => 
 
   await page.goto('/bills');
   await page.getByRole('button', { name: /^Rent/ }).filter({ visible: true }).click();
-  const preview = page.getByRole('dialog', { name: 'Rent' });
+  const preview = page.getByRole('dialog', { name: 'Rent', exact: true });
   await expect(preview).toContainText('$1,450.00');
   await expect(preview).toContainText('Maple Street Properties');
   await expect(preview).toContainText('Monthly on the 1st');
