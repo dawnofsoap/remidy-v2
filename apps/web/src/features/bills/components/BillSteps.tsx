@@ -1,4 +1,4 @@
-import { BILL_NAME_MAX, BILL_NOTES_MAX } from '@remidy/contracts';
+import { BILL_MERCHANT_MAX, BILL_NAME_MAX, BILL_NOTES_MAX } from '@remidy/contracts';
 import { formatMoney, type RepeatUnit } from '@remidy/domain';
 import { useHousehold } from '../../../core/space.tsx';
 import { DateField, MoneyField, RadioField, SelectField, TextField } from '../../../ui/index.ts';
@@ -45,6 +45,17 @@ export function WhatStep({
           change({ name: event.target.value });
         }}
         {...errorOf(errors, 'name')}
+      />
+      <TextField
+        label="Merchant (optional)"
+        hint="Who you pay, such as Chase. Used to find its logo."
+        value={draft.merchant}
+        maxLength={BILL_MERCHANT_MAX}
+        autoComplete="off"
+        onChange={(event) => {
+          change({ merchant: event.target.value });
+        }}
+        {...errorOf(errors, 'merchant')}
       />
       {household ? (
         <div className="flex flex-col gap-1.5">
@@ -178,6 +189,7 @@ export function DetailsStep({
     <>
       <LogoField
         name={draft.name}
+        searchFor={draft.merchant.trim() || draft.name}
         url={draft.url}
         logoId={draft.logoId}
         chosen={draft.logoChosen}
@@ -244,6 +256,7 @@ export function DetailsStep({
           <p className="font-semibold">{draft.name.trim()}</p>
           <p className="text-ink-2">
             {[
+              draft.merchant.trim(),
               draft.cents === null ? 'Varies' : formatMoney(draft.cents),
               category?.name,
               draft.autopay === 'yes' ? 'Auto-pay' : null,

@@ -103,6 +103,7 @@ const invalid = (path: string, message: string) =>
 
 export interface BillFields {
   name: string;
+  merchant?: string | null | undefined;
   expectedCents: number | null;
   isVariable: boolean;
   schedule: BillScheduleInput;
@@ -162,11 +163,15 @@ async function checkLogo(transaction: Transaction, logoId: string) {
   }
 }
 
+/** A blank merchant is stored as none. */
+const merchantOf = (text: string | null | undefined) => (text === '' ? null : (text ?? null));
+
 const columns = {
   id: bill.id,
   spaceId: bill.spaceId,
   shared: sql<boolean>`${space.kind} = 'shared'`.mapWith(Boolean),
   name: bill.name,
+  merchant: bill.merchant,
   expectedCents: bill.expectedCents,
   isVariable: bill.isVariable,
   schedule: bill.schedule,
@@ -237,7 +242,13 @@ export function createBill(
     if (fields.logoId) await checkLogo(transaction, fields.logoId);
     const [created] = await transaction
       .insert(bill)
-      .values({ ...fields, logoId: fields.logoId ?? null, spaceId, schedule })
+      .values({
+        ...fields,
+        merchant: merchantOf(fields.merchant),
+        logoId: fields.logoId ?? null,
+        spaceId,
+        schedule,
+      })
       .returning({ id: bill.id });
     if (!created) throw new Error('The bill was not created.');
 
@@ -296,6 +307,7 @@ export function updateBill(
       .update(bill)
       .set({
         ...fields,
+        ...(fields.merchant === undefined ? {} : { merchant: merchantOf(fields.merchant) }),
         schedule,
         ...(archived === undefined ? {} : { archivedAt: archived ? sql`now()` : null }),
         updatedAt: sql`now()`,
@@ -308,7 +320,7 @@ export function updateBill(
     const changed = (Object.keys(now) as (keyof typeof now)[]).filter(
       (key) => JSON.stringify(was[key]) !== JSON.stringify(now[key]),
     );
-    const otherChanges = (['url', 'notes', 'logoId'] as const).filter(
+    const otherChanges = (['merchant', 'url', 'notes', 'logoId'] as const).filter(
       (key) => before[key] !== after[key],
     );
     if (changed.length === 0 && otherChanges.length === 0) return after;

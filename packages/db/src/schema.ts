@@ -224,6 +224,8 @@ export const bill = pgTable(
       .notNull()
       .references(() => space.id, { onDelete: 'restrict' }),
     name: text('name').notNull(),
+    /** Who it's paid to, such as Chase for "Chase credit card". Its logo is searched for by this. */
+    merchant: text('merchant'),
     /** Null only for a variable bill with no usual amount. */
     expectedCents: bigint('expected_cents', { mode: 'number' }),
     isVariable: boolean('is_variable').notNull().default(false),

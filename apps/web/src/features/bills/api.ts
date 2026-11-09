@@ -15,6 +15,7 @@ export type Bill = BillResponse;
 /** What the bill form sends. The space decides whether the bill is personal or shared. */
 export interface BillInput {
   name: string;
+  merchant: string | null;
   expectedCents: number | null;
   isVariable: boolean;
   schedule: BillScheduleInput;

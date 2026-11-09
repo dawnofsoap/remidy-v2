@@ -23,7 +23,7 @@ async function withBills(page: Page) {
   );
 }
 
-test('adding a bill finds its logo, and another can be chosen', async ({ page }) => {
+test('adding a bill finds its merchant’s logo, and another can be chosen', async ({ page }) => {
   await withBills(page);
   const searches: { name: string; url: string | null }[] = [];
   await page.route('**/api/v1/logos/suggest', (route) => {
@@ -45,17 +45,20 @@ test('adding a bill finds its logo, and another can be chosen', async ({ page })
       },
     });
   });
-  let saved: { logoId?: string } = {};
+  let saved: { logoId?: string; merchant?: string | null } = {};
   await page.route('**/api/v1/spaces/*/bills', (route) => {
-    saved = route.request().postDataJSON() as { logoId?: string };
+    saved = route.request().postDataJSON() as typeof saved;
     return route.fulfill({ status: 201, json: {} });
   });
 
   await page.goto('/bills');
   await page.getByRole('button', { name: 'Add bill' }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Name').fill('City Power');
+  await dialog.getByLabel('Name').fill('Electric bill');
+  // The logo is searched for by the merchant, not the bill's name.
+  await dialog.getByLabel('Merchant (optional)').fill('City Power');
   await dialog.getByLabel('Amount due').fill('120');
+  await saveScreenshot(page, 'bill-merchant');
   await dialog.getByRole('button', { name: 'Next', exact: true }).click();
   await dialog.getByRole('textbox', { name: 'Next due date' }).fill('1/15/2030');
   await dialog.getByRole('button', { name: 'Next', exact: true }).click();
@@ -76,6 +79,7 @@ test('adding a bill finds its logo, and another can be chosen', async ({ page })
 
   await dialog.getByRole('button', { name: 'Add bill' }).click();
   await expect.poll(() => saved.logoId).toBe('0198c0de-0000-7000-8000-000000000002');
+  expect(saved.merchant).toBe('City Power');
   expect(searches[0]).toEqual({ name: 'City Power', url: null });
 });
 

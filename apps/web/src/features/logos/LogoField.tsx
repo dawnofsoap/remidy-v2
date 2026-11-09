@@ -16,8 +16,10 @@ const webAddress = (text: string): string | null => {
 };
 
 interface LogoFieldProps {
-  /** The bill's name, which is searched for. */
+  /** The bill's name, for the initials shown without a logo. */
   name: string;
+  /** What's searched for: the bill's merchant, or its name without one. */
+  searchFor: string;
   /** The bill's website, whose own icon is offered too. */
   url: string;
   logoId: string | null;
@@ -32,7 +34,15 @@ interface LogoFieldProps {
 }
 
 /** The bill's logo, with a way to choose another, upload one, or remove it. */
-export function LogoField({ name, url, logoId, chosen, onChange, pickFirst }: LogoFieldProps) {
+export function LogoField({
+  name,
+  searchFor,
+  url,
+  logoId,
+  chosen,
+  onChange,
+  pickFirst,
+}: LogoFieldProps) {
   const [options, setOptions] = useState<LogoOption[]>([]);
   const [state, setState] = useState<'idle' | 'finding' | 'found' | 'failed'>('idle');
   const [open, setOpen] = useState(false);
@@ -42,11 +52,12 @@ export function LogoField({ name, url, logoId, chosen, onChange, pickFirst }: Lo
   const website = webAddress(url);
 
   async function find(signal?: AbortSignal) {
-    if (!name.trim()) return;
+    const term = searchFor.trim();
+    if (!term) return;
     const attempt = (latest.current += 1);
     setState('finding');
     try {
-      const found = await suggestLogos(name.trim(), website, signal);
+      const found = await suggestLogos(term, website, signal);
       if (attempt !== latest.current) return;
       setOptions(found.options);
       setState('found');
@@ -66,9 +77,9 @@ export function LogoField({ name, url, logoId, chosen, onChange, pickFirst }: Lo
       clearTimeout(timer);
       controller.abort();
     };
-    // Only the name and website decide what's found.
+    // Only what's searched for and the website decide what's found.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, website, pickFirst, chosen]);
+  }, [searchFor, website, pickFirst, chosen]);
 
   async function upload(file: File) {
     setUploading(true);
@@ -92,8 +103,8 @@ export function LogoField({ name, url, logoId, chosen, onChange, pickFirst }: Lo
   else if (state === 'failed') status = 'Logos couldn’t be found just now.';
   else if (state === 'found' && options.length === 0) {
     status = website
-      ? 'No logos found. You can upload one.'
-      : 'No logos found. Adding the website may find one, or you can upload one.';
+      ? 'No logos found. Try the merchant’s name, or upload one.'
+      : 'No logos found. Adding the merchant or website may find one, or you can upload one.';
   }
 
   return (
@@ -157,7 +168,7 @@ export function LogoField({ name, url, logoId, chosen, onChange, pickFirst }: Lo
             <Button
               type="button"
               variant="ghost"
-              disabled={state === 'finding' || !name.trim()}
+              disabled={state === 'finding' || !searchFor.trim()}
               onClick={() => void find()}
             >
               Search again

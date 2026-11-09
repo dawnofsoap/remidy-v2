@@ -16,6 +16,8 @@ import { choiceOf, scheduleOf, type Repeat } from '../repeats.ts';
 /** Everything the wizard has collected so far, as typed. */
 export interface BillDraft {
   name: string;
+  /** Who it's paid to. Its logo is searched for by this, or by the name without one. */
+  merchant: string;
   owner: 'personal' | 'shared';
   cents: Cents | null;
   varies: 'fixed' | 'varies';
@@ -38,6 +40,7 @@ export const STEPS = ['What it is', 'When it’s due', 'Details'] as const;
 /** Which step asks for each field, so a problem found later can send the person back to it. */
 const STEP_OF_FIELD: Record<string, number> = {
   name: 0,
+  merchant: 0,
   expectedCents: 0,
   'schedule.firstDue': 1,
   'schedule.lastDue': 1,
@@ -53,6 +56,7 @@ export const stepOf = (field: string) => STEP_OF_FIELD[field] ?? 0;
 /** The message key a draft field's problems are shown under. */
 const ERROR_KEY: Record<keyof BillDraft, string> = {
   name: 'name',
+  merchant: 'merchant',
   owner: 'owner',
   cents: 'expectedCents',
   varies: 'expectedCents',
@@ -77,6 +81,7 @@ export function draftOf(bill: Bill | null): BillDraft {
     : { repeat: 'monthly' as Repeat, every: 1, unit: 'month' as RepeatUnit };
   return {
     name: bill?.name ?? '',
+    merchant: bill?.merchant ?? '',
     owner: bill?.shared ? 'shared' : 'personal',
     cents: (bill?.expectedCents ?? null) as Cents | null,
     varies: bill?.isVariable ? 'varies' : 'fixed',
@@ -137,6 +142,7 @@ export function inputOf(draft: BillDraft): BillInput | null {
   if (!schedule) return null;
   return {
     name: draft.name.trim(),
+    merchant: draft.merchant.trim() || null,
     expectedCents: draft.cents,
     isVariable: draft.varies === 'varies',
     schedule,

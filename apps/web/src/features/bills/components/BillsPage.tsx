@@ -45,7 +45,11 @@ const nameCell = (bill: Bill) => (
     <LogoTile src={logoUrl(bill.logoId)} name={bill.name} />
     <span className="flex flex-col">
       <span className="font-semibold">{bill.name}</span>
-      {bill.categoryName ? <span className="text-sm text-ink-2">{bill.categoryName}</span> : null}
+      {bill.merchant || bill.categoryName ? (
+        <span className="text-sm text-ink-2">
+          {[bill.merchant, bill.categoryName].filter(Boolean).join(' · ')}
+        </span>
+      ) : null}
     </span>
   </span>
 );
@@ -120,6 +124,7 @@ export function BillsPage() {
               title={bill.name}
               start={<LogoTile src={logoUrl(bill.logoId)} name={bill.name} />}
               subtitle={[
+                bill.merchant,
                 describeSchedule(bill.schedule as Schedule),
                 bill.categoryName,
                 household ? (bill.shared ? 'Shared' : 'Personal') : null,
