@@ -9,7 +9,7 @@ import {
 } from '@remidy/domain';
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@tanstack/react-router';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Tag } from 'lucide-react';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Page } from '../../../core/Page.tsx';
 import {
@@ -28,17 +28,22 @@ import { byUrgency, DAY_STATUS, dayStatusOf } from './dayStatus.ts';
 import { statusOf } from './dueStatus.ts';
 import { BillViewer } from './BillViewer.tsx';
 
-/** In rem, matching the classes below: a day's padding, its date, and each line under it. */
+/** In rem, matching the classes below: a day's padding, its date, a gap, a name, and a logo. */
 const DAY_PADDING = 0.75;
 const DAY_NUMBER = 2;
-const LINE = 1.75;
+const GAP = 0.25;
+const LINE = 1.5;
+const ICON = 2.25;
+/** Room around the logos for the status badges on their corners. */
+const ICON_EDGE = 0.5;
 
 /**
- * How many lines fit under a day's date, from the height the grid gives each day. Days fill the
- * window, so a taller screen shows more bills before "+N more".
+ * How many bills fit under a day's date, from the room the grid gives each day: one per line with
+ * names, or rows of logos without. Days fill the window, so a bigger screen shows more before
+ * "+N more".
  */
-function useLinesPerDay(grid: RefObject<HTMLElement | null>): number {
-  const [lines, setLines] = useState(3);
+function useBillsPerDay(grid: RefObject<HTMLElement | null>, names: boolean): number {
+  const [fits, setFits] = useState(3);
   useEffect(() => {
     const element = grid.current;
     if (!element) return;
@@ -47,15 +52,44 @@ function useLinesPerDay(grid: RefObject<HTMLElement | null>): number {
       if (!(day instanceof HTMLElement)) return;
       // The root size in pixels, which grows on very wide screens.
       const rem = Number(getComputedStyle(document.documentElement).fontSize.replace('px', ''));
-      const room = day.clientHeight / rem - DAY_PADDING - DAY_NUMBER;
-      setLines(Math.max(1, Math.floor(room / LINE)));
+      const height = day.clientHeight / rem - DAY_PADDING - DAY_NUMBER;
+      if (names) {
+        setFits(Math.max(1, Math.floor(height / (LINE + GAP))));
+        return;
+      }
+      const width = day.clientWidth / rem - DAY_PADDING - ICON_EDGE;
+      const perRow = Math.max(1, Math.floor((width + GAP) / (ICON + GAP)));
+      const rows = Math.max(1, Math.floor((height - ICON_EDGE / 2 + GAP) / (ICON + GAP)));
+      setFits(perRow * rows);
     });
     observer.observe(element);
     return () => {
       observer.disconnect();
     };
   });
-  return lines;
+  return fits;
+}
+
+const NAMES_KEY = 'remidy.calendar.names';
+
+/** Whether the calendar shows bills' names beside their logos, remembered on this device. */
+function useShowNames(): [boolean, (show: boolean) => void] {
+  const [show, setShow] = useState(() => {
+    try {
+      return localStorage.getItem(NAMES_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const change = (next: boolean) => {
+    setShow(next);
+    try {
+      localStorage.setItem(NAMES_KEY, String(next));
+    } catch {
+      // It still applies for this visit.
+    }
+  };
+  return [show, change];
 }
 
 /** The day in the address, such as /calendar?day=2026-11-20 from Home's small calendar. */
@@ -66,30 +100,66 @@ function useDayInAddress(): CalendarDate | null {
   return typeof day === 'string' ? parseCalendarDate(day) : null;
 }
 
-/** One bill on a day in the grid: its logo, name and status. */
+/**
+ * One bill on a day in the grid: its logo and status, and its name when names are shown. Without
+ * a name, it says the name when pointed at and to screen readers.
+ */
 function DayChip({
   entry,
   now,
+  names,
   onOpen,
 }: {
   entry: AgendaEntry;
   now: CalendarDate;
+  names: boolean;
   onOpen: () => void;
 }) {
   const status = DAY_STATUS[dayStatusOf(entry, now)];
   const Icon = status.icon;
+  const label = `${entry.name}, ${status.label}`;
+  const hint = `${entry.name}: ${status.label}, ${statusOf(entry, false).text}`;
+  if (!names) {
+    return (
+      <Button
+        variant="ghost"
+        size="small"
+        aria-label={label}
+        title={hint}
+        onClick={onOpen}
+        className={cn(
+          'relative size-9 flex-none rounded-lg p-0',
+          (status === DAY_STATUS.paid || status === DAY_STATUS.skipped) && 'opacity-60',
+        )}
+      >
+        <LogoTile src={logoUrl(entry.logoId)} name={entry.name} />
+        {Icon ? (
+          // Color alone isn't enough, so the status's icon sits on the logo's corner.
+          <span
+            aria-hidden="true"
+            className={cn(
+              'absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-full bg-surface',
+              status.text,
+            )}
+          >
+            <Icon className="size-4" />
+          </span>
+        ) : null}
+      </Button>
+    );
+  }
   return (
     <Button
       variant="ghost"
       size="small"
       className={cn('w-full justify-start gap-1.5 px-1.5', status.chip)}
-      title={`${entry.name}: ${status.label}, ${statusOf(entry, false).text}`}
+      aria-label={label}
+      title={hint}
       onClick={onOpen}
     >
       <LogoTile size="small" src={logoUrl(entry.logoId)} name={entry.name} />
       <span className="min-w-0 flex-auto truncate text-left">{entry.name}</span>
       {Icon ? <Icon aria-hidden="true" className="size-4 flex-none" /> : null}
-      <span className="sr-only">, {status.label}</span>
     </Button>
   );
 }
@@ -108,7 +178,8 @@ export function CalendarPage() {
   // The due date whose bill is open. Found in the agenda each time, so a payment shows at once.
   const [openId, setOpenId] = useState<string | null>(null);
   const grid = useRef<HTMLOListElement>(null);
-  const linesPerDay = useLinesPerDay(grid);
+  const [names, setNames] = useShowNames();
+  const perDay = useBillsPerDay(grid, names);
 
   const entries = agenda.data
     ? [...agenda.data.overdue, ...agenda.data.upcoming].filter(
@@ -157,6 +228,18 @@ export function CalendarPage() {
           This month
         </Button>
       ) : null}
+      {/* Phones list the bills by name already, so it's only for the grid. */}
+      <Button
+        variant="secondary"
+        className="ml-auto hidden md:inline-flex"
+        aria-pressed={names}
+        onClick={() => {
+          setNames(!names);
+        }}
+      >
+        <Tag aria-hidden="true" className="size-4" />
+        Show names
+      </Button>
     </div>
   );
 
@@ -197,8 +280,36 @@ export function CalendarPage() {
                 const items = onDay(day);
                 const inMonth = sameMonth(day, month);
                 const count = items.length;
-                // Every bill when they all fit, or one line fewer to make room for "+N more".
-                const shown = count <= linesPerDay ? count : linesPerDay - 1;
+                // Every bill when they all fit, or one fewer to make room for "+N more".
+                const shown = count <= perDay ? count : perDay - 1;
+                const more =
+                  count > shown ? (
+                    <Button
+                      variant="ghost"
+                      size="small"
+                      className={cn('text-ink-2', names ? 'justify-start px-1.5' : 'h-9 px-1')}
+                      onClick={() => {
+                        setOpenDay(day);
+                      }}
+                    >
+                      +{count - shown}
+                      {names ? ' more' : null}
+                      <span className="sr-only">
+                        {names ? '' : ' more'} on {formatDate(day, 'long')}
+                      </span>
+                    </Button>
+                  ) : null;
+                const chips = items.slice(0, shown).map((entry) => (
+                  <DayChip
+                    key={entry.id}
+                    entry={entry}
+                    now={now}
+                    names={names}
+                    onOpen={() => {
+                      setOpenId(entry.id);
+                    }}
+                  />
+                ));
                 return (
                   <li
                     key={day}
@@ -221,29 +332,17 @@ export function CalendarPage() {
                     >
                       {datePartsOf(day).day}
                     </Button>
-                    {items.slice(0, shown).map((entry) => (
-                      <DayChip
-                        key={entry.id}
-                        entry={entry}
-                        now={now}
-                        onOpen={() => {
-                          setOpenId(entry.id);
-                        }}
-                      />
-                    ))}
-                    {count > shown ? (
-                      <Button
-                        variant="ghost"
-                        size="small"
-                        className="justify-start px-1.5 text-ink-2"
-                        onClick={() => {
-                          setOpenDay(day);
-                        }}
-                      >
-                        +{count - shown} more
-                        <span className="sr-only"> on {formatDate(day, 'long')}</span>
-                      </Button>
-                    ) : null}
+                    {names ? (
+                      <>
+                        {chips}
+                        {more}
+                      </>
+                    ) : (
+                      <div className="flex flex-wrap gap-1 p-1 pt-0">
+                        {chips}
+                        {more}
+                      </div>
+                    )}
                   </li>
                 );
               })}
