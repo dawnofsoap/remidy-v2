@@ -41,6 +41,11 @@ test('adding a bill finds its merchant’s logo, and another can be chosen', asy
             label: 'power.example',
             source: 'website',
           },
+          {
+            logoId: '0198c0de-0000-7000-8000-000000000003',
+            label: 'City Power Corporation of the United Kingdom and Northern Ireland',
+            source: 'logo.dev',
+          },
         ],
       },
     });
@@ -70,12 +75,19 @@ test('adding a bill finds its merchant’s logo, and another can be chosen', asy
   await saveScreenshot(page, 'bill-merchant');
 
   await logo.getByRole('button', { name: 'Change' }).click();
-  const found = logo.getByRole('list', { name: 'Logos found' });
+  const found = logo.getByRole('list', { name: 'Logo choices' });
   await expect(found.getByRole('button', { pressed: true })).toContainText('City Power');
   await found.getByRole('button', { name: /power\.example/ }).click();
   await expect(found.getByRole('button', { pressed: true })).toContainText('power.example');
+  // With the choices open, the step is taller than the window, and saving stays in reach.
+  await expect(dialog.getByRole('button', { name: 'Add bill' })).toBeInViewport();
   await expectNoViolations(page);
   await saveScreenshot(page, 'logo-picker');
+
+  // Choosing no logo shows the initials, and choosing again brings it back.
+  await found.getByRole('button', { name: /No logo/ }).click();
+  await expect(logo).toContainText('None yet, so its initials are shown.');
+  await found.getByRole('button', { name: /power\.example/ }).click();
 
   await dialog.getByRole('button', { name: 'Add bill' }).click();
   await expect.poll(() => saved.logoId).toBe('0198c0de-0000-7000-8000-000000000002');

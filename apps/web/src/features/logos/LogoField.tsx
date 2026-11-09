@@ -9,6 +9,12 @@ const IMAGE_TYPES = 'image/png,image/jpeg,image/gif,image/webp,image/x-icon';
 /** Waits for typing to pause before searching again. */
 const WAIT_MS = 800;
 
+const tileClass = (chosen: boolean) =>
+  cn(
+    'h-full w-full flex-col justify-start gap-1 border border-line p-2 text-center font-normal whitespace-normal',
+    chosen && 'border-accent bg-accent-soft',
+  );
+
 const webAddress = (text: string): string | null => {
   const trimmed = text.trim();
   if (!URL.canParse(trimmed)) return null;
@@ -133,30 +139,42 @@ export function LogoField({
       </p>
       {open ? (
         <div className="flex flex-col gap-3 rounded-xl border border-line p-3">
-          {options.length > 0 ? (
-            <ul aria-label="Logos found" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {options.map((option) => (
-                <li key={option.logoId}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    aria-pressed={option.logoId === logoId}
-                    className={cn(
-                      'h-auto w-full flex-col gap-1 border border-line p-2 text-center font-normal whitespace-normal',
-                      option.logoId === logoId && 'border-accent bg-accent-soft',
-                    )}
-                    onClick={() => {
-                      onChange(option.logoId, true);
-                    }}
-                  >
-                    <LogoTile size="large" src={logoUrl(option.logoId)} name={option.label} />
-                    <span className="font-semibold break-all">{option.label}</span>
-                    <span className="text-xs text-ink-2">{SOURCE_LABEL[option.source]}</span>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <ul aria-label="Logo choices" className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {options.map((option) => (
+              <li key={option.logoId}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-pressed={option.logoId === logoId}
+                  title={option.label}
+                  className={tileClass(option.logoId === logoId)}
+                  onClick={() => {
+                    onChange(option.logoId, true);
+                  }}
+                >
+                  <LogoTile size="large" src={logoUrl(option.logoId)} name={option.label} />
+                  <span className="line-clamp-2 font-semibold break-words">{option.label}</span>
+                  <span className="text-xs text-ink-2">{SOURCE_LABEL[option.source]}</span>
+                </Button>
+              </li>
+            ))}
+            {/* Choosing none shows the bill's initials. */}
+            <li>
+              <Button
+                type="button"
+                variant="ghost"
+                aria-pressed={logoId === null}
+                className={tileClass(logoId === null)}
+                onClick={() => {
+                  onChange(null, true);
+                }}
+              >
+                <LogoTile size="large" src={null} name={name || '?'} />
+                <span className="font-semibold">No logo</span>
+                <span className="text-xs text-ink-2">Shows its initials</span>
+              </Button>
+            </li>
+          </ul>
           <div className="flex flex-wrap gap-2">
             <FileButton
               accept={IMAGE_TYPES}
@@ -173,17 +191,6 @@ export function LogoField({
             >
               Search again
             </Button>
-            {logoId ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  onChange(null, true);
-                }}
-              >
-                Remove logo
-              </Button>
-            ) : null}
           </div>
           <p className="text-sm text-ink-2">PNG, JPEG, GIF, WebP or ICO, up to 256 KB.</p>
           {uploadError ? (
