@@ -103,3 +103,31 @@ test('the calendar fills the window, and a taller one shows more bills on a day'
   expect((grid?.y ?? 0) + (grid?.height ?? 0)).toBeGreaterThan(1440 - 100);
   await saveScreenshot(page, 'calendar-2560');
 });
+
+test('Home’s cards fill each screen, with no sideways scrolling', async ({ page }) => {
+  skipOnPhone();
+  await withBills(page);
+  for (const [width, height] of [
+    [1366, 768],
+    [1920, 1080],
+    [2560, 1440],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/');
+    const figures = await page.getByRole('region', { name: 'This month' }).boundingBox();
+    const main = await page.getByRole('main').boundingBox();
+    // Only the page's own padding is left beside the cards.
+    expect((main?.width ?? 0) - (figures?.width ?? 0)).toBeLessThan(100);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+    // The month's bills are as tall as they need to be: the card ends just after its last bill.
+    const monthCard = page.getByRole('region', { name: / bills$/ });
+    const month = await monthCard.boundingBox();
+    const last = await monthCard.getByRole('listitem').last().boundingBox();
+    expect((month?.y ?? 0) + (month?.height ?? 0)).toBeLessThan(
+      (last?.y ?? 0) + (last?.height ?? 0) + 10,
+    );
+    await saveScreenshot(page, `home-${String(width)}`);
+  }
+});
