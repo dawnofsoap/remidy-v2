@@ -80,6 +80,10 @@ test('the calendar fills the window, and a taller one shows more bills on a day'
 }) => {
   skipOnPhone();
   await withBills(page);
+  // With names, so each bill takes a line of the day's height.
+  await page.addInitScript(() => {
+    localStorage.setItem('remidy.calendar.names', 'true');
+  });
   const busy = () =>
     page.getByRole('listitem').filter({ has: page.getByRole('button', { name: /8 due$/ }) });
   // The "+N more" line, read once the days have their size.

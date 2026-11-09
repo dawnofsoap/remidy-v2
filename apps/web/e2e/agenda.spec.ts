@@ -153,6 +153,35 @@ test('the calendar shows the month as a grid, or as a list of days on a phone', 
   await expectNoViolations(page);
 });
 
+test('the calendar shows logos only, with names when asked, and remembers', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === 'phone', 'Phones list bills by name.');
+  await withBills(page);
+  await page.goto('/calendar');
+  const grid = page.getByRole('list', { name: /\d{4}$/ });
+  const water = grid.getByRole('button', { name: /\bWater, / });
+  // The name is in the label and the hint, not on the screen.
+  await expect(water).toBeVisible();
+  await expect(water).not.toContainText('Water');
+  await expect(water).toHaveAttribute('title', /^Water: /);
+  const names = page.getByRole('button', { name: 'Show names' });
+  await expect(names).toHaveAttribute('aria-pressed', 'false');
+  await expectNoViolations(page);
+  await saveScreenshot(page, 'calendar-logos');
+
+  await names.click();
+  await expect(names).toHaveAttribute('aria-pressed', 'true');
+  await expect(water).toContainText('Water');
+  await saveScreenshot(page, 'calendar-names');
+  await page.reload();
+  await expect(grid.getByRole('button', { name: /\bWater, / })).toContainText('Water');
+  await expect(page.getByRole('button', { name: 'Show names' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+});
+
 test('a day’s list shows all its bills, most urgent first', async ({ page }, info) => {
   test.skip(info.project.name === 'phone', 'Phones list every bill already.');
   await withBills(page);
