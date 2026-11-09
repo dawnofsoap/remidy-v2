@@ -5,11 +5,13 @@ import { useAddressPart } from '../../core/params.ts';
 import { NotFoundPage } from '../../core/pages.tsx';
 import { rootRoute } from '../../core/router.tsx';
 import { SettingsArea } from '../../core/SettingsArea.tsx';
+import { LogoDevSettings } from '../logos/index.ts';
 import { JobStatus } from './JobStatus.tsx';
 
 /** For whoever runs this copy of Remidy. It grants no access to anyone's bills. */
 const sections: SettingsSection[] = [
   { slug: 'jobs', title: 'Background jobs', component: JobStatus },
+  { slug: 'logos', title: 'Logos', component: LogoDevSettings },
 ];
 
 function AdminPage() {

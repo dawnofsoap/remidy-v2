@@ -95,3 +95,13 @@ export function createEncryptor(currentKey: string, oldKeys: readonly string[] =
     },
   };
 }
+
+/** For an app with no key, such as in tests that store no secrets. Storing one fails loudly. */
+export const unavailableEncryptor: Encryptor = {
+  encrypt() {
+    throw new Error('No encryption key was given, so secrets can’t be stored.');
+  },
+  decrypt() {
+    throw new Error('No encryption key was given, so secrets can’t be read.');
+  },
+};

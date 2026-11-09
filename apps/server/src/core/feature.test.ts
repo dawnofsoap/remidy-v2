@@ -403,3 +403,44 @@ describe('image routes', () => {
     },
   );
 });
+
+describe('route limits', () => {
+  it('allow a larger body only where a route asks for one', async () => {
+    const echo = (url: `/api/v1/${string}`, bodyLimit?: number) =>
+      defineRoute({
+        method: 'POST',
+        url,
+        access: 'public',
+        body: z.object({ text: z.string() }),
+        response: ok,
+        ...(bodyLimit ? { bodyLimit } : {}),
+        handler: () => ({ ok: true }),
+      });
+    const app = appWith([echo('/api/v1/usual'), echo('/api/v1/upload', 400 * 1024)]);
+    const payload = { text: 'x'.repeat(300 * 1024) };
+    expect((await app.inject({ method: 'POST', url: '/api/v1/usual', payload })).statusCode).toBe(
+      413,
+    );
+    expect((await app.inject({ method: 'POST', url: '/api/v1/upload', payload })).statusCode).toBe(
+      200,
+    );
+  });
+
+  it('limit how often a route can be called, where it asks', async () => {
+    const app = appWith([
+      defineRoute({
+        method: 'GET',
+        url: '/api/v1/rare',
+        access: 'public',
+        requestsPerMinute: 2,
+        response: ok,
+        handler: () => ({ ok: true }),
+      }),
+    ]);
+    const codes = [];
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      codes.push((await app.inject({ url: '/api/v1/rare' })).statusCode);
+    }
+    expect(codes).toEqual([200, 200, 429]);
+  });
+});
