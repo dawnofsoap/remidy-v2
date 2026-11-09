@@ -110,7 +110,7 @@ test('Bills is a table on wider screens and a list on a phone', async ({ page },
     await expect(table.getByRole('row', { name: /Electric/ })).toContainText('Varies');
     // Opening a bill shows it, and editing is a choice.
     await table.getByRole('button', { name: /^Rent/ }).click();
-    await expect(page.getByRole('dialog', { name: 'Rent' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Rent', exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
   }
   await expect(page.getByRole('button', { name: 'Add bill' })).toBeVisible();
@@ -142,7 +142,7 @@ test('the calendar shows the month as a grid, or as a list of days on a phone', 
 
   // Opening a bill shows it with that due date, and Pay offers to pay what's left.
   await water.click();
-  const preview = page.getByRole('dialog', { name: 'Water' });
+  const preview = page.getByRole('dialog', { name: 'Water', exact: true });
   await expect(preview.getByRole('region', { name: 'This due date' })).toContainText('$45.00');
   await expectNoViolations(page);
   await saveScreenshot(page, 'calendar-bill');

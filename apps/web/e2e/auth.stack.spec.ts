@@ -310,7 +310,7 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
   await dialog.getByRole('button', { name: 'Edit' }).click();
   await dialog.getByLabel('Name').fill('Water and sewer');
   await dialog.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByRole('dialog', { name: 'Water and sewer' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Water and sewer', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(bills.getByRole('button', { name: /Water and sewer/ })).toBeVisible();
 
