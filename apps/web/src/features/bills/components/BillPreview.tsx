@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { useHousehold } from '../../../core/space.tsx';
 import { Button, cn, LogoTile, Modal } from '../../../ui/index.ts';
 import { logoUrl, type Bill } from '../api.ts';
-import { BillDangerZone } from './BillDangerZone.tsx';
+import { BillActions } from './BillActions.tsx';
 import { BillHistory } from './BillHistory.tsx';
 import { browserToday } from './calendarGrid.ts';
 import { DAY_STATUS, dayStatusOf } from './dayStatus.ts';
@@ -130,15 +130,16 @@ export function BillPreview({
         <h3 className="font-semibold">History</h3>
         <BillHistory bill={bill} />
       </section>
-      <BillDangerZone bill={bill} onClose={onRemoved} onChanged={onChanged} />
       {/* Stays in view while the history scrolls. */}
-      <div className="sticky -bottom-6 -mx-6 flex items-center justify-between gap-2 border-t border-line bg-surface px-6 py-4">
-        <Button variant="secondary" onClick={onClose}>
-          Close
-        </Button>
-        <Button variant={due?.state === 'open' ? 'secondary' : 'primary'} onClick={onEdit}>
-          Edit
-        </Button>
+      <div className="sticky -bottom-6 -mx-6 border-t border-line bg-surface px-6 py-4">
+        <BillActions
+          bill={bill}
+          editIsMain={due?.state !== 'open'}
+          onEdit={onEdit}
+          onClose={onClose}
+          onRemoved={onRemoved}
+          onChanged={onChanged}
+        />
       </div>
     </Modal>
   );

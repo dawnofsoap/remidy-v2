@@ -56,8 +56,13 @@ test('opening a bill shows it, and editing it is a choice', async ({ page }) => 
     'https://maple.example/portal',
   );
   await expect(preview.getByRole('region', { name: 'History' })).toBeVisible();
+  // Archive and delete are icons beside Close and Edit, named for screen readers.
   await expect(preview.getByRole('button', { name: 'Archive' })).toBeVisible();
   await expect(preview.getByRole('button', { name: 'Delete…' })).toBeVisible();
+  await expect(preview.getByRole('button', { name: 'Archive' })).toHaveAttribute(
+    'title',
+    /no new due dates/,
+  );
   // Nothing in it can be typed into.
   await expect(preview.getByRole('textbox')).toHaveCount(0);
   await expectNoViolations(page);
@@ -69,6 +74,16 @@ test('opening a bill shows it, and editing it is a choice', async ({ page }) => 
   await expect(editing.getByLabel('Name')).toHaveValue('Rent');
   await editing.getByRole('button', { name: 'Cancel' }).click();
   await expect(preview).toBeVisible();
+
+  // Deleting asks first, in place of the buttons, and can be called off.
+  await preview.getByRole('button', { name: 'Delete…' }).click();
+  const confirm = preview.getByRole('group', { name: 'Confirm delete' });
+  await expect(confirm).toContainText('Delete Rent and its due dates?');
+  await expect(preview.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+  await expectNoViolations(page);
+  await saveScreenshot(page, 'bill-preview-delete');
+  await confirm.getByRole('button', { name: 'Keep it' }).click();
+
   await preview.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
