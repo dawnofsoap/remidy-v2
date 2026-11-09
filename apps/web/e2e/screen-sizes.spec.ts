@@ -122,6 +122,11 @@ test('Home’s cards fill each screen, with no sideways scrolling', async ({ pag
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       width,
     );
+    // The month's bills are as tall as they need to be, not as tall as the column beside them.
+    const month = await page.getByRole('region', { name: / bills$/ }).boundingBox();
+    const paid = await page.getByRole('region', { name: /^Paid in / }).boundingBox();
+    const besideBottom = (paid?.y ?? 0) + (paid?.height ?? 0);
+    expect((month?.y ?? 0) + (month?.height ?? 0)).toBeLessThan(besideBottom - 20);
     await saveScreenshot(page, `home-${String(width)}`);
   }
 });

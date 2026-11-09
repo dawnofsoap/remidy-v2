@@ -69,8 +69,8 @@ The agenda and totals routes, payments, `BillViewer` for opening a bill, and the
 ## Lessons from v1
 - Keep the grid of cards, the tinted overdue banner and the payments card. v1's next month preview is left to the
   Calendar, to keep Home about this month.
-- v1 fixed each card at 426 pixels tall so a row lined up, so content had to fit that height. Cards here size to
-  their content and line up by row, so larger text and wider screens still fit.
+- v1 fixed each card at 426 pixels tall so a row lined up, so content had to fit that height. Cards here are only as
+  tall as their content, so larger text and wider screens still fit, and no card is padded to match its neighbour.
 
 ## Done when
 - [ ] Every rule under Behavior has a test

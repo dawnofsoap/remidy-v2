@@ -144,8 +144,9 @@ export function Agenda() {
   const monthName = formatDate(`${thisMonth}-01` as CalendarDate, 'month');
 
   return (
-    // Stacked until there's room for columns. What's overdue comes first while stacked.
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+    // Stacked until there's room for columns. What's overdue comes first while stacked. Each card
+    // is as tall as what's in it, not as tall as the cards beside it.
+    <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
       <div className="xl:col-span-3">
         <MonthFigures figures={figures} />
       </div>
