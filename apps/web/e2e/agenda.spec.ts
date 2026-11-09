@@ -143,3 +143,60 @@ test('the calendar shows the month as a grid, or as a list of days on a phone', 
   await expect(dialog.getByRole('button', { name: 'Skip this one' })).toBeVisible();
   await expectNoViolations(page);
 });
+
+test('a day with more bills than fit lists them all, most urgent first', async ({ page }, info) => {
+  test.skip(info.project.name === 'phone', 'Phones list every bill already.');
+  await withBills(page);
+  // Today, which is always in the month shown.
+  const day = iso(0);
+  await page.route('**/api/v1/agenda?**', (route) =>
+    route.fulfill({
+      json: {
+        overdue: [],
+        upcoming: [
+          { ...entry('a', 'Gas', day, 3_000), state: 'settled', paidCents: 3_000 },
+          entry('b', 'Water', day, 4_500),
+          entry('c', 'Internet', day, 6_000),
+          entry('d', 'Phone', day, 5_500),
+        ],
+      },
+    }),
+  );
+  await page.goto('/calendar');
+  // Three fit, paid last, so the fourth is behind "+1 more".
+  await page.getByRole('button', { name: /^\+1 more/ }).click();
+  const sheet = page.getByRole('dialog');
+  await expect(sheet.getByRole('listitem')).toHaveCount(4);
+  await expect(sheet.getByRole('listitem').first()).toContainText('Internet');
+  await expect(sheet.getByRole('listitem').last()).toContainText('Paid');
+  await expectNoViolations(page);
+  await saveScreenshot(page, 'calendar-day');
+
+  // Paying from the day opens the payment sheet, and closing it returns to the day.
+  await sheet.getByRole('button', { name: /Water/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Pay Water' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog').getByRole('listitem')).toHaveCount(4);
+});
+
+test('Home’s small calendar opens a day on the Calendar page', async ({ page }, info) => {
+  test.skip(info.project.name === 'phone', 'It’s only beside the list, on wide screens.');
+  await withBills(page);
+  await page.route('**/api/v1/totals?**', (route) =>
+    route.fulfill({ json: { dueCents: 0, unknownCount: 0, paidCents: 0 } }),
+  );
+  await page.route('**/api/v1/agenda?**', (route) =>
+    route.fulfill({ json: { overdue: [], upcoming: [entry('w', 'Water', iso(0), 4_500)] } }),
+  );
+  await page.goto('/');
+  const month = page.getByRole('region', { name: /\d{4}$/ });
+  // Today is always in this month, whatever the date.
+  const waterDay = month.getByRole('link', { name: /today, 1 due, due soon/ });
+  await expect(waterDay).toBeVisible();
+  await expectNoViolations(page);
+  await saveScreenshot(page, 'home-calendar');
+
+  await waterDay.click();
+  await expect(page).toHaveURL(/\/calendar\?day=\d{4}-\d{2}-\d{2}/);
+  await expect(page.getByRole('dialog').getByRole('listitem')).toContainText('Water');
+});
