@@ -1,13 +1,4 @@
-import {
-  addDays,
-  describeSchedule,
-  dueDates,
-  formatDate,
-  formatMoney,
-  today,
-  type Cents,
-  type Schedule,
-} from '@remidy/domain';
+import { describeSchedule, type Schedule } from '@remidy/domain';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Page } from '../../../core/Page.tsx';
@@ -26,19 +17,8 @@ import {
 } from '../../../ui/index.ts';
 import { AGENDA_KEY, BILLS_KEY, fetchBills, logoUrl, type Bill } from '../api.ts';
 import { BillForm } from './BillForm.tsx';
-
-export const amountText = (bill: { expectedCents: number | null; isVariable: boolean }) =>
-  bill.expectedCents === null
-    ? 'Varies'
-    : `${formatMoney(bill.expectedCents as Cents)}${bill.isVariable ? ', varies' : ''}`;
-
-/** The next due date from today, in words, or a dash when there isn't one. */
-function nextDue(bill: Bill): string {
-  if (bill.archived) return '—';
-  const from = today(Intl.DateTimeFormat().resolvedOptions().timeZone);
-  const [next] = dueDates(bill.schedule as Schedule, from, addDays(from, 800));
-  return next ? formatDate(next, 'short') : '—';
-}
+import { BillViewer } from './BillViewer.tsx';
+import { amountText, nextDue } from './billText.ts';
 
 const nameCell = (bill: Bill) => (
   <span className="flex items-center gap-3">
@@ -59,7 +39,9 @@ export function BillsPage() {
   const queryClient = useQueryClient();
   const household = useHousehold();
   const bills = useQuery({ queryKey: BILLS_KEY, queryFn: ({ signal }) => fetchBills(signal) });
-  const [editing, setEditing] = useState<{ bill: Bill | null } | null>(null);
+  // Only for adding: an existing bill is edited from its preview.
+  const [adding, setAdding] = useState(false);
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
 
   async function changed(message: string) {
@@ -70,13 +52,13 @@ export function BillsPage() {
     ]);
   }
 
-  const open = (bill: Bill | null) => {
-    setEditing({ bill });
+  const open = (bill: Bill) => {
+    setViewingId(bill.id);
   };
   const add = (
     <Button
       onClick={() => {
-        open(null);
+        setAdding(true);
       }}
     >
       Add bill
@@ -186,11 +168,19 @@ export function BillsPage() {
   return (
     <Page title="Bills" actions={hasBills ? add : undefined}>
       {body}
-      {editing ? (
-        <BillForm
-          bill={editing.bill}
+      {viewingId ? (
+        <BillViewer
+          billId={viewingId}
           onClose={() => {
-            setEditing(null);
+            setViewingId(null);
+          }}
+        />
+      ) : null}
+      {adding ? (
+        <BillForm
+          bill={null}
+          onClose={() => {
+            setAdding(false);
           }}
           onChanged={changed}
         />

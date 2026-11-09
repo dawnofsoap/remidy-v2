@@ -21,6 +21,8 @@ const buttonStyles = cva(
         normal: '',
         // For dense layouts such as a calendar day, still meeting the 24px minimum target.
         small: 'min-h-6 rounded-md px-1.5 text-sm font-medium',
+        // A square button holding only an icon. It needs an aria-label, and a title to show it.
+        icon: 'size-11 px-0',
       },
     },
     defaultVariants: { variant: 'primary', size: 'normal' },

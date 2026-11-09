@@ -22,12 +22,11 @@ import {
   LogoTile,
 } from '../../../ui/index.ts';
 import { AGENDA_KEY, fetchAgenda, logoUrl } from '../api.ts';
-import { useRefresh } from '../useRefresh.ts';
 import { browserToday, firstOfMonth, gridDays, sameMonth, WEEKDAYS } from './calendarGrid.ts';
 import { DaySheet } from './DaySheet.tsx';
 import { byUrgency, DAY_STATUS, dayStatusOf } from './dayStatus.ts';
 import { statusOf } from './dueStatus.ts';
-import { PaySheet } from './PaySheet.tsx';
+import { BillViewer } from './BillViewer.tsx';
 
 /** In rem, matching the classes below: a day's padding, its date, and each line under it. */
 const DAY_PADDING = 0.75;
@@ -106,10 +105,10 @@ export function CalendarPage() {
     queryKey: [...AGENDA_KEY, month, to],
     queryFn: ({ signal }) => fetchAgenda(month, to, signal),
   });
-  const [paying, setPaying] = useState<AgendaEntry | null>(null);
+  // The due date whose bill is open. Found in the agenda each time, so a payment shows at once.
+  const [openId, setOpenId] = useState<string | null>(null);
   const grid = useRef<HTMLOListElement>(null);
   const linesPerDay = useLinesPerDay(grid);
-  const refresh = useRefresh();
 
   const entries = agenda.data
     ? [...agenda.data.overdue, ...agenda.data.upcoming].filter(
@@ -228,7 +227,7 @@ export function CalendarPage() {
                         entry={entry}
                         now={now}
                         onOpen={() => {
-                          setPaying(entry);
+                          setOpenId(entry.id);
                         }}
                       />
                     ))}
@@ -277,7 +276,7 @@ export function CalendarPage() {
                         </span>
                       }
                       onClick={() => {
-                        setPaying(entry);
+                        setOpenId(entry.id);
                       }}
                     />
                   );
@@ -290,11 +289,12 @@ export function CalendarPage() {
     );
   }
 
+  const opened = entries.find((entry) => entry.id === openId) ?? null;
   return (
     <Page title="Calendar">
       {header}
       {body}
-      {openDay && !paying ? (
+      {openDay && !opened ? (
         <DaySheet
           day={openDay}
           entries={entries.filter((entry) => entry.dueOn === openDay)}
@@ -303,17 +303,17 @@ export function CalendarPage() {
             setOpenDay(null);
           }}
           onOpen={(entry) => {
-            setPaying(entry);
+            setOpenId(entry.id);
           }}
         />
       ) : null}
-      {paying ? (
-        <PaySheet
-          entry={paying}
+      {opened ? (
+        <BillViewer
+          billId={opened.billId}
+          due={opened}
           onClose={() => {
-            setPaying(null);
+            setOpenId(null);
           }}
-          onChanged={refresh}
         />
       ) : null}
     </Page>

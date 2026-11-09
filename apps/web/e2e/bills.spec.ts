@@ -55,6 +55,10 @@ test('a personal bill can be shared with the household, after saying who will se
 
   await page.goto('/bills');
   await page.getByRole('button', { name: /Internet/ }).click();
+  await page
+    .getByRole('dialog', { name: 'Internet' })
+    .getByRole('button', { name: 'Edit' })
+    .click();
   const dialog = page.getByRole('dialog');
   const whose = dialog.getByRole('group', { name: 'Whose bill' });
   await expect(whose.getByRole('radio', { name: 'Just mine' })).toBeChecked();
@@ -65,7 +69,8 @@ test('a personal bill can be shared with the household, after saying who will se
   await expectNoViolations(page);
   await dialog.getByRole('button', { name: 'Save' }).click();
 
-  await expect(dialog).toHaveCount(0);
+  // Saving goes back to the bill.
+  await expect(page.getByRole('dialog', { name: 'Internet' })).toBeVisible();
   // Saved where it was, then moved, so the household swaps in its own category.
   expect(calls).toEqual(['PATCH /api/v1/spaces/sp1/bills/b1', 'POST move sp2']);
 });
@@ -79,5 +84,10 @@ test('without a household there’s no choice to make', async ({ page }) => {
   await page.route('**/api/v1/bills', (route) => route.fulfill({ json: [internet] }));
   await page.goto('/bills');
   await page.getByRole('button', { name: /Internet/ }).click();
+  await page
+    .getByRole('dialog', { name: 'Internet' })
+    .getByRole('button', { name: 'Edit' })
+    .click();
+  await expect(page.getByRole('dialog', { name: 'Edit Internet' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'Whose bill' })).toHaveCount(0);
 });
