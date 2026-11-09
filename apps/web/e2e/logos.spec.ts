@@ -55,19 +55,19 @@ test('adding a bill finds its merchant’s logo, and another can be chosen', asy
   await page.getByRole('button', { name: 'Add bill' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Name').fill('Electric bill');
-  // The logo is searched for by the merchant, not the bill's name.
-  await dialog.getByLabel('Merchant (optional)').fill('City Power');
   await dialog.getByLabel('Amount due').fill('120');
-  await saveScreenshot(page, 'bill-merchant');
   await dialog.getByRole('button', { name: 'Next', exact: true }).click();
   await dialog.getByRole('textbox', { name: 'Next due date' }).fill('1/15/2030');
   await dialog.getByRole('button', { name: 'Next', exact: true }).click();
 
+  // The logo is searched for by the merchant, not the bill's name.
+  await dialog.getByLabel('Merchant (optional)').fill('City Power');
   // The first logo found is chosen on its own.
   const logo = dialog.getByRole('group', { name: 'Logo' });
   await expect(logo).toContainText('Shown beside this bill.');
   await dialog.getByLabel('Website (optional)').fill('https://power.example');
   await expect.poll(() => searches.at(-1)?.url).toBe('https://power.example');
+  await saveScreenshot(page, 'bill-merchant');
 
   await logo.getByRole('button', { name: 'Change' }).click();
   const found = logo.getByRole('list', { name: 'Logos found' });
@@ -80,7 +80,8 @@ test('adding a bill finds its merchant’s logo, and another can be chosen', asy
   await dialog.getByRole('button', { name: 'Add bill' }).click();
   await expect.poll(() => saved.logoId).toBe('0198c0de-0000-7000-8000-000000000002');
   expect(saved.merchant).toBe('City Power');
-  expect(searches[0]).toEqual({ name: 'City Power', url: null });
+  // The latest search is for the merchant, with its website.
+  expect(searches.at(-1)).toEqual({ name: 'City Power', url: 'https://power.example' });
 });
 
 test('an uploaded logo that isn’t an image is refused, saying why', async ({ page }) => {

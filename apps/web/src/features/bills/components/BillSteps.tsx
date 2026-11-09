@@ -46,17 +46,6 @@ export function WhatStep({
         }}
         {...errorOf(errors, 'name')}
       />
-      <TextField
-        label="Merchant (optional)"
-        hint="Who you pay, such as Chase. Used to find its logo."
-        value={draft.merchant}
-        maxLength={BILL_MERCHANT_MAX}
-        autoComplete="off"
-        onChange={(event) => {
-          change({ merchant: event.target.value });
-        }}
-        {...errorOf(errors, 'merchant')}
-      />
       {household ? (
         <div className="flex flex-col gap-1.5">
           <RadioField
@@ -187,6 +176,28 @@ export function DetailsStep({
   const category = categories.find((item) => item.id === draft.categoryId);
   return (
     <>
+      <TextField
+        label="Merchant (optional)"
+        hint="Who you pay, such as Chase. Used to find its logo."
+        value={draft.merchant}
+        maxLength={BILL_MERCHANT_MAX}
+        autoComplete="off"
+        onChange={(event) => {
+          change({ merchant: event.target.value });
+        }}
+        {...errorOf(errors, 'merchant')}
+      />
+      <TextField
+        label="Website (optional)"
+        type="url"
+        inputMode="url"
+        placeholder="https://"
+        value={draft.url}
+        onChange={(event) => {
+          change({ url: event.target.value });
+        }}
+        {...errorOf(errors, 'url')}
+      />
       <LogoField
         name={draft.name}
         searchFor={draft.merchant.trim() || draft.name}
@@ -230,17 +241,6 @@ export function DetailsStep({
         onChange={(autopay) => {
           change({ autopay });
         }}
-      />
-      <TextField
-        label="Website (optional)"
-        type="url"
-        inputMode="url"
-        placeholder="https://"
-        value={draft.url}
-        onChange={(event) => {
-          change({ url: event.target.value });
-        }}
-        {...errorOf(errors, 'url')}
       />
       <TextField
         label="Notes (optional)"

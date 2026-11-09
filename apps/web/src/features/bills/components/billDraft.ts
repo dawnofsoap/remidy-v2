@@ -40,11 +40,11 @@ export const STEPS = ['What it is', 'When it’s due', 'Details'] as const;
 /** Which step asks for each field, so a problem found later can send the person back to it. */
 const STEP_OF_FIELD: Record<string, number> = {
   name: 0,
-  merchant: 0,
   expectedCents: 0,
   'schedule.firstDue': 1,
   'schedule.lastDue': 1,
   'schedule.every': 1,
+  merchant: 2,
   categoryId: 2,
   url: 2,
   notes: 2,
