@@ -28,6 +28,9 @@ export interface BillDraft {
   autopay: 'no' | 'yes';
   url: string;
   notes: string;
+  logoId: string | null;
+  /** Whether the person chose the logo, or removed it, so finding one stops replacing it. */
+  logoChosen: boolean;
 }
 
 export const STEPS = ['What it is', 'When it’s due', 'Details'] as const;
@@ -42,6 +45,7 @@ const STEP_OF_FIELD: Record<string, number> = {
   categoryId: 2,
   url: 2,
   notes: 2,
+  logoId: 2,
 };
 
 export const stepOf = (field: string) => STEP_OF_FIELD[field] ?? 0;
@@ -61,6 +65,8 @@ const ERROR_KEY: Record<keyof BillDraft, string> = {
   autopay: 'autopay',
   url: 'url',
   notes: 'notes',
+  logoId: 'logoId',
+  logoChosen: 'logoId',
 };
 
 export const errorKeyOf = (field: keyof BillDraft) => ERROR_KEY[field];
@@ -85,6 +91,9 @@ export function draftOf(bill: Bill | null): BillDraft {
     autopay: bill?.autopay ? 'yes' : 'no',
     url: bill?.url ?? '',
     notes: bill?.notes ?? '',
+    logoId: bill?.logoId ?? null,
+    // An existing bill's logo stays as it is unless the person changes it.
+    logoChosen: bill !== null,
   };
 }
 
@@ -135,6 +144,7 @@ export function inputOf(draft: BillDraft): BillInput | null {
     autopay: draft.autopay === 'yes',
     url: draft.url.trim() || null,
     notes: draft.notes.trim() || null,
+    logoId: draft.logoId,
   };
 }
 

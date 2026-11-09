@@ -2,6 +2,7 @@ export { Button } from './Button.tsx';
 export { cn, focusRing } from './cn.ts';
 export { DateField } from './DateField.tsx';
 export { SelectField, TextField } from './Field.tsx';
+export { FileButton } from './FileButton.tsx';
 export { List, ListRow } from './List.tsx';
 export { initialsOf, LogoTile } from './LogoTile.tsx';
 export { MoneyField } from './MoneyField.tsx';

@@ -238,7 +238,8 @@ The repo is public, so assume anyone can read this code. These are part of the b
 - Same-origin by default, with strict security headers
 - Secrets required at startup, with no fallback values
 - Any stored secrets, such as MFA keys and provider credentials, encrypted at rest
-- Small JSON body limit; uploads use a separate path with size and type checks
+- Small JSON body limit; uploads use a separate path with size and type checks, decided from the bytes, and never SVG
+- Fetches from addresses people give, such as a bill's website, refuse private and internal addresses, at every redirect
 - Spaces are invite-only, and space names are never listed to non-members
 - `SECURITY.md` with a private reporting route, plus Dependabot, CodeQL and secret scanning from day one
 - Only fictional seed data in the repo

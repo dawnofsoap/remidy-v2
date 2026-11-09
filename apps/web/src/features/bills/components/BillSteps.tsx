@@ -3,6 +3,7 @@ import { formatMoney, type RepeatUnit } from '@remidy/domain';
 import { useHousehold } from '../../../core/space.tsx';
 import { DateField, MoneyField, RadioField, SelectField, TextField } from '../../../ui/index.ts';
 import type { Category } from '../../categories/index.ts';
+import { LogoField } from '../../logos/index.ts';
 import { REPEATS, type Repeat } from '../repeats.ts';
 import { preview, scheduleOfDraft, type BillDraft } from './billDraft.ts';
 
@@ -175,6 +176,21 @@ export function DetailsStep({
   const category = categories.find((item) => item.id === draft.categoryId);
   return (
     <>
+      <LogoField
+        name={draft.name}
+        url={draft.url}
+        logoId={draft.logoId}
+        chosen={draft.logoChosen}
+        pickFirst={isNew}
+        onChange={(logoId, chosen) => {
+          change({ logoId, logoChosen: chosen });
+        }}
+      />
+      {errors.logoId ? (
+        <p role="alert" className="text-sm text-danger">
+          {errors.logoId}
+        </p>
+      ) : null}
       <SelectField
         label="Category (optional)"
         value={draft.categoryId}

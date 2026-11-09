@@ -1,6 +1,7 @@
 import { bill, billOccurrence, payment } from '@remidy/db';
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
+import { unavailableEncryptor } from '../../core/encryption.ts';
 import { addSampleData } from '../../core/sample-data.ts';
 import { listBills } from './repo.ts';
 import { addSampleBills, SAMPLE_BILLS } from './sample-data.ts';
@@ -10,7 +11,7 @@ useBillsHarness();
 
 const run = () =>
   addSampleBills(
-    { database: test.database },
+    { database: test.database, encryptor: unavailableEncryptor },
     { userId: ids.alice, personalSpaceId: ids.alicePersonal, householdId: ids.household },
   );
 
