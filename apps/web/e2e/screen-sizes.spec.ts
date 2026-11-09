@@ -34,6 +34,7 @@ const bill = (index: number) => ({
   spaceId: 'sp1',
   shared: false,
   name: NAMES[index] ?? 'Bill',
+  merchant: null,
   expectedCents: 1000,
   isVariable: false,
   schedule: { kind: 'repeat', unit: 'month', every: 1, firstDue: busyDay, lastDue: null },
