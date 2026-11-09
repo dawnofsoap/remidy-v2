@@ -105,8 +105,9 @@ test('Bills is a table on wider screens and a list on a phone', async ({ page },
       'Amount',
     ]);
     await expect(table.getByRole('row', { name: /Electric/ })).toContainText('Varies');
+    // Opening a bill shows it, and editing is a choice.
     await table.getByRole('button', { name: /^Rent/ }).click();
-    await expect(page.getByRole('dialog', { name: 'Edit Rent' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Rent' })).toBeVisible();
     await page.keyboard.press('Escape');
   }
   await expect(page.getByRole('button', { name: 'Add bill' })).toBeVisible();

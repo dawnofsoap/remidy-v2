@@ -6,7 +6,6 @@ import { Button, Modal, Steps } from '../../../ui/index.ts';
 import { categoriesKey, fetchCategories } from '../../categories/index.ts';
 import { createBill, moveBill, updateBill, type Bill } from '../api.ts';
 import { BillDangerZone } from './BillDangerZone.tsx';
-import { BillHistory } from './BillHistory.tsx';
 import {
   draftOf,
   errorKeyOf,
@@ -22,18 +21,19 @@ interface BillFormProps {
   /** The bill to edit, or null to add one. */
   bill: Bill | null;
   onClose: () => void;
+  /** After it's archived, restored or deleted, which leaves the bill where it was looked at. */
+  onRemoved?: () => void;
   onChanged: (message: string) => Promise<void>;
 }
 
 const LAST = STEPS.length - 1;
-/** Only when editing: the bill's due dates and payments, after its details. */
-const HISTORY = STEPS.length;
 
 /**
  * Adds a bill in three short steps, checking each before moving on. Editing shows the same steps,
- * which can be visited in any order and saved from any of them.
+ * which can be visited in any order and saved from any of them. A bill's history is shown where
+ * it's looked at, in BillPreview.
  */
-export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
+export function BillForm({ bill, onClose, onRemoved, onChanged }: BillFormProps) {
   const isNew = bill === null;
   const personal = usePersonalSpace();
   const household = useHousehold();
@@ -135,76 +135,53 @@ export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
       }
       hideDescription={isNew}
     >
-      <Steps
-        steps={isNew ? STEPS : [...STEPS, 'History']}
-        current={step}
-        {...(isNew ? {} : { onSelect: goTo })}
-      />
-      {!isNew && step === HISTORY ? (
-        <div className="flex flex-col gap-4">
-          <BillHistory bill={bill} />
-          <div className="flex justify-between gap-2">
+      <Steps steps={STEPS} current={step} {...(isNew ? {} : { onSelect: goTo })} />
+      <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+        {step === 0 ? (
+          <WhatStep {...stepProps} {...(bill ? { wasShared: bill.shared } : {})} />
+        ) : null}
+        {step === 1 ? <WhenStep {...stepProps} /> : null}
+        {step === 2 ? <DetailsStep {...stepProps} categories={categories.data ?? []} /> : null}
+        {failure ? (
+          <p role="alert" className="text-danger">
+            {failure}
+          </p>
+        ) : null}
+        {/* Stays in view while a long step scrolls. */}
+        <div className="sticky -bottom-6 -mx-6 flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface px-6 py-4">
+          {step > 0 ? (
             <Button
               variant="secondary"
               onClick={() => {
-                goTo(LAST);
+                goTo(step - 1);
               }}
             >
               Back
             </Button>
+          ) : (
             <Button variant="secondary" onClick={onClose}>
-              Close
+              Cancel
             </Button>
-          </div>
-        </div>
-      ) : (
-        <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
-          {step === 0 ? (
-            <WhatStep {...stepProps} {...(bill ? { wasShared: bill.shared } : {})} />
-          ) : null}
-          {step === 1 ? <WhenStep {...stepProps} /> : null}
-          {step === 2 ? <DetailsStep {...stepProps} categories={categories.data ?? []} /> : null}
-          {failure ? (
-            <p role="alert" className="text-danger">
-              {failure}
-            </p>
-          ) : null}
-          {/* Stays in view while a long step scrolls. */}
-          <div className="sticky -bottom-6 -mx-6 flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface px-6 py-4">
-            {step > 0 ? (
+          )}
+          <div className="flex flex-wrap gap-2">
+            {!isNew && step < LAST ? (
               <Button
                 variant="secondary"
                 onClick={() => {
-                  goTo(step - 1);
+                  goTo(step + 1);
                 }}
               >
-                Back
+                Next
               </Button>
-            ) : (
-              <Button variant="secondary" onClick={onClose}>
-                Cancel
-              </Button>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {!isNew ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    goTo(step + 1);
-                  }}
-                >
-                  Next
-                </Button>
-              ) : null}
-              <Button type="submit" busy={busy}>
-                {isNew ? (step < LAST ? 'Next' : 'Add bill') : 'Save'}
-              </Button>
-            </div>
+            ) : null}
+            <Button type="submit" busy={busy}>
+              {isNew ? (step < LAST ? 'Next' : 'Add bill') : 'Save'}
+            </Button>
           </div>
-        </form>
-      )}
+        </div>
+      </form>
       {!isNew && step === LAST ? (
-        <BillDangerZone bill={bill} onClose={onClose} onChanged={onChanged} />
+        <BillDangerZone bill={bill} onClose={onRemoved ?? onClose} onChanged={onChanged} />
       ) : null}
     </Modal>
   );

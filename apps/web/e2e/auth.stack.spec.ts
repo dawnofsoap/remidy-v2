@@ -292,26 +292,31 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
 
   // Its history shows the payment, which can be voided with a reason and stays listed.
   await page.goto('/bills');
+  // Opening a bill shows it with its history, without editing it.
   await table.getByRole('row', { name: /Phone/ }).click();
-  await dialog.getByRole('button', { name: 'Go to History' }).click();
   await dialog.getByRole('button', { name: 'Void…' }).click();
   await dialog.getByLabel('Why void it?').fill('Wrong bill');
   await dialog.getByRole('button', { name: 'Void payment' }).click();
   await expect(dialog.getByText('Wrong bill')).toBeVisible();
   await page.keyboard.press('Escape');
 
-  // On a phone, editing is a bottom sheet with the steps as tabs, and saves from any of them.
+  // On a phone, a bill opens as a bottom sheet. Editing has the steps as tabs, saves from any of
+  // them, and goes back to the bill.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/bills');
   await bills.getByRole('button', { name: /Water/ }).click();
   const sheet = await dialog.boundingBox();
   expect((sheet?.y ?? 0) + (sheet?.height ?? 0)).toBeCloseTo(844, 0);
+  await dialog.getByRole('button', { name: 'Edit' }).click();
   await dialog.getByLabel('Name').fill('Water and sewer');
   await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('dialog', { name: 'Water and sewer' })).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect(bills.getByRole('button', { name: /Water and sewer/ })).toBeVisible();
 
   // A bill with payments, even voided ones, keeps its history: it can be archived, not deleted.
   await bills.getByRole('button', { name: /Phone/ }).click();
+  await dialog.getByRole('button', { name: 'Edit' }).click();
   await dialog.getByRole('button', { name: 'Go to Details' }).click();
   await dialog.getByRole('button', { name: 'Delete…' }).click();
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
