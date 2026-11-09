@@ -56,7 +56,7 @@ test('a personal bill can be shared with the household, after saying who will se
   await page.goto('/bills');
   await page.getByRole('button', { name: /Internet/ }).click();
   await page
-    .getByRole('dialog', { name: 'Internet' })
+    .getByRole('dialog', { name: 'Internet', exact: true })
     .getByRole('button', { name: 'Edit' })
     .click();
   const dialog = page.getByRole('dialog');
@@ -70,7 +70,7 @@ test('a personal bill can be shared with the household, after saying who will se
   await dialog.getByRole('button', { name: 'Save' }).click();
 
   // Saving goes back to the bill.
-  await expect(page.getByRole('dialog', { name: 'Internet' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Internet', exact: true })).toBeVisible();
   // Saved where it was, then moved, so the household swaps in its own category.
   expect(calls).toEqual(['PATCH /api/v1/spaces/sp1/bills/b1', 'POST move sp2']);
 });
@@ -85,7 +85,7 @@ test('without a household there’s no choice to make', async ({ page }) => {
   await page.goto('/bills');
   await page.getByRole('button', { name: /Internet/ }).click();
   await page
-    .getByRole('dialog', { name: 'Internet' })
+    .getByRole('dialog', { name: 'Internet', exact: true })
     .getByRole('button', { name: 'Edit' })
     .click();
   await expect(page.getByRole('dialog', { name: 'Edit Internet' })).toBeVisible();
