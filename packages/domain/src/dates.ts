@@ -112,6 +112,8 @@ const FORMATS = {
   weekday: { weekday: 'long' },
   /** March 4 */
   monthDay: { month: 'long', day: 'numeric' },
+  /** November */
+  month: { month: 'long' },
   /** November 2026 */
   monthYear: { month: 'long', year: 'numeric' },
 } as const;
