@@ -377,7 +377,7 @@ export function CalendarPage() {
 
   const opened = entries.find((entry) => entry.id === openId) ?? null;
   return (
-    <Page title="Calendar">
+    <Page title="Calendar" hideTitleOnPhone>
       {header}
       {body}
       {openDay && !opened ? (

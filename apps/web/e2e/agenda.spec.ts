@@ -121,9 +121,22 @@ test('Bills is a table on wider screens and a list on a phone', async ({ page },
     await expect(page.getByRole('dialog', { name: 'Rent', exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
   }
-  await expect(page.getByRole('button', { name: 'Add bill' })).toBeVisible();
+  const add = page.getByRole('button', { name: 'Add bill' });
+  await expect(add).toBeVisible();
+  if (info.project.name === 'phone') {
+    // A round button floating above the tab bar, rather than the page's title row.
+    await expect(page.getByRole('heading', { name: 'Bills', level: 1 })).not.toBeInViewport({
+      ratio: 0.5,
+    });
+    const button = await add.boundingBox();
+    const tabs = await page.getByRole('navigation', { name: 'Main' }).boundingBox();
+    expect((button?.y ?? 0) + (button?.height ?? 0)).toBeLessThanOrEqual(tabs?.y ?? 0);
+    expect(button?.width).toBe(button?.height);
+  }
   await expectNoViolations(page);
   await saveScreenshot(page, 'bills-table');
+  await add.click();
+  await expect(page.getByRole('dialog', { name: 'Add bill' })).toBeVisible();
 });
 
 test('the calendar shows the month as a grid, or a small grid and a chosen day on a phone', async ({

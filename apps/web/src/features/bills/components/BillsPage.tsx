@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { describeSchedule, type Schedule } from '@remidy/domain';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -55,15 +56,10 @@ export function BillsPage() {
   const open = (bill: Bill) => {
     setViewingId(bill.id);
   };
-  const add = (
-    <Button
-      onClick={() => {
-        setAdding(true);
-      }}
-    >
-      Add bill
-    </Button>
-  );
+  const startAdding = () => {
+    setAdding(true);
+  };
+  const add = <Button onClick={startAdding}>Add bill</Button>;
 
   const columns: TableColumn<Bill>[] = [
     { key: 'name', header: 'Name', cell: nameCell },
@@ -166,8 +162,24 @@ export function BillsPage() {
 
   const hasBills = Boolean(bills.data?.some((bill) => !bill.archived));
   return (
-    <Page title="Bills" actions={hasBills ? add : undefined}>
-      {body}
+    <Page
+      title="Bills"
+      hideTitleOnPhone
+      // On a phone it floats over the list instead, below.
+      actions={hasBills ? <div className="max-md:hidden">{add}</div> : undefined}
+    >
+      {/* Room at the end, so the floating button never covers the last bill. */}
+      <div className="max-md:pb-16">{body}</div>
+      {hasBills ? (
+        <Button
+          aria-label="Add bill"
+          title="Add bill"
+          onClick={startAdding}
+          className="fixed right-4 bottom-24 z-10 size-14 rounded-full px-0 shadow-lg md:hidden"
+        >
+          <Plus aria-hidden="true" className="size-6" />
+        </Button>
+      ) : null}
       {viewingId ? (
         <BillViewer
           billId={viewingId}

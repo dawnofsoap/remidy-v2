@@ -9,7 +9,7 @@ import { EmptyState } from '../../ui/index.ts';
 function HomePage() {
   const sections = useHomeSections();
   return (
-    <Page title="Home">
+    <Page title="Home" hideTitleOnPhone>
       {sections.length === 0 ? (
         <EmptyState
           title="Nothing to show yet"
