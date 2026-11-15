@@ -322,6 +322,59 @@ test('on a phone, the month is a small grid, and choosing a day lists its bills'
   await expect(page.getByRole('button', { name: 'This month' })).toBeVisible();
 });
 
+test('clicking anywhere in a day opens its list, and a bill in it opens the bill', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === 'phone', 'Phones open a day by tapping it already.');
+  await withBills(page);
+  await page.goto('/calendar');
+  const grid = page.getByRole('list', { name: /\d{4}$/ });
+  const corner = async (day: ReturnType<typeof grid.getByRole>) => {
+    // The bottom right of the day, away from its date and its bills.
+    const box = await day.boundingBox();
+    await day.click({ position: { x: (box?.width ?? 0) - 6, y: (box?.height ?? 0) - 6 } });
+  };
+
+  const waterDay = grid
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('button', { name: /\bWater, / }) });
+  await corner(waterDay);
+  const sheet = page.getByRole('dialog');
+  await expect(sheet.getByRole('listitem')).toHaveCount(1);
+  await expect(sheet.getByRole('listitem')).toContainText('Water');
+  // Nothing in the grid shows through the open list. The page behind a dialog is hidden from
+  // screen readers, so the bill is found by its label.
+  const chip = page.locator('ol button[aria-label^="Water, "]');
+  const box = await chip.boundingBox();
+  const onTop = await page.evaluate(
+    ({ x, y }) => {
+      // The dialog stops clicks reaching the page, which also hides it from this check, so
+      // that's lifted for a moment to see what's painted on top.
+      document.body.style.pointerEvents = 'auto';
+      const found = document.elementFromPoint(x, y)?.closest('ol')?.getAttribute('aria-label');
+      document.body.style.pointerEvents = 'none';
+      return found ?? '';
+    },
+    { x: (box?.x ?? 0) + (box?.width ?? 0) / 2, y: (box?.y ?? 0) + (box?.height ?? 0) / 2 },
+  );
+  expect(onTop).toBe('');
+  await page.keyboard.press('Escape');
+  await expect(sheet).toBeHidden();
+
+  // A day with nothing due opens too, and says so.
+  const empty = grid
+    .getByRole('listitem')
+    .filter({ hasNot: page.getByRole('button', { name: / due$/ }) })
+    .first();
+  await corner(empty);
+  await expect(page.getByRole('dialog')).toContainText('Nothing is due this day.');
+  await page.keyboard.press('Escape');
+
+  // A bill in the day still opens the bill, not the day.
+  await waterDay.getByRole('button', { name: /\bWater, / }).click();
+  await expect(page.getByRole('dialog', { name: 'Water', exact: true })).toBeVisible();
+});
+
 test('a day’s list shows all its bills, most urgent first', async ({ page }, info) => {
   test.skip(info.project.name === 'phone', 'Phones list every bill already.');
   await withBills(page);
