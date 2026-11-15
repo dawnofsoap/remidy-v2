@@ -121,7 +121,7 @@ function DayChip({
         title={hint}
         onClick={onOpen}
         className={cn(
-          'relative size-9 flex-none rounded-lg p-0',
+          'relative z-10 size-9 flex-none rounded-lg p-0',
           (status === DAY_STATUS.paid || status === DAY_STATUS.skipped) && 'opacity-60',
         )}
       >
@@ -145,7 +145,7 @@ function DayChip({
     <Button
       variant="ghost"
       size="small"
-      className={cn('w-full justify-start gap-1.5 px-1.5', status.chip)}
+      className={cn('relative z-10 w-full justify-start gap-1.5 px-1.5', status.chip)}
       aria-label={label}
       title={hint}
       onClick={onOpen}
@@ -293,7 +293,10 @@ export function CalendarPage() {
                     <Button
                       variant="ghost"
                       size="small"
-                      className={cn('text-ink-2', names ? 'justify-start px-1.5' : 'h-9 px-1')}
+                      className={cn(
+                        'relative z-10 text-ink-2',
+                        names ? 'justify-start px-1.5' : 'h-9 px-1',
+                      )}
                       onClick={() => {
                         setOpenDay(day);
                       }}
@@ -320,15 +323,19 @@ export function CalendarPage() {
                   <li
                     key={day}
                     className={cn(
-                      'flex min-w-0 flex-col gap-1 overflow-hidden bg-surface p-1.5',
+                      'relative flex min-w-0 flex-col gap-1 overflow-hidden bg-surface p-1.5',
                       !inMonth && 'bg-bg text-ink-2',
+                      'has-[[data-day]:hover]:bg-surface-2',
                     )}
                   >
+                    {/* The date opens the day, and stretches over the whole cell so a click
+                        anywhere in it does too. The bills sit above it and open themselves. */}
                     <Button
                       variant="ghost"
                       size="small"
+                      data-day
                       className={cn(
-                        'size-8 self-start rounded-full p-0 tabular-nums',
+                        'size-8 self-start rounded-full p-0 tabular-nums after:absolute after:inset-0',
                         day === now && 'bg-accent font-semibold text-on-accent',
                       )}
                       aria-label={`${formatDate(day, 'long')}${count > 0 ? `, ${String(count)} due` : ''}`}
