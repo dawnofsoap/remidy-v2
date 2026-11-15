@@ -1,6 +1,7 @@
 import type { AgendaEntry } from '@remidy/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { ErrorState, LoadingState, Modal } from '../../../ui/index.ts';
 import { BILLS_KEY, fetchBills } from '../api.ts';
 import { useRefresh } from '../useRefresh.ts';
 import { BillForm } from './BillForm.tsx';
@@ -34,7 +35,28 @@ export function BillViewer({ billId, due = null, onClose }: BillViewerProps) {
     if (missing) onClose();
   }, [missing, onClose]);
 
-  if (!bill) return null;
+  if (!bill) {
+    if (missing) return null;
+    // Open at once while the bill loads, so a dialog it replaces, such as a day's list, never
+    // leaves a moment with nothing open.
+    return (
+      <Modal
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+        title={due?.name ?? 'Bill'}
+        description="Loading the bill."
+        hideDescription
+      >
+        {bills.isError ? (
+          <ErrorState message="This bill couldn’t load." onRetry={() => void bills.refetch()} />
+        ) : (
+          <LoadingState label="Loading the bill" />
+        )}
+      </Modal>
+    );
+  }
   if (mode === 'edit') {
     return <BillForm bill={bill} onClose={back} onChanged={refresh} />;
   }

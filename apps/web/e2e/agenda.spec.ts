@@ -375,6 +375,33 @@ test('clicking anywhere in a day opens its list, and a bill in it opens the bill
   await expect(page.getByRole('dialog', { name: 'Water', exact: true })).toBeVisible();
 });
 
+test('a bill opened from a day’s list shows straight away, even before it loads', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === 'phone', 'Phones list every bill already.');
+  await withBills(page);
+  // The bills arrive only when the test says, so the moment before can be checked.
+  const { promise: arrived, resolve: release } = Promise.withResolvers<boolean>();
+  await page.route('**/api/v1/bills', async (route) => {
+    await arrived;
+    await route.fulfill({ json: [bill('b3', 'Water', 4_500)] });
+  });
+  await page.goto('/calendar');
+  const day = page
+    .getByRole('list', { name: /\d{4}$/ })
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('button', { name: /\bWater, / }) });
+  await day.getByRole('button').first().click();
+  await page.getByRole('dialog').getByRole('button', { name: /Water/ }).click();
+
+  // The backdrop never drops: the bill's dialog is open, loading, while the bill is on its way.
+  const preview = page.getByRole('dialog', { name: 'Water', exact: true });
+  await expect(preview.getByRole('status')).toBeVisible();
+  await expectNoViolations(page);
+  release(true);
+  await expect(preview.getByRole('region', { name: 'This due date' })).toContainText('$45.00');
+});
+
 test('a day’s list shows all its bills, most urgent first', async ({ page }, info) => {
   test.skip(info.project.name === 'phone', 'Phones list every bill already.');
   await withBills(page);
