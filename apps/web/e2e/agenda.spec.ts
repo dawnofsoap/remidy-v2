@@ -342,6 +342,22 @@ test('clicking anywhere in a day opens its list, and a bill in it opens the bill
   const sheet = page.getByRole('dialog');
   await expect(sheet.getByRole('listitem')).toHaveCount(1);
   await expect(sheet.getByRole('listitem')).toContainText('Water');
+  // Nothing in the grid shows through the open list. The page behind a dialog is hidden from
+  // screen readers, so the bill is found by its label.
+  const chip = page.locator('ol button[aria-label^="Water, "]');
+  const box = await chip.boundingBox();
+  const onTop = await page.evaluate(
+    ({ x, y }) => {
+      // The dialog stops clicks reaching the page, which also hides it from this check, so
+      // that's lifted for a moment to see what's painted on top.
+      document.body.style.pointerEvents = 'auto';
+      const found = document.elementFromPoint(x, y)?.closest('ol')?.getAttribute('aria-label');
+      document.body.style.pointerEvents = 'none';
+      return found ?? '';
+    },
+    { x: (box?.x ?? 0) + (box?.width ?? 0) / 2, y: (box?.y ?? 0) + (box?.height ?? 0) / 2 },
+  );
+  expect(onTop).toBe('');
   await page.keyboard.press('Escape');
   await expect(sheet).toBeHidden();
 

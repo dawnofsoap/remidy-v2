@@ -279,8 +279,8 @@ export function CalendarPage() {
               aria-label={formatDate(month, 'monthYear')}
               ref={grid}
               // The weeks share the window's height below the page's header, and never get shorter
-              // than 8rem.
-              className="grid min-h-[calc(100dvh-13rem)] auto-rows-[minmax(8rem,1fr)] grid-cols-7 gap-px bg-line"
+              // than 8rem. Isolated, so the bills lifted above each day stay under any dialog.
+              className="isolate grid min-h-[calc(100dvh-13rem)] auto-rows-[minmax(8rem,1fr)] grid-cols-7 gap-px bg-line"
             >
               {gridDays(month).map((day) => {
                 const items = onDay(day);
