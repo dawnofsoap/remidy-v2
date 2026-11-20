@@ -1,7 +1,7 @@
 # Feature: Bill logos and the calendar
 
-**Status:** Building
-**Issue:** #
+**Status:** Stabilizing, through Alpha 1's month
+**Issue:** None; tracked by milestone 4.5
 
 ## Problem
 A list of bill names is slow to scan. v1 showed each company's logo beside its bills, found automatically, and a

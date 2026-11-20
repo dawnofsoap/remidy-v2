@@ -3,6 +3,14 @@
 Milestones run in order, and each must meet its exit test before the next begins. There are no dates:
 stability decides when a milestone is finished.
 
+## Where we are
+
+**Milestone 4, Alpha 1, is stabilizing.** `v0.1.0-alpha.1` was released on 2026-11-08, and its month of running real
+bills ends around 2026-12-08. Milestone 4.5 is built and stabilizing alongside it. Milestone 5 starts after that, once
+its spec is approved.
+
+Update this when a milestone changes state.
+
 ## Milestones
 
 | # | Milestone | Contains | Exit test | Stabilize |

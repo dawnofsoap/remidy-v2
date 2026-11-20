@@ -1,7 +1,7 @@
 # Feature: Bills and occurrences
 
-**Status:** Approved
-**Issue:** #
+**Status:** Stabilizing, through Alpha 1's month
+**Issue:** None; tracked by milestone 3
 
 ## Problem
 People need to see what's due and when, without working out dates themselves. v1 calculated due dates in three

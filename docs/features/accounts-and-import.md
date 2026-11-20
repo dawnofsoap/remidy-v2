@@ -1,7 +1,7 @@
 # Feature: Payment accounts and bill import
 
 **Status:** Draft. It needs the owner's answers to the questions at the end before it's approved.
-**Issue:** #
+**Issue:** None yet; milestone 5
 
 ## Problem
 People want to see which account pays each bill, and to bring their existing bills in without retyping them. Most
