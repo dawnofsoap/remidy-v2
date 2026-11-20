@@ -198,6 +198,29 @@ describe('the agenda', () => {
     expect(upcoming).toEqual([]);
   });
 
+  it('says which due dates are on auto-pay, from the bill as it is now', async () => {
+    await create('alice', ids.alicePersonal, { name: 'Gym', autopay: true });
+    const water = await create('alice', ids.alicePersonal, { name: 'Water' });
+    const autopayOf = async () =>
+      Object.fromEntries(
+        (await agendaFor('alice', monthStart(now()), addDays(now(), 31))).upcoming.map((entry) => [
+          entry.name,
+          entry.autopay,
+        ]),
+      );
+    expect(await autopayOf()).toEqual({ Gym: true, Water: false });
+
+    // Turning auto-pay on shows on every due date, since it describes the bill, not a record.
+    const turnedOn = await call(
+      'alice',
+      'PATCH',
+      `/api/v1/spaces/${ids.alicePersonal}/bills/${water.id}`,
+      { autopay: true },
+    );
+    expect(turnedOn.statusCode, turnedOn.body).toBe(200);
+    expect(await autopayOf()).toEqual({ Gym: true, Water: true });
+  });
+
   it.each([
     ['a range that ends before it starts', '2026-02-01', '2026-01-01'],
     ['a range over 400 days', '2026-01-01', '2027-03-01'],

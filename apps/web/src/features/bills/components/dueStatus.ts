@@ -6,6 +6,16 @@ export type DueEntry = Pick<
   'id' | 'spaceId' | 'name' | 'dueOn' | 'expectedCents' | 'isVariable' | 'state' | 'paidCents'
 >;
 
+/**
+ * Said beside a due date whose bill pays itself, in words so it's not shown by an icon alone. The
+ * hyphen doesn't break, so a narrow column never splits it over two lines.
+ */
+export const AUTOPAY = 'Auto‑pay';
+
+/** A due date's status, with "Auto-pay" after it when its bill pays itself. */
+export const withAutopay = (label: string, entry: Pick<AgendaEntry, 'autopay'>) =>
+  entry.autopay ? `${label} · ${AUTOPAY}` : label;
+
 /** What's still owed, or null when it can't be known: a bill that varies with nothing paid. */
 export function remaining(entry: DueEntry): number | null {
   if (entry.state !== 'open') return 0;

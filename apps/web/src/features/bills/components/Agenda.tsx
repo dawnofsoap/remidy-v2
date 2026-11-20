@@ -16,7 +16,7 @@ import { useHousehold } from '../../../core/space.tsx';
 import { cn, EmptyState, ErrorState, focusRing, ListRow, LogoTile } from '../../../ui/index.ts';
 import { AGENDA_KEY, fetchAgenda, fetchTotals, logoUrl, TOTALS_KEY } from '../api.ts';
 import { useState } from 'react';
-import { statusOf } from './dueStatus.ts';
+import { AUTOPAY, statusOf } from './dueStatus.ts';
 import { MiniCalendar } from './MiniCalendar.tsx';
 import { CardList, HomeCard } from './HomeCard.tsx';
 import { homeFigures, plural } from './homeFigures.ts';
@@ -64,6 +64,7 @@ function DueRow({
         formatDate(entry.dueOn as CalendarDate, 'short'),
         entry.categoryName,
         showOwner ? (entry.shared ? 'Shared' : 'Personal') : null,
+        entry.autopay ? AUTOPAY : null,
       ]
         .filter(Boolean)
         .join(' · ')}

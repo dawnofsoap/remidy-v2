@@ -36,6 +36,7 @@ const entry = (id: string, name: string, dueOn: string, expectedCents: number | 
   isVariable: expectedCents === null,
   categoryName: 'Utilities',
   logoId: logoOf(name),
+  autopay: name === 'Electric',
   state: 'open',
   paidCents: 0,
 });
@@ -51,7 +52,8 @@ const bill = (id: string, name: string, expectedCents: number | null) => ({
   schedule: { kind: 'repeat', unit: 'month', every: 1, firstDue: '2026-01-15', lastDue: null },
   categoryId: null,
   categoryName: 'Utilities',
-  autopay: false,
+  // Electric pays itself, so the screens show a bill on auto-pay beside ones that don't.
+  autopay: name === 'Electric',
   url: null,
   notes: null,
   logoId: logoOf(name),
@@ -113,6 +115,52 @@ test('Home shows the month’s figures, then cards, with what’s overdue first 
   const preview = page.getByRole('dialog', { name: 'Rent', exact: true });
   await expect(preview.getByRole('region', { name: 'This due date' })).toBeVisible();
   await expect(preview.getByRole('button', { name: 'Pay' })).toBeVisible();
+});
+
+test('bills on auto-pay say so on Home, the Calendar and a day’s list', async ({ page }, info) => {
+  await withBills(page);
+  await page.route('**/api/v1/totals?**', (route) =>
+    route.fulfill({ json: { dueCents: 0, unknownCount: 0, paidCents: 0 } }),
+  );
+  // Home: in words beside the date, and not on a bill that doesn't pay itself.
+  await page.goto('/');
+  const month = page.getByRole('main');
+  await expect(
+    month.getByRole('button', { name: /Electric/ }).filter({ visible: true }),
+  ).toContainText(/Auto.pay/);
+  await expect(
+    month.getByRole('button', { name: /Water/ }).filter({ visible: true }),
+  ).not.toContainText(/Auto.pay/);
+
+  await page.goto('/calendar');
+  if (info.project.name === 'phone') {
+    // A phone lists the chosen day's bills by name, each saying so.
+    await chooseDay(page, iso(5));
+    const day = page.getByRole('list', { name: /^\w+day, / });
+    await expect(day.getByRole('button', { name: /Electric/ })).toContainText(/Auto.pay/);
+    return;
+  }
+  // The grid: in the bill's label and hint, and marked on its logo.
+  const grid = page.getByRole('list', { name: /\d{4}$/ });
+  const electric = grid.getByRole('button', { name: /\bElectric, / });
+  await expect(electric).toHaveAccessibleName(/auto-pay/);
+  await expect(electric).toHaveAttribute('title', /auto-pay/);
+  await expect(grid.getByRole('button', { name: /\bWater, / })).not.toHaveAccessibleName(
+    /auto-pay/,
+  );
+  await expectNoViolations(page);
+  await saveScreenshot(page, 'calendar-autopay');
+
+  // A day's list says it in words.
+  await grid
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('button', { name: /\bElectric, / }) })
+    .getByRole('button')
+    .first()
+    .click();
+  await expect(page.getByRole('dialog').getByRole('button', { name: /Electric/ })).toContainText(
+    /Auto.pay/,
+  );
 });
 
 test('Home is about this month: later bills are left to the Calendar', async ({ page }) => {

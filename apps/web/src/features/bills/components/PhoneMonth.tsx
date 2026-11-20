@@ -5,7 +5,7 @@ import { Button, cn, List, ListRow, LogoTile } from '../../../ui/index.ts';
 import { logoUrl } from '../api.ts';
 import { gridDays, sameMonth, WEEKDAYS } from './calendarGrid.ts';
 import { byUrgency, DAY_STATUS, dayStatusOf, mostUrgent } from './dayStatus.ts';
-import { statusOf } from './dueStatus.ts';
+import { statusOf, withAutopay } from './dueStatus.ts';
 
 /** How far, in pixels, a finger has to travel sideways to change the month. */
 const SWIPE = 50;
@@ -130,7 +130,7 @@ export function PhoneMonth({
                 <ListRow
                   key={entry.id}
                   title={entry.name}
-                  subtitle={status.label}
+                  subtitle={withAutopay(status.label, entry)}
                   start={<LogoTile src={logoUrl(entry.logoId)} name={entry.name} />}
                   end={
                     <span className={cn('font-semibold tabular-nums', status.text)}>

@@ -3,7 +3,7 @@ import { formatDate, type CalendarDate } from '@remidy/domain';
 import { cn, List, ListRow, LogoTile, Modal } from '../../../ui/index.ts';
 import { logoUrl } from '../api.ts';
 import { byUrgency, DAY_STATUS, dayStatusOf } from './dayStatus.ts';
-import { statusOf } from './dueStatus.ts';
+import { statusOf, withAutopay } from './dueStatus.ts';
 
 interface DaySheetProps {
   day: CalendarDate;
@@ -35,7 +35,7 @@ export function DaySheet({ day, entries, today, onClose, onOpen }: DaySheetProps
               <ListRow
                 key={entry.id}
                 title={entry.name}
-                subtitle={status.label}
+                subtitle={withAutopay(status.label, entry)}
                 start={<LogoTile src={logoUrl(entry.logoId)} name={entry.name} />}
                 end={
                   <span className={cn('font-semibold tabular-nums', status.text)}>
