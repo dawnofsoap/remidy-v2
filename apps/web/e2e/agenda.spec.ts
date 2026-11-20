@@ -230,6 +230,55 @@ test('a long card shows its first few, and the rest when asked', async ({ page }
   await expect(list.getByRole('listitem')).toHaveCount(4);
 });
 
+test('Bills can be searched, archived ones included, and says when nothing matches', async ({
+  page,
+}, info) => {
+  await withBills(page);
+  await page.route('**/api/v1/bills', (route) =>
+    route.fulfill({
+      json: [
+        bill('b1', 'Rent', 145_000),
+        { ...bill('b2', 'Electric', null), merchant: 'City Power' },
+        bill('b3', 'Water', 4_500),
+        { ...bill('b4', 'Old electric', 3_000), archived: true },
+      ],
+    }),
+  );
+  await page.goto('/bills');
+  const phone = info.project.name === 'phone';
+  const shown = (label: string) =>
+    phone
+      ? page.getByRole('list', { name: label, exact: true }).getByRole('listitem')
+      : page
+          .getByRole('table', { name: label, exact: true })
+          .getByRole('row')
+          .filter({
+            hasNot: page.getByRole('columnheader'),
+          });
+  await expect(shown('Bills')).toHaveCount(3);
+  await expect(page.getByRole('table', { name: 'Archived bills' })).toHaveCount(0);
+
+  // By merchant as well as name, and archived bills show without asking.
+  const search = page.getByRole('searchbox', { name: 'Search bills' });
+  await search.fill('power');
+  await expect(shown('Bills')).toHaveCount(1);
+  await expect(shown('Bills')).toContainText('Electric');
+  await search.fill('electric');
+  await expect(shown('Bills')).toHaveCount(1);
+  await expect(shown('Archived bills')).toHaveCount(1);
+  await expect(shown('Archived bills')).toContainText('Old electric');
+  await expect(page.getByRole('heading', { name: 'Archived', exact: true })).toBeVisible();
+  await expectNoViolations(page);
+  await saveScreenshot(page, 'bills-search');
+
+  await search.fill('internet');
+  await expect(page.getByRole('main')).toContainText('No bills match “internet”.');
+  await page.getByRole('button', { name: 'Clear search' }).click();
+  await expect(search).toHaveValue('');
+  await expect(search).toBeFocused();
+  await expect(shown('Bills')).toHaveCount(3);
+});
+
 test('Bills is a table on wider screens and a list on a phone', async ({ page }, info) => {
   await withBills(page);
   await page.goto('/bills');
