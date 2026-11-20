@@ -1,7 +1,7 @@
 # Feature: Categories
 
 **Status:** Done
-**Issue:** #
+**Issue:** None; tracked by milestone 2
 
 ## Problem
 People group bills, such as Utilities or Insurance, to find them quickly and to see where money goes. Each space

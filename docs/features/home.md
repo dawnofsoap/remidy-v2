@@ -1,6 +1,6 @@
 # Feature: Home as cards
 
-**Status:** Approved
+**Status:** Stabilizing, through Alpha 1's month
 **Issue:** #75
 
 ## Problem

@@ -1,7 +1,7 @@
 # Feature: Payments
 
-**Status:** Approved
-**Issue:** #
+**Status:** Stabilizing, through Alpha 1's month
+**Issue:** None; tracked by milestone 4
 
 ## Problem
 Knowing what's due is half of it. People need to record what they paid, see what's still owed, and trust that the
