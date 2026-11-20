@@ -38,6 +38,9 @@ should get that polish, using data v2 already has, and be about this month only.
   many are to pay and how many are paid.
 - Given a paid due date, then its amount says "Paid" in the paid color, with a check on its logo, so it's told apart
   by more than color. A partly paid one is still to pay, and says what's left.
+- Given a bill on auto-pay, then its due dates say "Auto-pay" in words on Home and in a day's list, and on the
+  Calendar its logo has a ⚡ mark and its label and hint say auto-pay. It describes the bill as it is now, like
+  its logo, so turning auto-pay on or off shows on every due date. (#90)
 - Given a card with more items than it shows, then "Show N more" shows the rest, and "Show less" hides them again.
 - Given bills due after this month, then Home doesn't list them, except in Due in the next 7 days, which can run into
   the next month so a bill due in two days is never hidden.

@@ -34,6 +34,7 @@ export async function agenda(
         isVariable: billOccurrence.isVariable,
         categoryName: category.name,
         logoId: bill.logoId,
+        autopay: bill.autopay,
         state: billOccurrence.state,
         paidCents,
       })

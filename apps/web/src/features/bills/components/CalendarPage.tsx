@@ -9,7 +9,7 @@ import {
 } from '@remidy/domain';
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@tanstack/react-router';
-import { Check, ChevronLeft, ChevronRight, Tag } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Tag, Zap } from 'lucide-react';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Page } from '../../../core/Page.tsx';
 import { Button, cn, ErrorState, useIsNarrow, LoadingState, LogoTile } from '../../../ui/index.ts';
@@ -110,8 +110,9 @@ function DayChip({
 }) {
   const status = DAY_STATUS[dayStatusOf(entry, now)];
   const Icon = status.icon;
-  const label = `${entry.name}, ${status.label}`;
-  const hint = `${entry.name}: ${status.label}, ${statusOf(entry, false).text}`;
+  const autopay = entry.autopay ? ', auto-pay' : '';
+  const label = `${entry.name}, ${status.label}${autopay}`;
+  const hint = `${entry.name}: ${status.label}, ${statusOf(entry, false).text}${autopay}`;
   if (!names) {
     return (
       <Button
@@ -126,6 +127,15 @@ function DayChip({
         )}
       >
         <LogoTile src={logoUrl(entry.logoId)} name={entry.name} />
+        {entry.autopay ? (
+          // Auto-pay on the opposite corner from the status. It's in the label and hint too.
+          <span
+            aria-hidden="true"
+            className="absolute -top-1 -left-1 grid size-4 place-items-center rounded-full border border-line bg-surface text-ink"
+          >
+            <Zap className="size-2.5 fill-current" />
+          </span>
+        ) : null}
         {Icon ? (
           // Color alone isn't enough, so the status's icon sits on the logo's corner.
           <span
@@ -152,6 +162,9 @@ function DayChip({
     >
       <LogoTile size="small" src={logoUrl(entry.logoId)} name={entry.name} />
       <span className="min-w-0 flex-auto truncate text-left">{entry.name}</span>
+      {entry.autopay ? (
+        <Zap aria-hidden="true" className="size-3.5 flex-none fill-current" />
+      ) : null}
       {Icon ? <Icon aria-hidden="true" className="size-4 flex-none" /> : null}
     </Button>
   );

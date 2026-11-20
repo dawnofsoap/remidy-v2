@@ -25,6 +25,7 @@ const entry = (index: number) => ({
   isVariable: false,
   categoryName: 'Utilities',
   logoId: null,
+  autopay: false,
   state: 'open',
   paidCents: 0,
 });

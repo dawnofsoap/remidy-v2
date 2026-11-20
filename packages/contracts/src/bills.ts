@@ -127,6 +127,8 @@ export const agendaEntry = z.object({
   categoryName: z.string().nullable(),
   /** The bill's logo now, which is only for display. */
   logoId: z.string().nullable(),
+  /** Whether the bill pays itself now, which is only for display, like its logo. */
+  autopay: z.boolean(),
   state: z.enum(['open', 'settled', 'skipped']),
   /** What's been paid toward it, never counting voided payments. */
   paidCents: z.number(),

@@ -68,6 +68,7 @@ export interface Entry {
   billId: string;
   name: string;
   dueOn: string;
+  autopay: boolean;
 }
 
 export const now = () => today('UTC');
