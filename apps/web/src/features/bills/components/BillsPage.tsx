@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react';
 import { describeSchedule, type Schedule } from '@remidy/domain';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Page } from '../../../core/Page.tsx';
 import { useHousehold } from '../../../core/space.tsx';
 import {
@@ -13,12 +13,14 @@ import {
   LoadingState,
   LogoTile,
   Table,
+  TextField,
   toast,
   type TableColumn,
 } from '../../../ui/index.ts';
 import { AGENDA_KEY, BILLS_KEY, fetchBills, logoUrl, type Bill } from '../api.ts';
 import { BillForm } from './BillForm.tsx';
 import { BillViewer } from './BillViewer.tsx';
+import { matchesSearch } from './billSearch.ts';
 import { amountText, nextDue } from './billText.ts';
 
 const nameCell = (bill: Bill) => (
@@ -44,6 +46,8 @@ export function BillsPage() {
   const [adding, setAdding] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
+  const [query, setQuery] = useState('');
+  const searchBox = useRef<HTMLInputElement>(null);
 
   async function changed(message: string) {
     toast(message);
@@ -126,10 +130,59 @@ export function BillsPage() {
   else if (bills.isError) {
     body = <ErrorState message="Bills couldn’t load." onRetry={() => void bills.refetch()} />;
   } else {
-    const active = bills.data.filter((bill) => !bill.archived);
-    const archived = bills.data.filter((bill) => bill.archived);
-    body = (
+    const searching = query.trim() !== '';
+    const found = bills.data.filter((bill) => matchesSearch(bill, query));
+    const active = found.filter((bill) => !bill.archived);
+    const archived = found.filter((bill) => bill.archived);
+    const search = (
+      <div className="max-w-sm">
+        <TextField
+          ref={searchBox}
+          type="search"
+          label="Search bills"
+          placeholder="Name, merchant or category"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+          }}
+        />
+      </div>
+    );
+    const clear = (
+      <Button
+        variant="secondary"
+        onClick={() => {
+          setQuery('');
+          searchBox.current?.focus();
+        }}
+      >
+        Clear search
+      </Button>
+    );
+    body = searching ? (
       <div className="flex flex-col gap-4">
+        {search}
+        {found.length === 0 ? (
+          <EmptyState
+            title={`No bills match “${query.trim()}”.`}
+            description="Try fewer words, or the bill’s merchant or category."
+            action={clear}
+          />
+        ) : null}
+        {active.length > 0 ? billList('Bills', active) : null}
+        {/* Archived bills that match show without asking, since they were searched for. */}
+        {archived.length > 0 ? (
+          <section aria-labelledby="archived-found" className="flex flex-col gap-2">
+            <h2 id="archived-found" className="font-semibold text-ink-2">
+              Archived
+            </h2>
+            {billList('Archived bills', archived)}
+          </section>
+        ) : null}
+      </div>
+    ) : (
+      <div className="flex flex-col gap-4">
+        {bills.data.length > 0 ? search : null}
         {active.length === 0 ? (
           <EmptyState
             title="No bills yet"
