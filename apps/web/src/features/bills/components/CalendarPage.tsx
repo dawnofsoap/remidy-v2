@@ -9,7 +9,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@tanstack/react-router';
 import { Check, ChevronLeft, ChevronRight, Tag } from 'lucide-react';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Page } from '../../../core/Page.tsx';
 import { Button, cn, ErrorState, useIsNarrow, LoadingState } from '../../../ui/index.ts';
 import { AGENDA_KEY, fetchAgenda, fetchTotals, TOTALS_KEY } from '../api.ts';
@@ -62,6 +62,37 @@ function useBillsPerDay(grid: RefObject<HTMLElement | null>, names: boolean): nu
     };
   });
   return fits;
+}
+
+/**
+ * The height that takes the grid from where it starts to the bottom of the window, above the
+ * page's own bottom padding. Measured rather than worked out, so whatever sits above the grid,
+ * such as the month's totals, is allowed for. Null until measured.
+ */
+function useFillHeight(grid: RefObject<HTMLElement | null>): number | null {
+  const [height, setHeight] = useState<number | null>(null);
+  // Before the first paint, so the grid doesn't jump to its size.
+  useLayoutEffect(() => {
+    const element = grid.current;
+    const main = element?.closest('main');
+    if (!element || !main) return;
+    const measure = () => {
+      const top = element.getBoundingClientRect().top + window.scrollY;
+      const padding = Number(getComputedStyle(main).paddingBottom.replace('px', '')) || 0;
+      // Less the border under the grid.
+      setHeight(Math.floor(window.innerHeight - top - padding - 1));
+    };
+    measure();
+    // Again when the window changes, or anything above the grid does, such as the totals loading.
+    const observer = new ResizeObserver(measure);
+    observer.observe(main);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  });
+  return height;
 }
 
 const NAMES_KEY = 'remidy.calendar.names';
@@ -118,6 +149,8 @@ export function CalendarPage() {
   const grid = useRef<HTMLOListElement>(null);
   const [names, setNames] = useShowNames();
   const perDay = useBillsPerDay(grid, names);
+  const fill = useFillHeight(grid);
+  const days = gridDays(month);
 
   const entries = agenda.data
     ? [...agenda.data.overdue, ...agenda.data.upcoming].filter(
@@ -224,11 +257,16 @@ export function CalendarPage() {
             <ol
               aria-label={formatDate(month, 'monthYear')}
               ref={grid}
-              // The weeks share the window's height below the page's header and the month's totals,
-              // and never get shorter than 8rem. Isolated, so the bills lifted above each day stay under any dialog.
-              className="isolate grid min-h-[calc(100dvh-21rem)] auto-rows-[minmax(8rem,1fr)] grid-cols-7 gap-px bg-line"
+              // The weeks share the rest of the window's height equally, and never get shorter than
+              // 5rem, which still fits a row of logos. A set height, not a minimum, so a busy day
+              // shows "+N more" rather than stretching its week. Isolated, so the bills lifted
+              // above each day stay under any dialog.
+              className="isolate grid auto-rows-[minmax(5rem,1fr)] grid-cols-7 gap-px bg-line"
+              style={{
+                height: `max(${String(fill ?? 0)}px, ${String((days.length / 7) * 5)}rem)`,
+              }}
             >
-              {gridDays(month).map((day) => {
+              {days.map((day) => {
                 const items = onDay(day);
                 const inMonth = sameMonth(day, month);
                 const count = items.length;

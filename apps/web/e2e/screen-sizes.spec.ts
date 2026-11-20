@@ -118,8 +118,11 @@ test('the calendar fills the window, and a taller one shows more bills on a day'
   expect(await bottom()).toBeGreaterThan(1440 - 100);
   expect(await overflow()).toBeLessThanOrEqual(0);
   await saveScreenshot(page, 'calendar-2560');
-  await hiddenAt(1920, 1080);
-  expect(await overflow()).toBeLessThanOrEqual(0);
+  // A full-HD screen, and one with less height once the browser's own bars are taken off.
+  for (const height of [1080, 930]) {
+    await hiddenAt(1920, height);
+    expect(await overflow(), `at 1920×${String(height)}`).toBeLessThanOrEqual(0);
+  }
 });
 
 test('Home’s cards fill each screen, with no sideways scrolling', async ({ page }) => {
