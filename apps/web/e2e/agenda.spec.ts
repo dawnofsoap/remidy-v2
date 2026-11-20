@@ -356,6 +356,41 @@ test('the calendar shows the month as a grid, or a small grid and a chosen day o
   await expectNoViolations(page);
 });
 
+test('the calendar shows the month’s totals, and they follow the month shown', async ({ page }) => {
+  await withBills(page);
+  // Yesterday is only in this month after the 1st, so it's overdue only then.
+  const lateInMonth = iso(-1).slice(0, 7) === iso(0).slice(0, 7);
+  await page.route('**/api/v1/agenda?**', (route) =>
+    route.fulfill({
+      json: {
+        overdue: lateInMonth ? [{ ...entry('o1', 'Rent', iso(-1), 10_000), paidCents: 2_500 }] : [],
+        upcoming: [entry('u1', 'Water', iso(0), 4_500), entry('u2', 'Phone', iso(0), null)],
+      },
+    }),
+  );
+  const asked: string[] = [];
+  await page.route('**/api/v1/totals?**', (route) => {
+    asked.push(new URL(route.request().url()).searchParams.get('from') ?? '');
+    return route.fulfill({ json: { dueCents: 150_000, unknownCount: 1, paidCents: 5_000 } });
+  });
+  await page.goto('/calendar');
+  const totals = page.getByRole('region', { name: /^\w+ \d{4} totals$/ });
+  await expect(totals).toContainText('Due$1,500.00 + 1 that varies');
+  await expect(totals).toContainText('Paid$50.00');
+  // What's left: Water, the rest of Rent when it's in this month, and Phone, which varies.
+  await expect(totals).toContainText(
+    `Left to pay${lateInMonth ? '$120.00' : '$45.00'} + 1 that varies`,
+  );
+  await expect(totals).toContainText(lateInMonth ? 'Overdue$75.00' : 'OverdueNone');
+  await expectNoViolations(page);
+  await saveScreenshot(page, 'calendar-totals');
+
+  // Next month asks for its own totals, and nothing in it is overdue yet.
+  await page.getByRole('button', { name: 'Next month' }).click();
+  await expect(totals).toContainText('OverdueNone');
+  expect(new Set(asked).size).toBe(2);
+});
+
 test('the calendar shows logos only, with names when asked, and remembers', async ({
   page,
 }, info) => {

@@ -13,12 +13,14 @@ import { Check, ChevronLeft, ChevronRight, Tag, Zap } from 'lucide-react';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Page } from '../../../core/Page.tsx';
 import { Button, cn, ErrorState, useIsNarrow, LoadingState, LogoTile } from '../../../ui/index.ts';
-import { AGENDA_KEY, fetchAgenda, logoUrl } from '../api.ts';
+import { AGENDA_KEY, fetchAgenda, fetchTotals, logoUrl, TOTALS_KEY } from '../api.ts';
 import { browserToday, firstOfMonth, gridDays, sameMonth, WEEKDAYS } from './calendarGrid.ts';
 import { DaySheet } from './DaySheet.tsx';
 import { byUrgency, DAY_STATUS, dayStatusOf } from './dayStatus.ts';
 import { statusOf } from './dueStatus.ts';
 import { BillViewer } from './BillViewer.tsx';
+import { CalendarTotals } from './CalendarTotals.tsx';
+import { monthTotals } from './monthTotals.ts';
 import { PhoneMonth } from './PhoneMonth.tsx';
 
 /** In rem, matching the classes below: a day's padding, its date, a gap, a name, and a logo. */
@@ -184,6 +186,11 @@ export function CalendarPage() {
     queryKey: [...AGENDA_KEY, month, to],
     queryFn: ({ signal }) => fetchAgenda(month, to, signal),
   });
+  // Due and paid for the month shown, by the same definition as Home.
+  const totals = useQuery({
+    queryKey: [...TOTALS_KEY, month, to],
+    queryFn: ({ signal }) => fetchTotals(month, to, signal),
+  });
   // The due date whose bill is open. Found in the agenda each time, so a payment shows at once.
   const [openId, setOpenId] = useState<string | null>(null);
   const grid = useRef<HTMLOListElement>(null);
@@ -274,6 +281,10 @@ export function CalendarPage() {
   } else {
     body = (
       <>
+        <CalendarTotals
+          month={month}
+          totals={monthTotals(entries, now, totals.isError ? 'error' : (totals.data ?? null))}
+        />
         {/* A month grid where there's room for one. */}
         <div className="hidden md:block">
           <div className="overflow-hidden rounded-2xl border border-line">

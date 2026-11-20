@@ -1,13 +1,16 @@
 import type { AgendaEntry } from '@remidy/contracts';
 import { addDays, formatMoney, sumCents, type CalendarDate, type Cents } from '@remidy/domain';
 
-type Entry = Pick<AgendaEntry, 'dueOn' | 'expectedCents' | 'isVariable' | 'state' | 'paidCents'>;
+export type Entry = Pick<
+  AgendaEntry,
+  'dueOn' | 'expectedCents' | 'isVariable' | 'state' | 'paidCents'
+>;
 
 export const plural = (count: number, one: string, many: string) =>
   `${String(count)} ${count === 1 ? one : many}`;
 
 /** What's still owed on each, so a partly paid bill counts what's left. */
-function owed<T extends Entry>(entries: T[]): T[] {
+export function owed<T extends Entry>(entries: T[]): T[] {
   return entries.map((entry) => ({
     ...entry,
     expectedCents: entry.isVariable
