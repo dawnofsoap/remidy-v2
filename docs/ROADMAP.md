@@ -5,7 +5,7 @@ stability decides when a milestone is finished.
 
 ## Where we are
 
-**Milestones 4 and 4.5 are built; milestone 5 is next, once its spec is approved.** `v0.1.0-alpha.1` was released on
+**Milestones 4 and 4.5 are built; milestone 5, importing bills from v1, is next, and its spec is approved.** `v0.1.0-alpha.1` was released on
 2026-11-08. The owner's real bills move to v2 by importing them from v1, so the real-bills exit tests of milestones 3
 and 4, and the month of running them, wait until milestone 5's import has run. Until then those milestones stay
 open, and a bug found when the real bills arrive is fixed before milestone 6 starts.
@@ -22,7 +22,8 @@ Update this when a milestone changes state.
 | **3** | Bills and occurrences | Recurrence rules, bills, agenda view | Property tests pass; your real bills show correct due dates | 1 week |
 | **4** | Payments: **Alpha 1** | Mark paid, voiding, history, partial payments, auto-pay recording, calendar view, the image published on tags, a generated changelog | History invariance test passes; **you run your real bills on it for a full billing month** with no status errors | 1 month |
 | **4.5** | [Logos and the calendar](features/logos.md) | Bill logos from Logo.dev or the bill's website, the Calendar page with logos and status, a small calendar on Home | Your bills show the right logos, and you can change any that are wrong | Runs during milestone 4's month |
-| **5** | Accounts and bill import | Payment accounts, CSV import, importing bills from v1 | Your v1 bills import correctly, ready to review | 1 week |
+| **5** | [Importing bills from v1](features/v1-import.md) | Importing bills and categories from v1's export, with a review first | Your v1 bills import correctly, ready to review; then the real-bills month of milestones 3 and 4 starts | 1 week |
+| **5.5** | [Payment accounts](features/payment-accounts.md) | Payment accounts, household first, and v1's accounts linked to imported bills | Your v1 accounts are on the right bills | Runs during the real-bills month |
 | **6** | Sharing | Shared spaces, invites, roles | Two-person household tested for real; private bills stay private | 2 weeks |
 | **7** | Reminders | Notifications, push, PWA install | Reminders arrive on the correct local day across time zones | 2 weeks |
 | **8** | Account security | TOTP, backup codes, session management | Lost-device recovery path tested | 1 week |
@@ -33,7 +34,7 @@ Update this when a milestone changes state.
 ## Why this order
 
 ```
-base -> categories -> bills -> payments -> logos, calendar -> accounts, import -> sharing -> reminders -> ...
+base -> categories -> bills -> payments -> logos, calendar -> v1 import -> accounts -> sharing -> reminders -> ...
 ```
 
 - **Categories comes first** because it's small and has no date logic, so it tests the process cheaply.
