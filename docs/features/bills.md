@@ -1,6 +1,6 @@
 # Feature: Bills and occurrences
 
-**Status:** Stabilizing, through Alpha 1's month
+**Status:** Stabilizing, until the owner's real bills are imported and run for a month
 **Issue:** None; tracked by milestone 3
 
 ## Problem

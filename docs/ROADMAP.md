@@ -5,9 +5,10 @@ stability decides when a milestone is finished.
 
 ## Where we are
 
-**Milestone 4, Alpha 1, is stabilizing.** `v0.1.0-alpha.1` was released on 2026-11-08, and its month of running real
-bills ends around 2026-12-08. Milestone 4.5 is built and stabilizing alongside it. Milestone 5 starts after that, once
-its spec is approved.
+**Milestones 4 and 4.5 are built; milestone 5 is next, once its spec is approved.** `v0.1.0-alpha.1` was released on
+2026-11-08. The owner's real bills move to v2 by importing them from v1, so the real-bills exit tests of milestones 3
+and 4, and the month of running them, wait until milestone 5's import has run. Until then those milestones stay
+open, and a bug found when the real bills arrive is fixed before milestone 6 starts.
 
 Update this when a milestone changes state.
 

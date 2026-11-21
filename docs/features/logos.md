@@ -1,6 +1,6 @@
 # Feature: Bill logos and the calendar
 
-**Status:** Stabilizing, through Alpha 1's month
+**Status:** Stabilizing, until the owner's real bills are imported and run for a month
 **Issue:** None; tracked by milestone 4.5
 
 ## Problem
