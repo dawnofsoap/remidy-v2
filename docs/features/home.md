@@ -1,6 +1,6 @@
 # Feature: Home as cards
 
-**Status:** Stabilizing, through Alpha 1's month
+**Status:** Stabilizing, until the owner's real bills are imported and run for a month
 **Issue:** #75
 
 ## Problem
@@ -76,4 +76,4 @@ The agenda and totals routes, `BillViewer` for opening a bill, and the small cal
 - [ ] Every rule under Behavior has a test
 - [ ] One end-to-end test covers Home at desktop and phone sizes, with screenshots at 1366, 1920, 2560 and phone
 - [ ] Docs and changelog updated
-- [ ] Used through the rest of Alpha 1's month with no open P0 or P1 bugs
+- [ ] Used for a month on the owner's imported real bills with no open P0 or P1 bugs
