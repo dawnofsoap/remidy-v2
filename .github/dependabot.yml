@@ -16,7 +16,7 @@ updates:
       - dependency-name: typescript
         versions: ['>=6.1.0']
   - package-ecosystem: docker
-    directory: /deploy
+    directories: [/deploy, /deploy/dev]
     schedule:
       interval: weekly
     commit-message:

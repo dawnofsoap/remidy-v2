@@ -69,7 +69,9 @@ services:
 
   web:
     <<: *app
-    command: pnpm --filter @remidy/web dev
+    # Node 26's V8 sometimes aborts while Vite sends a large module ("Lazy deopt after a fast API call"). Turning off
+    # fast API calls avoids it, at a small cost in speed that a dev server doesn't notice. See #100.
+    command: pnpm --filter @remidy/web exec node --no-turbo-fast-api-calls node_modules/vite/bin/vite.js
     environment:
       <<: *app-env
       API_PROXY_TARGET: http://server:3000
