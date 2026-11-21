@@ -1,4 +1,3 @@
-import type { AgendaEntry } from '@remidy/contracts';
 import {
   addMonthsFromAnchor,
   datePartsOf,
@@ -9,16 +8,18 @@ import {
 } from '@remidy/domain';
 import { useQuery } from '@tanstack/react-query';
 import { useSearch } from '@tanstack/react-router';
-import { Check, ChevronLeft, ChevronRight, Tag, Zap } from 'lucide-react';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { Check, ChevronLeft, ChevronRight, Tag } from 'lucide-react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { Page } from '../../../core/Page.tsx';
-import { Button, cn, ErrorState, useIsNarrow, LoadingState, LogoTile } from '../../../ui/index.ts';
-import { AGENDA_KEY, fetchAgenda, logoUrl } from '../api.ts';
+import { Button, cn, ErrorState, useIsNarrow, LoadingState } from '../../../ui/index.ts';
+import { AGENDA_KEY, fetchAgenda, fetchTotals, TOTALS_KEY } from '../api.ts';
 import { browserToday, firstOfMonth, gridDays, sameMonth, WEEKDAYS } from './calendarGrid.ts';
+import { DayChip } from './DayChip.tsx';
 import { DaySheet } from './DaySheet.tsx';
-import { byUrgency, DAY_STATUS, dayStatusOf } from './dayStatus.ts';
-import { statusOf } from './dueStatus.ts';
+import { byUrgency } from './dayStatus.ts';
 import { BillViewer } from './BillViewer.tsx';
+import { CalendarTotals } from './CalendarTotals.tsx';
+import { monthTotals } from './monthTotals.ts';
 import { PhoneMonth } from './PhoneMonth.tsx';
 
 /** In rem, matching the classes below: a day's padding, its date, a gap, a name, and a logo. */
@@ -63,6 +64,37 @@ function useBillsPerDay(grid: RefObject<HTMLElement | null>, names: boolean): nu
   return fits;
 }
 
+/**
+ * The height that takes the grid from where it starts to the bottom of the window, above the
+ * page's own bottom padding. Measured rather than worked out, so whatever sits above the grid,
+ * such as the month's totals, is allowed for. Null until measured.
+ */
+function useFillHeight(grid: RefObject<HTMLElement | null>): number | null {
+  const [height, setHeight] = useState<number | null>(null);
+  // Before the first paint, so the grid doesn't jump to its size.
+  useLayoutEffect(() => {
+    const element = grid.current;
+    const main = element?.closest('main');
+    if (!element || !main) return;
+    const measure = () => {
+      const top = element.getBoundingClientRect().top + window.scrollY;
+      const padding = Number(getComputedStyle(main).paddingBottom.replace('px', '')) || 0;
+      // Less the border under the grid.
+      setHeight(Math.floor(window.innerHeight - top - padding - 1));
+    };
+    measure();
+    // Again when the window changes, or anything above the grid does, such as the totals loading.
+    const observer = new ResizeObserver(measure);
+    observer.observe(main);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  });
+  return height;
+}
+
 const NAMES_KEY = 'remidy.calendar.names';
 
 /** Whether the calendar shows bills' names beside their logos, remembered on this device. */
@@ -93,83 +125,6 @@ function useDayInAddress(): CalendarDate | null {
   return typeof day === 'string' ? parseCalendarDate(day) : null;
 }
 
-/**
- * One bill on a day in the grid: its logo and status, and its name when names are shown. Without
- * a name, it says the name when pointed at and to screen readers.
- */
-function DayChip({
-  entry,
-  now,
-  names,
-  onOpen,
-}: {
-  entry: AgendaEntry;
-  now: CalendarDate;
-  names: boolean;
-  onOpen: () => void;
-}) {
-  const status = DAY_STATUS[dayStatusOf(entry, now)];
-  const Icon = status.icon;
-  const autopay = entry.autopay ? ', auto-pay' : '';
-  const label = `${entry.name}, ${status.label}${autopay}`;
-  const hint = `${entry.name}: ${status.label}, ${statusOf(entry, false).text}${autopay}`;
-  if (!names) {
-    return (
-      <Button
-        variant="ghost"
-        size="small"
-        aria-label={label}
-        title={hint}
-        onClick={onOpen}
-        className={cn(
-          'relative z-10 size-9 flex-none rounded-lg p-0',
-          (status === DAY_STATUS.paid || status === DAY_STATUS.skipped) && 'opacity-60',
-        )}
-      >
-        <LogoTile src={logoUrl(entry.logoId)} name={entry.name} />
-        {entry.autopay ? (
-          // Auto-pay on the opposite corner from the status. It's in the label and hint too.
-          <span
-            aria-hidden="true"
-            className="absolute -top-1 -left-1 grid size-4 place-items-center rounded-full border border-line bg-surface text-ink"
-          >
-            <Zap className="size-2.5 fill-current" />
-          </span>
-        ) : null}
-        {Icon ? (
-          // Color alone isn't enough, so the status's icon sits on the logo's corner.
-          <span
-            aria-hidden="true"
-            className={cn(
-              'absolute -right-1 -bottom-1 grid size-4 place-items-center rounded-full bg-surface',
-              status.text,
-            )}
-          >
-            <Icon className="size-4" />
-          </span>
-        ) : null}
-      </Button>
-    );
-  }
-  return (
-    <Button
-      variant="ghost"
-      size="small"
-      className={cn('relative z-10 w-full justify-start gap-1.5 px-1.5', status.chip)}
-      aria-label={label}
-      title={hint}
-      onClick={onOpen}
-    >
-      <LogoTile size="small" src={logoUrl(entry.logoId)} name={entry.name} />
-      <span className="min-w-0 flex-auto truncate text-left">{entry.name}</span>
-      {entry.autopay ? (
-        <Zap aria-hidden="true" className="size-3.5 flex-none fill-current" />
-      ) : null}
-      {Icon ? <Icon aria-hidden="true" className="size-4 flex-none" /> : null}
-    </Button>
-  );
-}
-
 /** Due dates and what's been paid, a month at a time, with each bill's logo and status. */
 export function CalendarPage() {
   const now = browserToday();
@@ -184,11 +139,18 @@ export function CalendarPage() {
     queryKey: [...AGENDA_KEY, month, to],
     queryFn: ({ signal }) => fetchAgenda(month, to, signal),
   });
+  // Due and paid for the month shown, by the same definition as Home.
+  const totals = useQuery({
+    queryKey: [...TOTALS_KEY, month, to],
+    queryFn: ({ signal }) => fetchTotals(month, to, signal),
+  });
   // The due date whose bill is open. Found in the agenda each time, so a payment shows at once.
   const [openId, setOpenId] = useState<string | null>(null);
   const grid = useRef<HTMLOListElement>(null);
   const [names, setNames] = useShowNames();
   const perDay = useBillsPerDay(grid, names);
+  const fill = useFillHeight(grid);
+  const days = gridDays(month);
 
   const entries = agenda.data
     ? [...agenda.data.overdue, ...agenda.data.upcoming].filter(
@@ -274,6 +236,10 @@ export function CalendarPage() {
   } else {
     body = (
       <>
+        <CalendarTotals
+          month={month}
+          totals={monthTotals(entries, now, totals.isError ? 'error' : (totals.data ?? null))}
+        />
         {/* A month grid where there's room for one. */}
         <div className="hidden md:block">
           <div className="overflow-hidden rounded-2xl border border-line">
@@ -291,11 +257,16 @@ export function CalendarPage() {
             <ol
               aria-label={formatDate(month, 'monthYear')}
               ref={grid}
-              // The weeks share the window's height below the page's header, and never get shorter
-              // than 8rem. Isolated, so the bills lifted above each day stay under any dialog.
-              className="isolate grid min-h-[calc(100dvh-13rem)] auto-rows-[minmax(8rem,1fr)] grid-cols-7 gap-px bg-line"
+              // The weeks share the rest of the window's height equally, and never get shorter than
+              // 5rem, which still fits a row of logos. A set height, not a minimum, so a busy day
+              // shows "+N more" rather than stretching its week. Isolated, so the bills lifted
+              // above each day stay under any dialog.
+              className="isolate grid auto-rows-[minmax(5rem,1fr)] grid-cols-7 gap-px bg-line"
+              style={{
+                height: `max(${String(fill ?? 0)}px, ${String((days.length / 7) * 5)}rem)`,
+              }}
             >
-              {gridDays(month).map((day) => {
+              {days.map((day) => {
                 const items = onDay(day);
                 const inMonth = sameMonth(day, month);
                 const count = items.length;

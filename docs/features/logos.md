@@ -63,6 +63,9 @@ calendar where each day showed its bills with their logos and status. People wan
 - Given a day with bills, then each shows its logo, name and status: paid, skipped, overdue, due soon or upcoming,
   in words or an icon as well as color.
 - Given more bills than fit, then "+N more" shows, and choosing the day lists them all.
+- Given any month shown, then its totals show above the grid: Due and Paid from the totals route, as on Home, and
+  Left to pay and Overdue from that month's open due dates, counting what's left on each. Bills that vary are counted,
+  not added. (#91)
 - Given a phone, then days with bills are listed, each with their logos.
 - Given Home's small calendar, then a day's mark shows its most urgent status, today stands out, and choosing a day
   opens the Calendar page with that day's list.

@@ -100,9 +100,29 @@ test('the calendar fills the window, and a taller one shows more bills on a day'
   const hiddenSmall = await hiddenAt(1366, 768);
   const hiddenTall = await hiddenAt(2560, 1440);
   expect(hiddenTall).toBeLessThan(hiddenSmall);
-  const grid = await page.getByRole('list', { name: /\d{4}$/ }).boundingBox();
-  expect((grid?.y ?? 0) + (grid?.height ?? 0)).toBeGreaterThan(1440 - 100);
+  // It fills the window, with the month's totals above it, and stops at the bottom.
+  const bottom = async () => {
+    const grid = await page.getByRole('list', { name: /\d{4}$/ }).boundingBox();
+    return (grid?.y ?? 0) + (grid?.height ?? 0);
+  };
+  // How far the page scrolls down, which should be not at all.
+  const overflow = () =>
+    page.evaluate(() => {
+      const scroller = document.scrollingElement ?? document.documentElement;
+      const main = document.querySelector('main');
+      return Math.max(
+        scroller.scrollHeight - scroller.clientHeight,
+        main ? main.scrollHeight - main.clientHeight : 0,
+      );
+    });
+  expect(await bottom()).toBeGreaterThan(1440 - 100);
+  expect(await overflow()).toBeLessThanOrEqual(0);
   await saveScreenshot(page, 'calendar-2560');
+  // A full-HD screen, and one with less height once the browser's own bars are taken off.
+  for (const height of [1080, 930]) {
+    await hiddenAt(1920, height);
+    expect(await overflow(), `at 1920×${String(height)}`).toBeLessThanOrEqual(0);
+  }
 });
 
 test('Home’s cards fill each screen, with no sideways scrolling', async ({ page }) => {
