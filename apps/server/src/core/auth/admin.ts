@@ -44,15 +44,17 @@ export async function isAdminPasswordPending(orm: Orm): Promise<boolean> {
 }
 
 // Only its hash is stored, so the password can't be shown again, and logs don't outlive a container.
+// The command is plain node, because the production image has no pnpm.
 const ADMIN_PASSWORD_REMINDER = `
 ================================================================
   Remidy admin account: ${ADMIN_EMAIL}
 
   A password was generated and printed when this account was
   created. It's still waiting to be replaced. If you no longer
-  have it, get a new one by running this on the server:
+  have it, get a new one by running this in the server's
+  container, from /app:
 
-  pnpm --filter @remidy/server reset-admin-password
+  node apps/server/src/core/auth/reset-admin-password.ts
 ================================================================
 `;
 

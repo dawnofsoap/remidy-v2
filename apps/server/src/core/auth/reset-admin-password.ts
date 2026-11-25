@@ -1,4 +1,5 @@
-// Run on the server when the admin password is lost: pnpm --filter @remidy/server reset-admin-password
+// Run in the server's container when the admin password is lost, from /app:
+//   node apps/server/src/core/auth/reset-admin-password.ts
 import { createDatabase } from '@remidy/db';
 import { loadConfig } from '../config.ts';
 import { adminPasswordNotice, resetAdminPassword } from './admin.ts';
