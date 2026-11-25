@@ -66,6 +66,29 @@ If that password is ever lost:
 docker compose -f deploy/compose.yaml --env-file .env exec server node apps/server/src/core/auth/reset-admin-password.ts
 ```
 
+### Your own copy on this machine
+
+To try Remidy with your own bills, such as ones imported from v1, without a server or a proxy, run a copy apart from the
+development stack. It has its own database, so it never gets sample data, and recreating the dev stack doesn't touch it.
+
+1. Create `.env.local` with `POSTGRES_PASSWORD`, `AUTH_SECRET` and `ENCRYPTION_KEY` as in `.env.example`, plus
+   `PUBLIC_URL=http://localhost:3000` and the features to turn on, such as `ENABLED_FEATURES=bills,imports`.
+2. Start it, building from this checkout:
+
+   ```sh
+   docker compose -p remidy-local -f deploy/compose.yaml -f deploy/compose.build.yaml -f deploy/compose.local.yaml --env-file .env.local up --detach --build
+   ```
+
+3. Read the first admin password from its logs, then open http://localhost:3000:
+
+   ```sh
+   docker compose -p remidy-local -f deploy/compose.yaml --env-file .env.local logs server
+   ```
+
+Production needs https, so `deploy/compose.local.yaml` runs it in development mode, and like the production setup it
+only listens on this machine. Stop it with the same command as step 2, with `stop` in place of `up --detach --build`.
+`down -v` deletes its database.
+
 ### Backups
 
 ```sh

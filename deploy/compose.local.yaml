@@ -1,0 +1,7 @@
+# Runs a copy of Remidy on this machine for your own bills, kept apart from the dev stack and its
+# sample data. Production needs https, so this runs in development mode, and only this machine can
+# reach it. See "Your own copy on this machine" in the README.
+services:
+  server:
+    environment:
+      - NODE_ENV=development
