@@ -209,7 +209,12 @@ test('categories can be added, renamed, archived and deleted, at desktop and pho
   await expect(row('Animals')).toHaveCount(0);
 });
 
-test('a bill is added in steps, shows on Home, and can be edited, at desktop and phone sizes', async ({
+// The smallest PNG v2 keeps: its signature, then enough to be a file.
+const PNG_BASE64 = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
+]).toString('base64');
+
+test('a bill is added in steps, shows on Home, can be edited, and more come from v1, at desktop and phone sizes', async ({
   page,
 }) => {
   await page.goto('/');
@@ -334,16 +339,9 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
   await dialog.getByRole('button', { name: 'Archive' }).click();
   await expect(bills.getByRole('button', { name: /Phone/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Show archived (1)' })).toBeVisible();
-});
 
-// The smallest PNG v2 keeps: its signature, then enough to be a file.
-const PNG_BASE64 = Buffer.from([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
-]).toString('base64');
-
-test('bills are imported from a v1 export, reviewed first, at desktop and phone sizes', async ({
-  page,
-}) => {
+  // More bills come from v1's export, reviewed first. Here rather than in a test of its own, which
+  // would sign in again and run into the sign-in rate limit in the tests below.
   // Made up, in the shape of v1's export.
   const v1Bill = (name: string, overrides: object = {}) => ({
     bill_name: name,
@@ -371,8 +369,7 @@ test('bills are imported from a v1 export, reviewed first, at desktop and phone 
     paymentAccounts: [],
   };
 
-  await page.goto('/');
-  await signInWith(page, CHOSEN_PASSWORD);
+  await page.setViewportSize({ width: 1280, height: 800 });
   await openSettings(page, 'Import from v1');
   await page.locator('input[type="file"]').setInputFiles({
     name: 'bill-tracker-export.json',
