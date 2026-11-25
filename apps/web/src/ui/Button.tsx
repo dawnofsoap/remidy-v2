@@ -2,7 +2,8 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import type { ComponentProps } from 'react';
 import { cn, focusRing } from './cn.ts';
 
-const buttonStyles = cva(
+/** A button's look, for a link that should look like one, such as "Go to Bills". */
+export const buttonStyles = cva(
   [
     'inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl px-4',
     'font-semibold whitespace-nowrap',

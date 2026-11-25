@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { canManage, useHousehold } from '../../../core/space.tsx';
-import { Button, EmptyState, FileButton, LoadingState } from '../../../ui/index.ts';
+import { Button, buttonStyles, EmptyState, FileButton, LoadingState } from '../../../ui/index.ts';
 import { importBills, previewImport, readExportFile } from '../api.ts';
 import { ImportReview } from './ImportReview.tsx';
 
@@ -69,7 +69,7 @@ export function ImportSection() {
           .trim()}
         action={
           <div className="flex flex-wrap justify-center gap-2">
-            <Link to="/bills" className="font-semibold text-accent underline">
+            <Link to="/bills" className={buttonStyles({ variant: 'primary' })}>
               Go to Bills
             </Link>
             <Button variant="secondary" onClick={startAgain}>

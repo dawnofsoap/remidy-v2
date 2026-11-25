@@ -118,6 +118,17 @@ test('the v1 export is reviewed, then the chosen bills are imported where they w
 
   await expect(page.getByRole('heading', { name: 'Imported 2 bills' })).toBeVisible();
   await expect(page.getByText('1 new category was added too.')).toBeVisible();
+  // Going to Bills is a link, with its words lined up with the button's beside it.
+  const middleOfWords = (name: string) =>
+    page.getByText(name, { exact: true }).evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      const box = range.getBoundingClientRect();
+      return Math.round(box.top + box.height / 2);
+    });
+  await expect(page.getByRole('link', { name: 'Go to Bills' })).toBeVisible();
+  expect(await middleOfWords('Go to Bills')).toBe(await middleOfWords('Import another file'));
+  await saveScreenshot(page, 'import-done');
   expect(sent).toEqual([
     { file: exportFile },
     {
