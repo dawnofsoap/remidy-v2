@@ -275,6 +275,7 @@ describe('bringing a v1 bill’s logo', () => {
   it.each([
     ['an image it can’t keep', `data:image/svg+xml;base64,${btoa('<svg/>')}`],
     ['one that isn’t base64', 'data:image/png;base64,%%%'],
+    ['base64 cut short', 'data:image/png;base64,a'],
     ['a link', 'https://example.com/icon.png'],
   ])('leaves out %s, and says so', (_label, iconUrl) => {
     const { bills } = readV1Export(exportOf([bill({ icon_url: iconUrl })]));
@@ -297,6 +298,16 @@ describe('pointing out a due day that disagrees with the start date', () => {
     expect(bills[0]?.checks).toEqual([
       'In v1, its reminders used day 5, but its due dates used the 15th. Check which is right.',
     ]);
+  });
+
+  it.each([
+    ['2026-01-01', '1st'],
+    ['2026-01-12', '12th'],
+    ['2026-01-22', '22nd'],
+    ['2026-01-23', '23rd'],
+  ])('names a start date of %s as the %s', (start, day) => {
+    const { bills } = readV1Export(exportOf([bill({ due_day: 5, start_date: start })]));
+    expect(bills[0]?.checks[0]).toContain(`used the ${day}.`);
   });
 
   it.each([
