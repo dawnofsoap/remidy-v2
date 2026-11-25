@@ -1,4 +1,5 @@
 export { Button } from './Button.tsx';
+export { Checkbox } from './Checkbox.tsx';
 export { cn, focusRing } from './cn.ts';
 export { DateField } from './DateField.tsx';
 export { SelectField, TextField } from './Field.tsx';
