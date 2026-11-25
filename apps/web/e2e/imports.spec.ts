@@ -118,16 +118,20 @@ test('the v1 export is reviewed, then the chosen bills are imported where they w
 
   await expect(page.getByRole('heading', { name: 'Imported 2 bills' })).toBeVisible();
   await expect(page.getByText('1 new category was added too.')).toBeVisible();
-  // Going to Bills is a link, with its words lined up with the button's beside it.
-  const middleOfWords = (name: string) =>
-    page.getByText(name, { exact: true }).evaluate((element) => {
-      const range = document.createRange();
-      range.selectNodeContents(element);
-      const box = range.getBoundingClientRect();
-      return Math.round(box.top + box.height / 2);
-    });
-  await expect(page.getByRole('link', { name: 'Go to Bills' })).toBeVisible();
-  expect(await middleOfWords('Go to Bills')).toBe(await middleOfWords('Import another file'));
+  // Going to Bills is a link shaped like the button beside it, with its words in the middle of it
+  // rather than at the top. The two may wrap onto separate rows on a phone.
+  const link = page.getByRole('link', { name: 'Go to Bills' });
+  const { words, box } = await link.evaluate((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const text = range.getBoundingClientRect();
+    const own = element.getBoundingClientRect();
+    return { words: text.top + text.height / 2, box: own.top + own.height / 2 };
+  });
+  expect(Math.abs(words - box)).toBeLessThanOrEqual(1);
+  expect((await link.boundingBox())?.height).toBe(
+    (await page.getByRole('button', { name: 'Import another file' }).boundingBox())?.height,
+  );
   await saveScreenshot(page, 'import-done');
   expect(sent).toEqual([
     { file: exportFile },
