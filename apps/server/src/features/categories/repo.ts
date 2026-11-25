@@ -53,7 +53,7 @@ async function guardDuplicate<T>(name: string | undefined, change: () => Promise
 }
 
 /** Every category in the space, archived ones included, in name order regardless of case. */
-export function listCategories(orm: Orm, spaceId: string): Promise<Category[]> {
+export function listCategories(orm: Orm | Transaction, spaceId: string): Promise<Category[]> {
   return orm
     .select(columns)
     .from(category)
@@ -62,7 +62,7 @@ export function listCategories(orm: Orm, spaceId: string): Promise<Category[]> {
 }
 
 export function createCategory(
-  orm: Orm,
+  orm: Orm | Transaction,
   spaceId: string,
   actorId: string,
   name: string,

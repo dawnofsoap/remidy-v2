@@ -42,6 +42,8 @@ const ROUTE_ACCESS: Record<string, string> = {
   'GET /api/v1/logos/:logoId': 'signed-in',
   'POST /api/v1/logos/suggest': 'signed-in',
   'POST /api/v1/logos': 'signed-in',
+  'POST /api/v1/imports/preview': 'signed-in',
+  'POST /api/v1/imports': 'signed-in',
   'GET /api/v1/admin/settings/logo-dev': 'instance-admin',
   'PUT /api/v1/admin/settings/logo-dev': 'instance-admin',
   'DELETE /api/v1/admin/settings/logo-dev': 'instance-admin',

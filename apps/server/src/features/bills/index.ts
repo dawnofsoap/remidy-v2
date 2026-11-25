@@ -6,6 +6,9 @@ import { recordAutopay } from './payments.repo.ts';
 import { billRoutes } from './routes.ts';
 import { addSampleBills } from './sample-data.ts';
 
+// For importing bills from v1, through the same rules as adding them by hand.
+export { createBill, listBills, type BillFields, type CreateOptions } from './repo.ts';
+
 /** Bills and each time they're due. */
 export const bills = defineFeature({
   name: 'bills',

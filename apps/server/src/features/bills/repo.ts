@@ -230,11 +230,23 @@ const recordable = (row: BillResponse) => ({
   archived: row.archived,
 });
 
+export interface CreateOptions {
+  /**
+   * Due dates start today rather than at the start of the month, for a bill whose earlier due
+   * dates were paid somewhere else, such as one imported from v1.
+   */
+  fromToday?: boolean;
+  /** Arrives archived, with no due dates. */
+  archived?: boolean;
+}
+
+/** Adds a bill. Given a transaction, such as an import's, it's saved with it or not at all. */
 export function createBill(
-  orm: Orm,
+  orm: Orm | Transaction,
   spaceId: string,
   userId: string,
   fields: BillFields,
+  options: CreateOptions = {},
 ): Promise<BillResponse> {
   return orm.transaction(async (transaction) => {
     const schedule = toSchedule(fields.schedule);
@@ -248,13 +260,19 @@ export function createBill(
         logoId: fields.logoId ?? null,
         spaceId,
         schedule,
+        archivedAt: options.archived ? sql`now()` : null,
       })
       .returning({ id: bill.id });
     if (!created) throw new Error('The bill was not created.');
 
     const row = await readBill(transaction, userId, created.id);
     const timeZone = await timeZoneOf(transaction, spaceId);
-    await addDueDates(transaction, copyOf(row), firstDueDates(schedule, timeZone));
+    if (!options.archived) {
+      const dates = options.fromToday
+        ? futureDueDates(schedule, timeZone)
+        : firstDueDates(schedule, timeZone);
+      await addDueDates(transaction, copyOf(row), dates);
+    }
     await recordActivity(transaction, {
       spaceId,
       actorId: userId,
