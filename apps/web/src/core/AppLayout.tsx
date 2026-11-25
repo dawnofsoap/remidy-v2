@@ -7,6 +7,7 @@ import { cn, focusRing, Toaster } from '../ui/index.ts';
 import {
   visibleHome,
   visibleNav,
+  visibleSettings,
   visibleSpaceSettings,
   type NavItem,
   type WebFeature,
@@ -40,6 +41,9 @@ export const useHomeSections = () => useVisible(visibleHome);
 
 /** The sections features add about shared lists, such as categories. */
 export const useSpaceSettingsSections = (): SettingsSection[] => useVisible(visibleSpaceSettings);
+
+/** The sections features add about the person signed in, such as importing their bills. */
+export const useSettingsSections = (): SettingsSection[] => useVisible(visibleSettings);
 
 function NavList({ items }: { items: NavItem[] }) {
   return (

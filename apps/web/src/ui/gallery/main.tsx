@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import '../../index.css';
 import {
   Button,
+  Checkbox,
   DateField,
   EmptyState,
   ErrorState,
@@ -49,6 +50,18 @@ function PasswordExample() {
   );
 }
 
+function CheckboxExample() {
+  const [checked, setChecked] = useState(true);
+  return (
+    <Checkbox
+      label="Water"
+      description="Every month on the 15th · $45.00"
+      checked={checked}
+      onChange={setChecked}
+    />
+  );
+}
+
 function Gallery() {
   const [open, setOpen] = useState(false);
   return (
@@ -81,6 +94,7 @@ function Gallery() {
           <option>Everyday Checking</option>
           <option>Travel Card</option>
         </SelectField>
+        <CheckboxExample />
       </Section>
       <Section title="List">
         <List label="Example bills">

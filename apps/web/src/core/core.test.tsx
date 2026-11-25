@@ -5,7 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ErrorBoundary } from './ErrorBoundary.tsx';
 import { apiRequest, RequestFailure } from './session.ts';
-import { defineFeature, visibleHome, visibleNav, visibleSpaceSettings } from './feature.ts';
+import {
+  defineFeature,
+  visibleHome,
+  visibleNav,
+  visibleSettings,
+  visibleSpaceSettings,
+} from './feature.ts';
 import { applyTheme, readThemePreference, saveThemePreference } from './theme.ts';
 
 afterEach(() => {
@@ -88,6 +94,30 @@ describe('navigation', () => {
     ];
     const titles = (enabled: string[]) =>
       visibleSpaceSettings(withSettings, enabled).map((section) => section.title);
+    expect(titles([])).toEqual(['Plain']);
+    expect(titles(['beta'])).toEqual(['Plain', 'Beta']);
+  });
+
+  it('lists sections about the person from every visible feature, flagged ones once enabled', () => {
+    const Nothing = () => null;
+    const withSettings = [
+      defineFeature({
+        name: 'plain',
+        routes: [],
+        nav: [],
+        settings: [{ slug: 'plain', title: 'Plain', component: Nothing }],
+      }),
+      defineFeature({
+        name: 'beta',
+        flagged: true,
+        routes: [],
+        nav: [],
+        settings: [{ slug: 'beta', title: 'Beta', component: Nothing }],
+        spaceSettings: [{ slug: 'shared', title: 'Shared', component: Nothing }],
+      }),
+    ];
+    const titles = (enabled: string[]) =>
+      visibleSettings(withSettings, enabled).map((section) => section.title);
     expect(titles([])).toEqual(['Plain']);
     expect(titles(['beta'])).toEqual(['Plain', 'Beta']);
   });
