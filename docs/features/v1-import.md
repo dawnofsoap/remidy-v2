@@ -27,8 +27,8 @@ bills on v2 and v1 can be retired. Running those bills for a month is also the e
 - Given a v1 bill's `start_date`, then it's the schedule's anchor, as on v1's dashboard and calendar. v1's reminders
   read `due_day` instead, so given a monthly bill whose `due_day` differs from its start date's day, then the review
   points it out so the person can check it.
-- Given a v1 bill with no `start_date`, then it's skipped, with the reason, since v1 couldn't place its due dates
-  either.
+- Given a v1 bill with no `start_date`, from before v1 had them, then its `due_day` in the month of the export is
+  its first due date, or that month's last day when it's shorter. With neither, it's skipped, with the reason.
 - Given a repeating v1 bill, then its first due date in v2 is its next one on or after the day of the import, on v1's
   schedule. Earlier ones were paid in v1, so they don't arrive as overdue. A v1 `end_date` becomes the last due date,
   and a bill that has ended, or a one-time bill already past, is listed as finished and left out unless included.

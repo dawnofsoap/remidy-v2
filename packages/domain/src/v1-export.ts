@@ -1,12 +1,14 @@
 import {
   addDays,
+  compareDates,
   dateFromParts,
   datePartsOf,
   parseCalendarDate,
   type CalendarDate,
 } from './dates.ts';
+import { logoProblem } from './images.ts';
 import { parseMoney, type Cents } from './money.ts';
-import type { RepeatUnit, Schedule } from './schedule.ts';
+import { dueDates, type RepeatUnit, type Schedule } from './schedule.ts';
 
 /**
  * Reading the data export v1 offers, so its bills can be brought into v2 and reviewed before
@@ -28,6 +30,10 @@ export interface ImportedBill {
   archived: boolean;
   url: string | null;
   notes: string | null;
+  /** v1's logo, already checked as an image v2 keeps. */
+  logo: Uint8Array | null;
+  /** Things the person should check in the review, in words. */
+  checks: string[];
 }
 
 export interface ImportedAccount {
@@ -120,6 +126,52 @@ function firstDueOf(row: Row, exportedOn: CalendarDate): CalendarDate | null {
   return dateFromParts(year, month, day);
 }
 
+const LOGO_LEFT_OUT = 'Its v1 logo can’t be brought in. Choose one after importing.';
+
+/** v1 kept each logo on its bill as a data URL. Anything else, or an image v2 won't keep, stays out. */
+function readLogo(value: unknown): { logo: Uint8Array | null; check: string | null } {
+  const raw = text(value);
+  if (!raw) return { logo: null, check: null };
+  const data = /^data:image\/[\w.+-]+;base64,([A-Za-z0-9+/=\s]+)$/.exec(raw);
+  if (!data?.[1]) return { logo: null, check: LOGO_LEFT_OUT };
+  let bytes: Uint8Array;
+  try {
+    bytes = Uint8Array.from(atob(data[1].replace(/\s/g, '')), (char) => char.charCodeAt(0));
+  } catch {
+    return { logo: null, check: LOGO_LEFT_OUT };
+  }
+  return logoProblem(bytes) ? { logo: null, check: LOGO_LEFT_OUT } : { logo: bytes, check: null };
+}
+
+const ordinal = (day: number) => {
+  const tens = day % 100;
+  if (tens >= 11 && tens <= 13) return `${String(day)}th`;
+  return `${String(day)}${['th', 'st', 'nd', 'rd'][day % 10] ?? 'th'}`;
+};
+
+/**
+ * v1's dashboard and calendar placed due dates by the start date, but its reminders read `due_day`.
+ * When a bill repeating by months has both and they disagree, the person should check it.
+ */
+function dueDayCheck(row: Row, schedule: Schedule): string | null {
+  if (schedule.kind !== 'repeat' || schedule.unit !== 'month') return null;
+  if (!readV1Date(row.start_date)) return null;
+  const dueDay = typeof row.due_day === 'number' ? row.due_day : Number(text(row.due_day));
+  if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) return null;
+  const startDay = datePartsOf(schedule.firstDue).day;
+  if (dueDay === startDay) return null;
+  return `In v1, its reminders used day ${String(dueDay)}, but its due dates used the ${ordinal(startDay)}. Check which is right.`;
+}
+
+/** Whether a schedule has no due date left on or after a day, so there's nothing to import. */
+export function hasEnded(schedule: Schedule, on: CalendarDate): boolean {
+  if (schedule.kind === 'once') return compareDates(schedule.firstDue, on) < 0;
+  if (!schedule.lastDue) return false;
+  return (
+    compareDates(schedule.lastDue, on) < 0 || dueDates(schedule, on, schedule.lastDue).length === 0
+  );
+}
+
 function readBill(row: Row, exportedOn: CalendarDate): ImportedBill | { problem: string } {
   const frequency = readV1Frequency(row.billing_frequency);
   if (!frequency) {
@@ -144,6 +196,10 @@ function readBill(row: Row, exportedOn: CalendarDate): ImportedBill | { problem:
     frequency.kind === 'once'
       ? { kind: 'once', firstDue }
       : { kind: 'repeat', unit: frequency.unit, every: frequency.every, firstDue, lastDue };
+  const { logo, check: logoCheck } = readLogo(row.icon_url);
+  const checks = [dueDayCheck(row, schedule), logoCheck].filter(
+    (check): check is string => check !== null,
+  );
   return {
     name: text(row.bill_name) ?? 'Unnamed bill',
     cents: isVariable && cents === 0 ? null : cents,
@@ -156,6 +212,8 @@ function readBill(row: Row, exportedOn: CalendarDate): ImportedBill | { problem:
     archived: row.is_active === false,
     url: text(row.url),
     notes: text(row.notes),
+    logo,
+    checks,
   };
 }
 
