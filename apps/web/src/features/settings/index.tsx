@@ -1,6 +1,6 @@
 import { createRoute } from '@tanstack/react-router';
 import { useState } from 'react';
-import { useSpaceSettingsSections } from '../../core/AppLayout.tsx';
+import { useSettingsSections, useSpaceSettingsSections } from '../../core/AppLayout.tsx';
 import { defineFeature, type SettingsSection } from '../../core/feature.ts';
 import { useAddressPart } from '../../core/params.ts';
 import { rootRoute } from '../../core/router.tsx';
@@ -57,6 +57,7 @@ const end: SettingsSection[] = [
 function SettingsPage() {
   const section = useAddressPart('section');
   const added = useSpaceSettingsSections();
+  const own = useSettingsSections();
   const spaces = useSpaces();
   const personal = usePersonalSpace();
   const household = useHousehold();
@@ -71,7 +72,7 @@ function SettingsPage() {
       <SettingsArea
         title="Settings"
         basePath="/settings"
-        sections={[...start, ...(household ? [] : added), ...end]}
+        sections={[...start, ...(household ? [] : added), ...own, ...end]}
         section={section}
       />
     </SettingsSpaceProvider>

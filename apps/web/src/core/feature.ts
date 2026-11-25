@@ -27,6 +27,11 @@ export interface WebFeature {
    * someone without a household, and use `useSettingsSpace` to know which space they're about.
    */
   spaceSettings?: SettingsSection[];
+  /**
+   * Sections about the person signed in, such as importing their bills. They always appear in
+   * Settings, before Security.
+   */
+  settings?: SettingsSection[];
   /** What this feature shows on Home, such as the agenda. Home shows a welcome when nothing does. */
   home?: ComponentType[];
 }
@@ -44,6 +49,13 @@ export function visibleNav(features: WebFeature[], enabled: readonly string[]): 
 
 export function visibleHome(features: WebFeature[], enabled: readonly string[]): ComponentType[] {
   return visible(features, enabled).flatMap((feature) => feature.home ?? []);
+}
+
+export function visibleSettings(
+  features: WebFeature[],
+  enabled: readonly string[],
+): SettingsSection[] {
+  return visible(features, enabled).flatMap((feature) => feature.settings ?? []);
 }
 
 export function visibleSpaceSettings(
