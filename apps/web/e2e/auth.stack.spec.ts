@@ -336,6 +336,86 @@ test('a bill is added in steps, shows on Home, and can be edited, at desktop and
   await expect(page.getByRole('button', { name: 'Show archived (1)' })).toBeVisible();
 });
 
+// The smallest PNG v2 keeps: its signature, then enough to be a file.
+const PNG_BASE64 = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
+]).toString('base64');
+
+test('bills are imported from a v1 export, reviewed first, at desktop and phone sizes', async ({
+  page,
+}) => {
+  // Made up, in the shape of v1's export.
+  const v1Bill = (name: string, overrides: object = {}) => ({
+    bill_name: name,
+    amount: '15.99',
+    is_variable_amount: false,
+    billing_frequency: 'monthly',
+    due_day: 10,
+    start_date: '2026-01-10',
+    end_date: null,
+    category: 'Entertainment',
+    auto_pay: true,
+    is_active: true,
+    url: null,
+    notes: null,
+    icon_url: `data:image/png;base64,${PNG_BASE64}`,
+    ownership: 'personal',
+    ...overrides,
+  });
+  const file = {
+    exportDate: '2026-11-20T00:00:00.000Z',
+    exportVersion: '1.0',
+    bills: [v1Bill('Streaming'), v1Bill('Water and sewer', { category: 'Utilities' })],
+    categories: [{ name: 'Entertainment' }],
+    payments: [],
+    paymentAccounts: [],
+  };
+
+  await page.goto('/');
+  await signInWith(page, CHOSEN_PASSWORD);
+  await openSettings(page, 'Import from v1');
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'bill-tracker-export.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(file)),
+  });
+
+  // Water and sewer was added earlier, so it's left out unless included.
+  const list = page.getByRole('list', { name: 'Bills in the export' });
+  await expect(list.getByRole('checkbox', { name: 'Streaming' })).toBeChecked();
+  await expect(list.getByRole('checkbox', { name: 'Water and sewer' })).not.toBeChecked();
+  await expect(page.getByText('New categories: Entertainment')).toBeVisible();
+  const { violations } = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .analyze();
+  expect(violations.map((violation) => violation.id)).toEqual([]);
+  await page.getByRole('button', { name: 'Import 1 bill' }).click();
+  await expect(page.getByRole('heading', { name: 'Imported 1 bill' })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Go to Bills' }).click();
+  await expect(appHeading(page, 'Bills')).toBeVisible();
+  const row = page.getByRole('table', { name: 'Bills' }).getByRole('row', { name: /Streaming/ });
+  await expect(row).toContainText('$15.99');
+  await expect(row).toContainText('Entertainment');
+  // Its logo came across, and its due dates start today rather than in January.
+  const saved = (await (await page.request.get('/api/v1/bills')).json()) as {
+    name: string;
+    logoId: string | null;
+  }[];
+  expect(saved.find((bill) => bill.name === 'Streaming')?.logoId).toBeTruthy();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home' }).click();
+  await expect(appHeading(page, 'Home')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Overdue' }).getByText('Streaming')).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/bills');
+  await expect(
+    page
+      .getByRole('list', { name: 'Bills', exact: true })
+      .getByRole('button', { name: /Streaming/ }),
+  ).toBeVisible();
+});
+
 test('a wrong password is refused with a clear message', async ({ page }) => {
   await page.goto('/');
   await signInWith(page, 'not the right password');
