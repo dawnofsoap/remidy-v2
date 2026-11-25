@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { NotAV1Export, readV1Date, readV1Export, readV1Frequency } from './v1-export.ts';
+import type { CalendarDate } from './dates.ts';
+import type { Schedule } from './schedule.ts';
+import { hasEnded, NotAV1Export, readV1Date, readV1Export, readV1Frequency } from './v1-export.ts';
 
 // Shaped like v1's export: bills, payment accounts and categories, with v1's column names.
 const bill = (overrides: Record<string, unknown> = {}) => ({
@@ -98,6 +100,8 @@ describe('reading a v1 export', () => {
         archived: false,
         url: 'https://example.com/water',
         notes: null,
+        logo: null,
+        checks: [],
       },
     ]);
   });
@@ -252,5 +256,90 @@ describe('reading a v1 export', () => {
 
   it('never reads v1’s payment history', () => {
     expect(Object.keys(readV1Export(exportOf([])))).not.toContain('payments');
+  });
+});
+
+// The smallest PNG: its signature, then enough to be a file.
+const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+const base64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+
+describe('bringing a v1 bill’s logo', () => {
+  it('reads a logo v1 kept as a data URL', () => {
+    const { bills } = readV1Export(
+      exportOf([bill({ icon_url: `data:image/png;base64,${base64(PNG)}` })]),
+    );
+    expect(bills[0]?.logo).toEqual(PNG);
+    expect(bills[0]?.checks).toEqual([]);
+  });
+
+  it.each([
+    ['an image it can’t keep', `data:image/svg+xml;base64,${btoa('<svg/>')}`],
+    ['one that isn’t base64', 'data:image/png;base64,%%%'],
+    ['base64 cut short', 'data:image/png;base64,a'],
+    ['a link', 'https://example.com/icon.png'],
+  ])('leaves out %s, and says so', (_label, iconUrl) => {
+    const { bills } = readV1Export(exportOf([bill({ icon_url: iconUrl })]));
+    expect(bills[0]?.logo).toBeNull();
+    expect(bills[0]?.checks).toEqual([
+      'Its v1 logo can’t be brought in. Choose one after importing.',
+    ]);
+  });
+
+  it('brings no logo, and says nothing, when v1 had none', () => {
+    const { bills } = readV1Export(exportOf([bill({ icon_url: null })]));
+    expect(bills[0]?.logo).toBeNull();
+    expect(bills[0]?.checks).toEqual([]);
+  });
+});
+
+describe('pointing out a due day that disagrees with the start date', () => {
+  it('points out a monthly bill whose due day isn’t its start date’s day', () => {
+    const { bills } = readV1Export(exportOf([bill({ due_day: 5, start_date: '2026-01-15' })]));
+    expect(bills[0]?.checks).toEqual([
+      'In v1, its reminders used day 5, but its due dates used the 15th. Check which is right.',
+    ]);
+  });
+
+  it.each([
+    ['2026-01-01', '1st'],
+    ['2026-01-12', '12th'],
+    ['2026-01-22', '22nd'],
+    ['2026-01-23', '23rd'],
+  ])('names a start date of %s as the %s', (start, day) => {
+    const { bills } = readV1Export(exportOf([bill({ due_day: 5, start_date: start })]));
+    expect(bills[0]?.checks[0]).toContain(`used the ${day}.`);
+  });
+
+  it.each([
+    ['the same day', { due_day: 15 }],
+    ['a weekly bill, whose due day was a weekday', { due_day: 3, billing_frequency: 'weekly' }],
+    ['a bill without a start date', { due_day: 5, start_date: null }],
+    ['a bill without a due day', { due_day: null }],
+  ])('says nothing for %s', (_label, overrides) => {
+    const { bills } = readV1Export(exportOf([bill(overrides)]));
+    expect(bills[0]?.checks).toEqual([]);
+  });
+});
+
+describe('whether a schedule has ended', () => {
+  const on = '2026-03-10' as CalendarDate;
+  const monthly = (lastDue: string | null): Schedule => ({
+    kind: 'repeat',
+    unit: 'month',
+    every: 1,
+    firstDue: '2026-01-15' as CalendarDate,
+    lastDue: lastDue as CalendarDate | null,
+  });
+
+  it.each([
+    ['a one-time bill already past', { kind: 'once', firstDue: '2026-03-09' } as Schedule, true],
+    ['a one-time bill due today', { kind: 'once', firstDue: '2026-03-10' } as Schedule, false],
+    ['a repeat with no end', monthly(null), false],
+    ['a repeat whose last due date has passed', monthly('2026-02-15'), true],
+    // The end date falls before the next due date, the 15th.
+    ['a repeat ending before its next due date', monthly('2026-03-12'), true],
+    ['a repeat with a due date still to come', monthly('2026-03-15'), false],
+  ])('%s', (_label, schedule, ended) => {
+    expect(hasEnded(schedule, on)).toBe(ended);
   });
 });

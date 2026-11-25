@@ -45,6 +45,7 @@ export {
   type Settlement,
 } from './settlement.ts';
 export {
+  hasEnded,
   NotAV1Export,
   readV1Date,
   readV1Export,
