@@ -7,5 +7,5 @@ export const categories = defineFeature({
   routes: categoryRoutes,
 });
 
-// For other features' sample data, such as Bills, to pick categories by name.
-export { listCategories } from './repo.ts';
+// For other features: Bills' sample data picks categories by name, and the v1 import adds them.
+export { createCategory, listCategories } from './repo.ts';
