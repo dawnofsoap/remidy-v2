@@ -1,6 +1,6 @@
 # Feature: Importing bills from v1
 
-**Status:** Approved
+**Status:** Building
 **Issue:** #108; milestone 5
 
 ## Problem
