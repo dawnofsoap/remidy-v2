@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { ADMIN_EMAIL, apiErrorResponse, unmetPasswordRequirements } from '@remidy/contracts';
 import { loginThrottle, user } from '@remidy/db';
 import { sql } from 'drizzle-orm';
@@ -125,6 +127,15 @@ describe('the admin account', () => {
       expect(message).toContain('reset-admin-password');
       expect(message).toContain(ADMIN_EMAIL);
       expect(printedPassword(message)).toBe('');
+    });
+
+    it('names a command that works in the production image, which has no pnpm', async () => {
+      await start();
+      const message = String(await start());
+      // Run from /app, where the image and the dev container both keep the app.
+      expect(message).toContain('node apps/server/src/core/auth/reset-admin-password.ts');
+      expect(message).not.toContain('pnpm');
+      expect(existsSync(join(import.meta.dirname, 'reset-admin-password.ts'))).toBe(true);
     });
 
     it('does the same after the password was replaced from the server', async () => {
