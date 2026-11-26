@@ -257,6 +257,27 @@ test('a day’s list shows all its bills, most urgent first', async ({ page }, i
   await expect(page.getByRole('dialog').getByRole('listitem')).toHaveCount(4);
 });
 
+test('a paid bill’s logo stays at full strength, with its check saying it’s paid', async ({
+  page,
+}, info) => {
+  test.skip(info.project.name === 'phone', 'Phones list the day’s bills by name.');
+  const day = await withBillsMidMonth(page);
+  await page.route('**/api/v1/agenda?**', (route) =>
+    route.fulfill({
+      json: {
+        overdue: [],
+        upcoming: [{ ...entry('u1', 'Water', day(12), 4_500), state: 'settled', paidCents: 4_500 }],
+      },
+    }),
+  );
+  await page.goto('/calendar');
+  // Faded, a logo looks washed out on a dark or HDR screen, and so does the check on it.
+  const water = page
+    .getByRole('list', { name: /\d{4}$/ })
+    .getByRole('button', { name: /\bWater, Paid/ });
+  await expect(water).toHaveCSS('opacity', '1');
+});
+
 test('Home’s small calendar opens a day on the Calendar page', async ({ page }, info) => {
   test.skip(info.project.name === 'phone', 'It’s only beside the list, on wide screens.');
   await withBills(page);

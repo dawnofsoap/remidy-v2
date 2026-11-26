@@ -34,10 +34,9 @@ export function DayChip({
         aria-label={label}
         title={hint}
         onClick={onOpen}
-        className={cn(
-          'relative z-10 size-9 flex-none rounded-lg p-0',
-          (status === DAY_STATUS.paid || status === DAY_STATUS.skipped) && 'opacity-60',
-        )}
+        // Never faded once paid or skipped: that washes logos out on dark and HDR screens, and
+        // fades the check that says so. The icon on the corner says it.
+        className="relative z-10 size-9 flex-none rounded-lg p-0"
       >
         <LogoTile src={logoUrl(entry.logoId)} name={entry.name} />
         {entry.autopay ? (
