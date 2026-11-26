@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { bill, chooseDay, entry, iso, withBills } from './bills-mocks.ts';
+import { bill, chooseDay, entry, iso, withBills, withBillsMidMonth } from './bills-mocks.ts';
 import { expectNoViolations, saveScreenshot } from './support.ts';
 
 // The Calendar with the server mocked. The real stack is covered in auth.stack.spec.ts.
@@ -108,7 +108,8 @@ test('on a phone, the month is a small grid, and choosing a day lists its bills'
   page,
 }, info) => {
   test.skip(info.project.name !== 'phone', 'Wider screens show the full grid.');
-  await withBills(page);
+  // Pinned mid-month, so every bill is in the month shown even at the end of a month.
+  const day = await withBillsMidMonth(page);
   await page.goto('/calendar');
   const grid = page.getByRole('list', { name: /\d{4}$/ });
   // Today is chosen first, and marked as today.
@@ -118,10 +119,10 @@ test('on a phone, the month is a small grid, and choosing a day lists its bills'
   await expect(grid.getByRole('button', { name: /, 1 due, overdue$/ })).toHaveCount(1);
   await expect(grid.getByRole('button', { name: /, 1 due, due soon$/ })).toHaveCount(2);
 
-  await chooseDay(page, iso(2));
-  const day = page.getByRole('list', { name: /^\w+day, / });
-  await expect(day.getByRole('button', { name: /Water/ })).toBeVisible();
-  await expect(day.getByRole('button')).toHaveCount(1);
+  await chooseDay(page, day(12));
+  const chosen = page.getByRole('list', { name: /^\w+day, / });
+  await expect(chosen.getByRole('button', { name: /Water/ })).toBeVisible();
+  await expect(chosen.getByRole('button')).toHaveCount(1);
   await expectNoViolations(page);
   await saveScreenshot(page, 'calendar-phone-day');
 

@@ -82,3 +82,26 @@ export async function withBills(page: Page) {
     route.fulfill({ contentType: 'image/png', body: Buffer.from(LOGO_PNG, 'base64') }),
   );
 }
+
+/**
+ * The same bills with the browser's clock pinned to the 10th of this month, for tests that need
+ * every bill in the month shown even when today is near its end. Returns a day of this month.
+ */
+export async function withBillsMidMonth(page: Page) {
+  await withBills(page);
+  const now = new Date();
+  const day = (date: number) => {
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${String(now.getFullYear())}-${month}-${String(date).padStart(2, '0')}`;
+  };
+  await page.clock.setFixedTime(new Date(now.getFullYear(), now.getMonth(), 10, 12));
+  await page.route('**/api/v1/agenda?**', (route) =>
+    route.fulfill({
+      json: {
+        overdue: [entry('o1', 'Rent', day(7), 145_000)],
+        upcoming: [entry('u1', 'Water', day(12), 4_500), entry('u2', 'Electric', day(15), null)],
+      },
+    }),
+  );
+  return day;
+}

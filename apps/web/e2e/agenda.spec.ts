@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { bill, chooseDay, entry, iso, withBills } from './bills-mocks.ts';
+import { bill, chooseDay, entry, iso, withBills, withBillsMidMonth } from './bills-mocks.ts';
 import { expectNoViolations, saveScreenshot } from './support.ts';
 
 // Home and Bills with the server mocked. The real stack is covered in auth.stack.spec.ts.
@@ -39,7 +39,8 @@ test('Home shows the month’s figures, then cards, with what’s overdue first 
 });
 
 test('bills on auto-pay say so on Home, the Calendar and a day’s list', async ({ page }, info) => {
-  await withBills(page);
+  // Pinned mid-month, so Electric is in the month shown even at the end of a month.
+  const day = await withBillsMidMonth(page);
   await page.route('**/api/v1/totals?**', (route) =>
     route.fulfill({ json: { dueCents: 0, unknownCount: 0, paidCents: 0 } }),
   );
@@ -56,9 +57,9 @@ test('bills on auto-pay say so on Home, the Calendar and a day’s list', async 
   await page.goto('/calendar');
   if (info.project.name === 'phone') {
     // A phone lists the chosen day's bills by name, each saying so.
-    await chooseDay(page, iso(5));
-    const day = page.getByRole('list', { name: /^\w+day, / });
-    await expect(day.getByRole('button', { name: /Electric/ })).toContainText(/Auto.pay/);
+    await chooseDay(page, day(15));
+    const list = page.getByRole('list', { name: /^\w+day, / });
+    await expect(list.getByRole('button', { name: /Electric/ })).toContainText(/Auto.pay/);
     return;
   }
   // The grid: in the bill's label and hint, and marked on its logo.
