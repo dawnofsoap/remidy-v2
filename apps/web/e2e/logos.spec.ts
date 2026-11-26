@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { withBills as withSampleBills } from './bills-mocks.ts';
 import { expectNoViolations, mockSignedIn, saveScreenshot, signedIn } from './support.ts';
 
 // Finding, choosing and uploading logos, and setting up Logo.dev, with the server mocked.
@@ -165,4 +166,28 @@ test('an admin sets up Logo.dev, and the keys are never shown again', async ({ p
   await expect(page.getByLabel('Secret key')).toHaveValue('');
   expect(sent).toEqual([{ publishableKey: 'pk_test1234', secretKey: 'sk_test5678' }]);
   await saveScreenshot(page, 'admin-logos');
+});
+
+// A small blue mark on its own white square, with a wide margin, as many logos come.
+const WHITE_SQUARE_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAZklEQVR42u3Z0QmAUAhAUY12ao43aXM0lc0QBCLv3G8RDn6aVRWTO2J4AAAAAAAAAAAAAAAAAAAAAAAAAB2dfy3K9Xyar/tyAQAAAID+0o8MAAAAAAAAAAAAAAAAAAAAAAAAYEPAC935CXuYDXyxAAAAAElFTkSuQmCC',
+  'base64',
+);
+
+test('a logo on its own white square is trimmed to its mark, on a tile of the same white', async ({
+  page,
+}) => {
+  await withSampleBills(page);
+  await page.route('**/api/v1/logos/*', (route) =>
+    route.fulfill({ contentType: 'image/png', body: WHITE_SQUARE_PNG }),
+  );
+  await page.goto('/bills');
+  // Water is the sample bill with a logo.
+  const logo = page.locator('img[src^="data:image/png"]').filter({ visible: true }).first();
+  await expect(logo).toBeVisible();
+  const tile = logo.locator('..');
+  await expect(tile).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  // The mark fills the tile's inner box rather than a small part of it.
+  const kept = await logo.evaluate((image: HTMLImageElement) => image.naturalWidth);
+  expect(kept).toBe(16);
 });
