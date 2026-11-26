@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { cn } from './cn.ts';
+import { fittedLogo } from './logoFit.ts';
 
 const SIZES = {
   small: 'size-6 rounded-md text-[0.625rem]',
@@ -25,12 +26,30 @@ interface LogoTileProps {
   className?: string;
 }
 
+/** The logo as just its mark on its own background, once that's been worked out. */
+function useFitted(src: string | null) {
+  const [fit, setFit] = useState<{ for: string; src: string; background: string } | null>(null);
+  useEffect(() => {
+    if (src === null) return;
+    let current = true;
+    void fittedLogo(src).then((found) => {
+      if (current && found) setFit({ for: src, ...found });
+    });
+    return () => {
+      current = false;
+    };
+  }, [src]);
+  return fit?.for === src ? fit : null;
+}
+
 /**
  * A company's logo, or its initials when there's none or it won't load. Always the same size, so
- * names beside it line up.
+ * names beside it line up. A logo on its own solid square, often white, is trimmed to its mark and
+ * the tile takes that square's color, so it isn't a small box inside the tile.
  */
 export function LogoTile({ src, name, size = 'medium', className }: LogoTileProps) {
   const [failed, setFailed] = useState<string | null>(null);
+  const fitted = useFitted(src);
   const showImage = src !== null && failed !== src;
   return (
     <span
@@ -41,10 +60,11 @@ export function LogoTile({ src, name, size = 'medium', className }: LogoTileProp
         SIZES[size],
         className,
       )}
+      style={showImage && fitted ? { backgroundColor: fitted.background } : undefined}
     >
       {showImage ? (
         <img
-          src={src}
+          src={fitted?.src ?? src}
           alt=""
           loading="lazy"
           decoding="async"
