@@ -4,7 +4,7 @@ import { Zap } from 'lucide-react';
 import { Button, cn, LogoTile } from '../../../ui/index.ts';
 import { logoUrl } from '../api.ts';
 import { DAY_STATUS, dayStatusOf } from './dayStatus.ts';
-import { statusOf } from './dueStatus.ts';
+import { dueSummary } from './dueStatus.ts';
 
 /**
  * One bill on a day in the grid: its logo and status, and its name when names are shown. Without
@@ -25,7 +25,7 @@ export function DayChip({
   const Icon = status.icon;
   const autopay = entry.autopay ? ', auto-pay' : '';
   const label = `${entry.name}, ${status.label}${autopay}`;
-  const hint = `${entry.name}: ${status.label}, ${statusOf(entry, false).text}${autopay}`;
+  const hint = `${entry.name}: ${dueSummary(entry, now)}${autopay}`;
   if (!names) {
     return (
       <Button

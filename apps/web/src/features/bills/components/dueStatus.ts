@@ -1,5 +1,6 @@
 import type { AgendaEntry } from '@remidy/contracts';
-import { formatMoney, type Cents } from '@remidy/domain';
+import { formatMoney, type CalendarDate, type Cents } from '@remidy/domain';
+import { DAY_STATUS, dayStatusOf } from './dayStatus.ts';
 
 export type DueEntry = Pick<
   AgendaEntry,
@@ -33,4 +34,14 @@ export function statusOf(entry: DueEntry, overdue: boolean): { text: string; ton
   const amount = left === null ? 'Varies' : formatMoney(left as Cents);
   const text = entry.paidCents > 0 ? `${amount} left` : amount;
   return { text, tone: overdue ? 'text-danger' : '' };
+}
+
+/**
+ * A due date in one line: how it stands, then what's owed. Once it's paid or skipped, the words
+ * already say how it stands, so "Paid" isn't said twice.
+ */
+export function dueSummary(entry: DueEntry, today: CalendarDate): string {
+  const { text } = statusOf(entry, false);
+  if (entry.state !== 'open') return text;
+  return `${DAY_STATUS[dayStatusOf(entry, today)].label} · ${text}`;
 }
