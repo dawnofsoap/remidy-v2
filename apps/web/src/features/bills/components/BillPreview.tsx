@@ -136,7 +136,6 @@ export function BillPreview({
           bill={bill}
           editIsMain={due?.state !== 'open'}
           onEdit={onEdit}
-          onClose={onClose}
           onRemoved={onRemoved}
           onChanged={onChanged}
         />

@@ -8,6 +8,7 @@ export { List, ListRow } from './List.tsx';
 export { initialsOf, LogoTile } from './LogoTile.tsx';
 export { MoneyField } from './MoneyField.tsx';
 export { Modal } from './Modal.tsx';
+export { ModalActions } from './ModalActions.tsx';
 export { isPasswordReady, NewPasswordField } from './NewPasswordField.tsx';
 export { RadioField } from './RadioField.tsx';
 export { EmptyState, ErrorState, LoadingState } from './StatePanels.tsx';

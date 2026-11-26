@@ -13,6 +13,7 @@ import {
   ListRow,
   LoadingState,
   Modal,
+  ModalActions,
   MoneyField,
   NewPasswordField,
   SelectField,
@@ -189,7 +190,7 @@ function Gallery() {
       >
         <TextField label="Amount paid" defaultValue="142.50" />
         <DateField label="Date paid" />
-        <div className="flex flex-wrap justify-end gap-2">
+        <ModalActions>
           <Button
             variant="secondary"
             onClick={() => {
@@ -205,7 +206,7 @@ function Gallery() {
           >
             Mark paid
           </Button>
-        </div>
+        </ModalActions>
       </Modal>
       <Toaster />
     </main>

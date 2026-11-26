@@ -130,6 +130,21 @@ describe('Modal', () => {
       expect(screen.getByRole('button', { name: 'Open' })).toHaveFocus();
     });
   });
+
+  it('closes with the ✕ in its corner, which comes after the form so focus starts in the form', async () => {
+    render(<Example />);
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+    const dialog = screen.getByRole('dialog', { name: 'Mark paid' });
+    expect(screen.getByLabelText('Amount')).toHaveFocus();
+    const close = screen.getByRole('button', { name: 'Close' });
+    expect(dialog).toContainElement(close);
+    expect(
+      screen.getByLabelText('Amount').compareDocumentPosition(close) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    await userEvent.click(close);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });
 
 describe('List', () => {

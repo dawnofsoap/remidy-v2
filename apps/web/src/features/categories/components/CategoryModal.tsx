@@ -1,7 +1,7 @@
 import { CATEGORY_NAME_MAX } from '@remidy/contracts';
 import { useState, type SyntheticEvent } from 'react';
 import { RequestFailure } from '../../../core/session.ts';
-import { Button, Modal, TextField, toast } from '../../../ui/index.ts';
+import { Button, Modal, ModalActions, TextField, toast } from '../../../ui/index.ts';
 import { createCategory, deleteCategory, updateCategory, type Category } from '../api.ts';
 
 interface CategoryModalProps {
@@ -98,75 +98,79 @@ export function CategoryModal({ spaceId, category, onClose, onChanged }: Categor
           }}
           {...(nameError ? { error: nameError } : {})}
         />
+        {category && !category.archived && !confirmingDelete ? (
+          <p className="text-sm text-ink-2">
+            Archiving hides it from new bills but keeps it for history.
+          </p>
+        ) : null}
         {error ? (
           <p role="alert" className="text-danger">
             {error}
           </p>
         ) : null}
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" busy={busy === 'save'} disabled={busy !== null}>
-            {category ? 'Save' : 'Add'}
-          </Button>
-        </div>
-      </form>
-
-      {category ? (
-        <div className="flex flex-col gap-3 border-t border-line pt-4">
-          {confirmingDelete ? (
-            <div role="group" aria-label="Confirm delete" className="flex flex-col gap-3">
-              <p>
-                Delete <strong>{category.name}</strong>? This can’t be undone.
-              </p>
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setConfirmingDelete(false);
-                  }}
-                >
-                  Keep it
-                </Button>
-                <Button
-                  variant="danger"
-                  busy={busy === 'delete'}
-                  disabled={busy !== null}
-                  onClick={() => void remove()}
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap justify-between gap-2">
+        {category && confirmingDelete ? (
+          <div
+            role="group"
+            aria-label="Confirm delete"
+            className="flex flex-col gap-3 border-t border-line pt-4"
+          >
+            <p>
+              Delete <strong>{category.name}</strong>? This can’t be undone.
+            </p>
+            <ModalActions>
               <Button
                 variant="secondary"
-                busy={busy === 'archive'}
-                disabled={busy !== null}
-                onClick={() => void archive(!category.archived)}
+                onClick={() => {
+                  setConfirmingDelete(false);
+                }}
               >
-                {category.archived ? 'Restore' : 'Archive'}
+                Keep it
               </Button>
               <Button
                 variant="danger"
+                busy={busy === 'delete'}
                 disabled={busy !== null}
-                onClick={() => {
-                  setConfirmingDelete(true);
-                }}
+                onClick={() => void remove()}
               >
-                Delete…
+                Delete
               </Button>
-            </div>
-          )}
-          {!confirmingDelete && !category.archived ? (
-            <p className="text-sm text-ink-2">
-              Archiving hides it from new bills but keeps it for history.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+            </ModalActions>
+          </div>
+        ) : (
+          <ModalActions
+            start={
+              category ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    busy={busy === 'archive'}
+                    disabled={busy !== null}
+                    onClick={() => void archive(!category.archived)}
+                  >
+                    {category.archived ? 'Restore' : 'Archive'}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    disabled={busy !== null}
+                    onClick={() => {
+                      setConfirmingDelete(true);
+                    }}
+                  >
+                    Delete…
+                  </Button>
+                </>
+              ) : null
+            }
+          >
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" busy={busy === 'save'} disabled={busy !== null}>
+              {category ? 'Save' : 'Add'}
+            </Button>
+          </ModalActions>
+        )}
+      </form>
     </Modal>
   );
 }
