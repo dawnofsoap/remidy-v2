@@ -1,7 +1,7 @@
 import { Archive, ArchiveRestore, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { RequestFailure } from '../../../core/session.ts';
-import { Button } from '../../../ui/index.ts';
+import { Button, ModalActions } from '../../../ui/index.ts';
 import { deleteBill, updateBill, type Bill } from '../api.ts';
 
 interface BillActionsProps {
@@ -9,24 +9,17 @@ interface BillActionsProps {
   /** Edit is the main action, unless there's a due date to pay. */
   editIsMain: boolean;
   onEdit: () => void;
-  onClose: () => void;
   /** After it's archived, restored or deleted. */
   onRemoved: () => void;
   onChanged: (message: string) => Promise<void>;
 }
 
 /**
- * The bar at the bottom of a bill's preview: archive and delete as icons on one side, Close and
- * Edit on the other. Deleting asks first, in the bar itself, so it can't be done by accident.
+ * The bar at the bottom of a bill's preview: archive and delete as icons on the left, Edit on the
+ * right. The dialog's ✕ closes it. Deleting asks first, in the bar itself, so it can't be done by
+ * accident.
  */
-export function BillActions({
-  bill,
-  editIsMain,
-  onEdit,
-  onClose,
-  onRemoved,
-  onChanged,
-}: BillActionsProps) {
+export function BillActions({ bill, editIsMain, onEdit, onRemoved, onChanged }: BillActionsProps) {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -62,7 +55,7 @@ export function BillActions({
           <p>
             Delete <strong>{bill.name}</strong> and its due dates? This can’t be undone.
           </p>
-          <div className="flex flex-wrap justify-end gap-2">
+          <ModalActions>
             <Button
               variant="secondary"
               onClick={() => {
@@ -81,49 +74,47 @@ export function BillActions({
               <Trash2 aria-hidden="true" className="size-5" />
               Delete
             </Button>
-          </div>
+          </ModalActions>
         </div>
       ) : (
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              size="icon"
-              aria-label={archive.label}
-              title={archive.hint}
-              busy={busy}
-              onClick={() =>
-                void run(
-                  () => updateBill(bill.spaceId, bill.id, { archived: !bill.archived }),
-                  bill.archived ? `Restored ${bill.name}.` : `Archived ${bill.name}.`,
-                )
-              }
-            >
-              <archive.Icon aria-hidden="true" className="size-5" />
-            </Button>
-            <Button
-              variant="danger"
-              size="icon"
-              aria-label="Delete…"
-              title="Delete"
-              disabled={busy}
-              onClick={() => {
-                setConfirming(true);
-              }}
-            >
-              <Trash2 aria-hidden="true" className="size-5" />
-            </Button>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="secondary" onClick={onClose}>
-              Close
-            </Button>
-            <Button variant={editIsMain ? 'primary' : 'secondary'} onClick={onEdit}>
-              <Pencil aria-hidden="true" className="size-4" />
-              Edit
-            </Button>
-          </div>
-        </div>
+        <ModalActions
+          start={
+            <>
+              <Button
+                variant="secondary"
+                size="icon"
+                aria-label={archive.label}
+                title={archive.hint}
+                busy={busy}
+                onClick={() =>
+                  void run(
+                    () => updateBill(bill.spaceId, bill.id, { archived: !bill.archived }),
+                    bill.archived ? `Restored ${bill.name}.` : `Archived ${bill.name}.`,
+                  )
+                }
+              >
+                <archive.Icon aria-hidden="true" className="size-5" />
+              </Button>
+              <Button
+                variant="danger"
+                size="icon"
+                aria-label="Delete…"
+                title="Delete"
+                disabled={busy}
+                onClick={() => {
+                  setConfirming(true);
+                }}
+              >
+                <Trash2 aria-hidden="true" className="size-5" />
+              </Button>
+            </>
+          }
+        >
+          <Button variant={editIsMain ? 'primary' : 'secondary'} onClick={onEdit}>
+            <Pencil aria-hidden="true" className="size-4" />
+            Edit
+          </Button>
+        </ModalActions>
       )}
     </div>
   );

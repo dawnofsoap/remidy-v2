@@ -20,7 +20,7 @@ const rent = {
   archived: false,
 };
 
-test('opening a bill shows it, and editing it is a choice', async ({ page }) => {
+test('opening a bill shows it, and editing it is a choice', async ({ page }, info) => {
   await mockSignedIn(page);
   await page.route('**/api/v1/features', (route) =>
     route.fulfill({ json: { enabled: ['bills'] } }),
@@ -56,7 +56,22 @@ test('opening a bill shows it, and editing it is a choice', async ({ page }) => 
     'https://maple.example/portal',
   );
   await expect(preview.getByRole('region', { name: 'History' })).toBeVisible();
-  // Archive and delete are icons beside Close and Edit, named for screen readers.
+  // Archive and delete are icons on the left, named for screen readers, and Edit is last, in the
+  // bottom-right corner. On a phone, Edit is full width above them instead, nearest the thumb.
+  // Closing is the ✕ in the top corner, so there's no Close beside Edit.
+  const box = async (name: string) => {
+    const found = await preview.getByRole('button', { name, exact: true }).boundingBox();
+    if (!found) throw new Error(`${name} isn't showing`);
+    return found;
+  };
+  expect((await box('Archive')).x).toBeLessThan((await box('Delete…')).x);
+  if (info.project.name === 'phone') {
+    expect((await box('Edit')).y).toBeLessThan((await box('Archive')).y);
+  } else {
+    expect((await box('Delete…')).x).toBeLessThan((await box('Edit')).x);
+  }
+  await expect(preview.getByRole('button', { name: 'Close' })).toHaveCount(1);
+  await expect(preview.getByRole('button', { name: 'Close' })).toHaveText('');
   await expect(preview.getByRole('button', { name: 'Archive' })).toBeVisible();
   await expect(preview.getByRole('button', { name: 'Delete…' })).toBeVisible();
   await expect(preview.getByRole('button', { name: 'Archive' })).toHaveAttribute(

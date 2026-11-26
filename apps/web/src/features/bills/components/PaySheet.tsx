@@ -2,7 +2,14 @@ import { PAYMENT_NOTES_MAX } from '@remidy/contracts';
 import { formatDate, formatMoney, today, type CalendarDate, type Cents } from '@remidy/domain';
 import { useState, type SyntheticEvent } from 'react';
 import { RequestFailure } from '../../../core/session.ts';
-import { Button, DateField, Modal, MoneyField, TextField } from '../../../ui/index.ts';
+import {
+  Button,
+  DateField,
+  Modal,
+  ModalActions,
+  MoneyField,
+  TextField,
+} from '../../../ui/index.ts';
 import { recordPayment, setSkipped } from '../api.ts';
 import { remaining, type DueEntry } from './dueStatus.ts';
 
@@ -84,10 +91,7 @@ export function PaySheet({ entry, onClose, onChanged }: PaySheetProps) {
       {skipped ? (
         <div className="flex flex-col gap-3">
           <p>This due date was skipped, so nothing is owed for it.</p>
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={onClose}>
-              Close
-            </Button>
+          <ModalActions>
             <Button
               busy={busy}
               onClick={() => {
@@ -99,7 +103,7 @@ export function PaySheet({ entry, onClose, onChanged }: PaySheetProps) {
             >
               Un-skip
             </Button>
-          </div>
+          </ModalActions>
         </div>
       ) : (
         <form onSubmit={save} className="flex flex-col gap-4" noValidate>
@@ -139,32 +143,31 @@ export function PaySheet({ entry, onClose, onChanged }: PaySheetProps) {
               {failure}
             </p>
           ) : null}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            {entry.paidCents === 0 ? (
-              <Button
-                variant="ghost"
-                disabled={busy}
-                onClick={() => {
-                  void run(
-                    () => setSkipped(entry.spaceId, entry.id, true),
-                    `Skipped ${entry.name}.`,
-                  );
-                }}
-              >
-                Skip this one
-              </Button>
-            ) : (
-              <span />
-            )}
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" busy={busy}>
-                Save payment
-              </Button>
-            </div>
-          </div>
+          <ModalActions
+            start={
+              entry.paidCents === 0 ? (
+                <Button
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => {
+                    void run(
+                      () => setSkipped(entry.spaceId, entry.id, true),
+                      `Skipped ${entry.name}.`,
+                    );
+                  }}
+                >
+                  Skip this one
+                </Button>
+              ) : null
+            }
+          >
+            <Button variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" busy={busy}>
+              Save payment
+            </Button>
+          </ModalActions>
         </form>
       )}
     </Modal>

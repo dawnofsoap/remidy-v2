@@ -253,6 +253,15 @@ The layout is settled: a sidebar on desktop, bottom navigation on phones, and an
 - **Themes:** light and dark from the first screen, built on semantic tokens such as `surface` and `danger`.
 - **Accessibility:** WCAG 2.2 AA, full keyboard use, and respect for reduced-motion settings. CI checks every token pair for contrast, so a color that fails can't merge. Status is never shown by color alone.
 - **Every state is designed:** loading, empty and error, not only the populated screen.
+- **Dialogs work the same everywhere,** through `Modal` and `ModalActions` in the UI kit:
+  - The ✕ in the top corner, Escape, or a tap outside closes any dialog. A dialog only for looking at
+    something, such as a bill, has no Close button of its own.
+  - Buttons go side actions first, on the left (Archive, Delete), then Cancel or Back, then the main
+    action last, in the bottom-right corner. This is the order most of the web uses.
+  - Only the main action is a filled button. Delete is red and never the main action, and it asks
+    first, in place.
+  - Forms keep Cancel beside Save, since it throws away what was typed.
+  - On a phone, the buttons stack full width with the main action on top, nearest the thumb.
 - **Motion and detail:** subtle, and only where it explains a change.
 
 ### Where things live

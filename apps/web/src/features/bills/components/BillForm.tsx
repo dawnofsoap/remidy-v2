@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, type SyntheticEvent } from 'react';
 import { RequestFailure } from '../../../core/session.ts';
 import { useHousehold, useListsSpace, usePersonalSpace } from '../../../core/space.tsx';
-import { Button, Modal, Steps } from '../../../ui/index.ts';
+import { Button, Modal, ModalActions, Steps } from '../../../ui/index.ts';
 import { categoriesKey, fetchCategories } from '../../categories/index.ts';
 import { createBill, moveBill, updateBill, type Bill } from '../api.ts';
 import {
@@ -145,7 +145,7 @@ export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
           </p>
         ) : null}
         {/* Stays in view while a long step scrolls. */}
-        <div className="sticky -bottom-6 -mx-6 flex flex-wrap items-center justify-between gap-2 border-t border-line bg-surface px-6 py-4">
+        <ModalActions sticky>
           {step > 0 ? (
             <Button
               variant="secondary"
@@ -160,22 +160,20 @@ export function BillForm({ bill, onClose, onChanged }: BillFormProps) {
               Cancel
             </Button>
           )}
-          <div className="flex flex-wrap gap-2">
-            {!isNew && step < LAST ? (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  goTo(step + 1);
-                }}
-              >
-                Next
-              </Button>
-            ) : null}
-            <Button type="submit" busy={busy}>
-              {isNew ? (step < LAST ? 'Next' : 'Add bill') : 'Save'}
+          {!isNew && step < LAST ? (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                goTo(step + 1);
+              }}
+            >
+              Next
             </Button>
-          </div>
-        </div>
+          ) : null}
+          <Button type="submit" busy={busy}>
+            {isNew ? (step < LAST ? 'Next' : 'Add bill') : 'Save'}
+          </Button>
+        </ModalActions>
       </form>
     </Modal>
   );
