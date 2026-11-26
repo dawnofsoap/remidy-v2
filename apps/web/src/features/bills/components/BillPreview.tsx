@@ -8,7 +8,7 @@ import { BillActions } from './BillActions.tsx';
 import { BillHistory } from './BillHistory.tsx';
 import { browserToday } from './calendarGrid.ts';
 import { DAY_STATUS, dayStatusOf } from './dayStatus.ts';
-import { statusOf } from './dueStatus.ts';
+import { dueSummary } from './dueStatus.ts';
 import { amountText, nextDue } from './billText.ts';
 
 interface BillPreviewProps {
@@ -36,9 +36,7 @@ function DueDate({ due, onPay }: { due: AgendaEntry; onPay?: (() => void) | unde
       {Icon ? <Icon aria-hidden="true" className="size-5 shrink-0" /> : null}
       <div className="flex min-w-0 flex-auto flex-col">
         <span className="font-semibold">{formatDate(due.dueOn as CalendarDate, 'long')}</span>
-        <span className="text-sm">
-          {status.label} · {statusOf(due, false).text}
-        </span>
+        <span className="text-sm">{dueSummary(due, now)}</span>
       </div>
       {due.state === 'open' && onPay ? <Button onClick={onPay}>Pay</Button> : null}
     </section>
